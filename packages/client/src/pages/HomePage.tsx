@@ -69,6 +69,13 @@ export function HomePage() {
             >
               加入房间 Join Room
             </button>
+            <button
+              onClick={() => navigate('/history')}
+              className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-muted font-medium
+                active:scale-[0.98] transition-transform border border-mahjong-accent"
+            >
+              对局记录 Game History
+            </button>
           </div>
         )}
 

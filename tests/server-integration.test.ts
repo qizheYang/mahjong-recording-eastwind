@@ -798,6 +798,65 @@ describe('Edge Cases', () => {
     }
   });
 
+  it('game history list and detail API works', async () => {
+    // Create and complete a game so there are records to query
+    const names = ['HistA', 'HistB', 'HistC', 'HistD'];
+    const pIds: string[] = [];
+
+    const cr = await apiPost('/api/rooms', { playerName: names[0] });
+    const code = cr.data.roomCode;
+    pIds.push(cr.data.playerId);
+
+    for (let i = 1; i < 4; i++) {
+      const j = await apiPost(`/api/rooms/${code}/join`, { playerName: names[i] });
+      pIds.push(j.data.playerId);
+    }
+
+    const socks: BufferedWs[] = [];
+    for (const pid of pIds) {
+      const ws = track(await connectWs(code, pid));
+      await ws.waitForEvent('room_state');
+      socks.push(ws);
+    }
+
+    const startP = socks.map(ws => ws.waitForEvent('game_started'));
+    socks[0].send({ type: 'start_game', seatOrder: pIds });
+    await Promise.all(startP);
+
+    const recP = socks.map(ws => ws.waitForEvent('hand_recorded'));
+    socks[0].send({
+      type: 'record_hand',
+      result: { resultType: 'agari', winnerIndex: 1, loserIndex: 0, isTsumo: false, han: 3, fu: 30 },
+    });
+    await Promise.all(recP);
+
+    const endP = socks.map(ws => ws.waitForEvent('game_ended'));
+    socks[0].send({ type: 'end_game' });
+    await Promise.all(endP);
+
+    // Test list endpoint
+    const listRes = await apiGet('/api/games');
+    expect(listRes.status).toBe(200);
+    expect(listRes.data.games.length).toBeGreaterThan(0);
+
+    const game = listRes.data.games[0];
+    expect(game.filename).toBeTruthy();
+    expect(game.date).toBeTruthy();
+    expect(game.roomCode).toBeTruthy();
+
+    // Test detail endpoint
+    const detailRes = await apiGet(`/api/games/${game.filename}`);
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.data.players).toHaveLength(4);
+    expect(detailRes.data.finalScores).toHaveLength(4);
+    expect(detailRes.data.hands.length).toBeGreaterThan(0);
+    expect(detailRes.data.totalHands).toBe(detailRes.data.hands.length);
+
+    // Test 404 for non-existent
+    const notFound = await fetch(`http://localhost:${port}${BASE_PATH}/api/games/nonexistent.json`);
+    expect(notFound.status).toBe(404);
+  });
+
   it('CJK player names work in room creation and joining', async () => {
     const create = await apiPost('/api/rooms', { playerName: '田中太郎' });
     expect(create.status).toBe(200);

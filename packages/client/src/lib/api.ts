@@ -35,3 +35,18 @@ export async function joinRoom(code: string, playerName: string): Promise<{ room
 export async function resetRoom(code: string): Promise<void> {
   return request(`/rooms/${code}/reset`, { method: 'POST' });
 }
+
+export interface GameListItem {
+  filename: string;
+  date: string;
+  roomCode: string;
+  players: string;
+}
+
+export async function listGames(): Promise<{ games: GameListItem[] }> {
+  return request('/games');
+}
+
+export async function getGame(filename: string): Promise<any> {
+  return request(`/games/${encodeURIComponent(filename)}`);
+}
