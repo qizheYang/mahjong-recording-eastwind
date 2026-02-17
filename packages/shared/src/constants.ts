@@ -27,6 +27,8 @@ export function defaultScoreFormula(returnPoints: number): string {
   return `(X - ${returnPoints}) / 1000 + Y`;
 }
 
+export const PREDEFINED_TAGS = ['公式战'] as const;
+
 export const M_LEAGUE_RULES: Ruleset = {
   startingPoints: 25000,
   returnPoints: 30000,

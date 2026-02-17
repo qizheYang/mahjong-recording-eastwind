@@ -18,6 +18,9 @@ interface GameStore {
   // Ruleset config (for lobby)
   customRuleset: Partial<Ruleset>;
 
+  // Game tags (for lobby)
+  gameTags: string[];
+
   // UI state
   error: string | null;
 
@@ -28,6 +31,7 @@ interface GameStore {
   toggleReady: () => void;
   swapSeats: (playerIdA: string, playerIdB: string) => void;
   setRuleset: (updates: Partial<Ruleset>) => void;
+  toggleTag: (tag: string) => void;
   startGame: (seatOrder: string[], ruleset?: Partial<Ruleset>) => void;
   recordHand: (result: HandResultInput) => void;
   undoLastHand: () => void;
@@ -46,6 +50,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   game: null,
   finalScores: null,
   customRuleset: {},
+  gameTags: [],
   error: null,
 
   setSession(roomCode: string, playerId: string) {
@@ -172,10 +177,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }));
   },
 
+  toggleTag(tag: string) {
+    set((state) => ({
+      gameTags: state.gameTags.includes(tag)
+        ? state.gameTags.filter(t => t !== tag)
+        : [...state.gameTags, tag],
+    }));
+  },
+
   startGame(seatOrder: string[], ruleset?: Partial<Ruleset>) {
     const r = ruleset ?? get().customRuleset;
+    const tags = get().gameTags;
     const hasCustom = Object.keys(r).length > 0;
-    wsClient?.send({ type: 'start_game', seatOrder, ...(hasCustom ? { ruleset: r } : {}) });
+    wsClient?.send({
+      type: 'start_game',
+      seatOrder,
+      ...(hasCustom ? { ruleset: r } : {}),
+      ...(tags.length > 0 ? { tags } : {}),
+    });
   },
 
   recordHand(result: HandResultInput) {
@@ -195,6 +214,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resetForNewGame() {
-    set({ game: null, finalScores: null, customRuleset: {} });
+    set({ game: null, finalScores: null, customRuleset: {}, gameTags: [] });
   },
 }));

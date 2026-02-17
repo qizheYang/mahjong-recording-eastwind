@@ -5,7 +5,11 @@ const gameFileRoutes = new Hono();
 
 // List all saved game records
 gameFileRoutes.get('/', (c) => {
-  const records = listGameRecords();
+  const tagFilter = c.req.query('tag');
+  let records = listGameRecords();
+  if (tagFilter) {
+    records = records.filter(r => r.tags.includes(tagFilter));
+  }
   return c.json({ games: records });
 });
 

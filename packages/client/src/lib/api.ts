@@ -48,6 +48,7 @@ export interface GameListItem {
   date: string;
   roomCode: string;
   players: string;
+  tags: string[];
 }
 
 export async function listGames(): Promise<{ games: GameListItem[] }> {
@@ -66,6 +67,7 @@ export interface PlayerGameEntry {
   rawPoints: number;
   gameScore: number;
   playerNames: string[];
+  tags: string[];
 }
 
 export interface PlayerRecord {

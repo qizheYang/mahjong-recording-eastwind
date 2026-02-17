@@ -8,7 +8,7 @@ export type ClientEvent =
   | { type: 'leave_room' }
   | { type: 'ready_toggle' }
   | { type: 'swap_seats'; playerIdA: string; playerIdB: string }
-  | { type: 'start_game'; seatOrder: string[]; ruleset?: Partial<Ruleset> }
+  | { type: 'start_game'; seatOrder: string[]; ruleset?: Partial<Ruleset>; tags?: string[] }
   | { type: 'record_hand'; result: HandResultInput }
   | { type: 'undo_last_hand' }
   | { type: 'end_game' };

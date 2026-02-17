@@ -54,6 +54,7 @@ export interface GameRecord {
   startedAt: string;
   endedAt: string;
   totalHands: number;
+  tags: string[];
 }
 
 const WIND_LABELS: Record<string, string> = {
@@ -151,6 +152,7 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
     startedAt: new Date(game.hands[0]?.recordedAt || Date.now()).toISOString(),
     endedAt: now.toISOString(),
     totalHands: game.hands.length,
+    tags: game.tags ?? [],
   };
 
   writeFileSync(filepath, JSON.stringify(record, null, 2), 'utf-8');
@@ -161,7 +163,7 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
 /**
  * List all saved game records.
  */
-export function listGameRecords(): { filename: string; date: string; roomCode: string }[] {
+export function listGameRecords(): { filename: string; date: string; roomCode: string; players: string; tags: string[] }[] {
   if (!existsSync(GAMES_DIR)) return [];
 
   return readdirSync(GAMES_DIR)
@@ -177,7 +179,14 @@ export function listGameRecords(): { filename: string; date: string; roomCode: s
       const roomCode = base.slice(firstDash + 1, secondDash);
       const players = base.slice(secondDash + 1);
       const date = `${timestamp.slice(0, 4)}-${timestamp.slice(4, 6)}-${timestamp.slice(6, 8)} ${timestamp.slice(8, 10)}:${timestamp.slice(10, 12)}:${timestamp.slice(12, 14)}`;
-      return { filename: f, date, roomCode, players };
+
+      let tags: string[] = [];
+      try {
+        const record = JSON.parse(readFileSync(join(GAMES_DIR, f), 'utf-8'));
+        tags = record.tags ?? [];
+      } catch { /* ignore */ }
+
+      return { filename: f, date, roomCode, players, tags };
     });
 }
 

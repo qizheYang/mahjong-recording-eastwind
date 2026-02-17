@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { listGames, getGame, listPlayerRecords, rebuildPlayerDB, type GameListItem, type PlayerRecord } from '../lib/api';
+import { PREDEFINED_TAGS } from '@mahjong/shared';
 
 interface GameRecord {
   id: string;
@@ -55,6 +56,7 @@ export function HistoryPage() {
   const [nameFilter, setNameFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
 
   // Player search results (for games tab)
   const [matchedPlayers, setMatchedPlayers] = useState<PlayerRecord[]>([]);
@@ -160,6 +162,9 @@ export function HistoryPage() {
       if (gameDate > dateTo) return false;
     }
 
+    // Tag filter
+    if (tagFilter && !(g.tags ?? []).includes(tagFilter)) return false;
+
     return true;
   });
 
@@ -258,6 +263,27 @@ export function HistoryPage() {
             </div>
           </div>
 
+          {/* Tag filter */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            <button
+              onClick={() => setTagFilter('')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                ${!tagFilter ? 'bg-mahjong-accent text-white' : 'bg-mahjong-card text-mahjong-muted'}`}
+            >
+              全部 All
+            </button>
+            {PREDEFINED_TAGS.map((tag: string) => (
+              <button
+                key={tag}
+                onClick={() => setTagFilter(tagFilter === tag ? '' : tag)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                  ${tagFilter === tag ? 'bg-mahjong-gold text-mahjong-bg' : 'bg-mahjong-card text-mahjong-muted'}`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+
           {/* Matched players */}
           {matchedPlayers.length > 0 && (
             <div className="mb-4">
@@ -306,6 +332,15 @@ export function HistoryPage() {
                       <span className="text-xs font-mono text-mahjong-gold">{g.roomCode}</span>
                     </div>
                     <p className="text-sm font-medium">{playerNames}</p>
+                    {(g.tags ?? []).length > 0 && (
+                      <div className="flex gap-1 mt-1">
+                        {g.tags.map(tag => (
+                          <span key={tag} className="text-xs bg-mahjong-gold/20 text-mahjong-gold px-1.5 py-0.5 rounded">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </button>
 
                   {/* Expanded detail */}

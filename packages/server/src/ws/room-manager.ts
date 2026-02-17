@@ -135,7 +135,7 @@ export class RoomManager {
     return this.rooms.get(roomCode)?.room ?? null;
   }
 
-  startGame(roomCode: string, seatOrder: string[], customRuleset?: Partial<Ruleset>): Game | { error: string } {
+  startGame(roomCode: string, seatOrder: string[], customRuleset?: Partial<Ruleset>, tags?: string[]): Game | { error: string } {
     const state = this.rooms.get(roomCode);
     if (!state) return { error: '房间不存在' };
     if (state.room.players.length !== 4) return { error: '需要4位玩家 (Need 4 players)' };
@@ -166,6 +166,7 @@ export class RoomManager {
       riichiSticks: 0,
       status: 'in_progress',
       ruleset,
+      tags: tags ?? [],
     };
 
     state.room.currentGame = game;

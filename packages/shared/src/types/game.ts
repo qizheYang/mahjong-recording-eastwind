@@ -26,6 +26,7 @@ export interface Game {
   riichiSticks: number; // uncollected riichi sticks on table
   status: GameStatus;
   ruleset: Ruleset;
+  tags: string[];
 }
 
 export interface Hand {

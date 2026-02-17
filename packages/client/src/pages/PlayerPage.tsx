@@ -247,7 +247,14 @@ export function PlayerPage() {
                 {g.placement}
               </span>
               <div>
-                <p className="text-xs text-mahjong-muted">{g.date.slice(0, 10)}</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-mahjong-muted">{g.date.slice(0, 10)}</p>
+                  {(g.tags ?? []).map(tag => (
+                    <span key={tag} className="text-[10px] bg-mahjong-gold/20 text-mahjong-gold px-1 py-0.5 rounded">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
                 <p className="text-xs text-mahjong-muted/60">
                   {g.playerNames.filter(n => n !== player.name).join(', ')}
                 </p>

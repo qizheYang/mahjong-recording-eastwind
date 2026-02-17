@@ -7,7 +7,7 @@ export type {
 export type { ClientEvent, ServerEvent, HandResultInput } from './types/ws-events.js';
 
 // Constants
-export { WINDS, WIND_LABELS, M_LEAGUE_RULES, defaultScoreFormula } from './constants.js';
+export { WINDS, WIND_LABELS, M_LEAGUE_RULES, defaultScoreFormula, PREDEFINED_TAGS } from './constants.js';
 export type { Wind, Ruleset } from './constants.js';
 
 // Scoring

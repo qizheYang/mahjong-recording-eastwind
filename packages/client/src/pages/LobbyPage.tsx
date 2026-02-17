@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
 import { addPlayer } from '../lib/api';
-import { WINDS, WIND_LABELS, M_LEAGUE_RULES, defaultScoreFormula } from '@mahjong/shared';
+import { WINDS, WIND_LABELS, M_LEAGUE_RULES, defaultScoreFormula, PREDEFINED_TAGS } from '@mahjong/shared';
 import { RulesIsland } from '../components/game/RulesIsland';
 
 export function LobbyPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
   const {
-    room, game, playerId, connected, customRuleset,
-    connect, toggleReady, swapSeats, startGame, setSession, setRuleset,
+    room, game, playerId, connected, customRuleset, gameTags,
+    connect, toggleReady, swapSeats, startGame, setSession, setRuleset, toggleTag,
   } = useGameStore();
 
   const [copied, setCopied] = useState(false);
@@ -342,6 +342,25 @@ export function LobbyPage() {
         editable={true}
         onChange={(updates) => setRuleset(updates as Partial<typeof M_LEAGUE_RULES>)}
       />
+
+      {/* Game Tags */}
+      <div className="mt-3 px-4 py-2 rounded-xl bg-mahjong-card">
+        <p className="text-xs text-mahjong-muted mb-2">标签 Tags</p>
+        <div className="flex flex-wrap gap-2">
+          {PREDEFINED_TAGS.map((tag: string) => (
+            <button
+              key={tag}
+              onClick={() => toggleTag(tag)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                ${gameTags.includes(tag)
+                  ? 'bg-mahjong-gold text-mahjong-bg font-bold'
+                  : 'bg-mahjong-bg text-mahjong-muted border border-mahjong-accent'}`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Bottom action */}
       <div className="mt-auto pb-4">

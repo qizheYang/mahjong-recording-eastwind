@@ -14,6 +14,7 @@ export interface PlayerGameEntry {
   rawPoints: number;
   gameScore: number;
   playerNames: string[]; // all players in the game
+  tags: string[];
 }
 
 export interface PlayerRecord {
@@ -83,6 +84,7 @@ export function updatePlayerDB(record: GameRecord, filename: string): void {
       rawPoints: score.rawPoints,
       gameScore: score.gameScore,
       playerNames: allPlayerNames,
+      tags: record.tags ?? [],
     });
 
     // Sort by date ascending
