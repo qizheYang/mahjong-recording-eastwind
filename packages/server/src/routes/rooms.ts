@@ -34,6 +34,30 @@ roomRoutes.post('/:code/join', async (c) => {
   return c.json({ roomCode: code, playerId: result.playerId });
 });
 
+// Add a player by name (solo recording mode — host adds other players)
+roomRoutes.post('/:code/add-player', async (c) => {
+  const code = c.req.param('code').toUpperCase();
+  const body = await c.req.json<{ playerName: string }>();
+
+  if (!body.playerName || body.playerName.trim().length === 0) {
+    return c.json({ error: '请输入玩家名称 (Player name required)' }, 400);
+  }
+
+  const result = roomManager.joinRoom(code, body.playerName.trim());
+
+  if ('error' in result) {
+    return c.json({ error: result.error }, 400);
+  }
+
+  // Broadcast to connected WS clients so the host sees the update
+  const player = result.room.players.find(p => p.id === result.playerId);
+  if (player) {
+    roomManager.broadcast(code, { type: 'player_joined', player });
+  }
+
+  return c.json({ roomCode: code, playerId: result.playerId });
+});
+
 // Get room state
 roomRoutes.get('/:code', (c) => {
   const code = c.req.param('code').toUpperCase();

@@ -32,6 +32,13 @@ export async function joinRoom(code: string, playerName: string): Promise<{ room
   });
 }
 
+export async function addPlayer(code: string, playerName: string): Promise<{ roomCode: string; playerId: string }> {
+  return request(`/rooms/${code.toUpperCase()}/add-player`, {
+    method: 'POST',
+    body: JSON.stringify({ playerName }),
+  });
+}
+
 export async function resetRoom(code: string): Promise<void> {
   return request(`/rooms/${code}/reset`, { method: 'POST' });
 }

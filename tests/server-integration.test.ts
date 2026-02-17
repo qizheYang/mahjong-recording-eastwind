@@ -857,6 +857,87 @@ describe('Edge Cases', () => {
     expect(notFound.status).toBe(404);
   });
 
+  it('solo mode: add players via REST, start game, record hands', async () => {
+    // Creator creates room and connects via WS
+    const create = await apiPost('/api/rooms', { playerName: 'Host' });
+    const code = create.data.roomCode;
+    const hostId = create.data.playerId;
+
+    const ws = track(await connectWs(code, hostId));
+    await ws.waitForEvent('room_state');
+
+    // Add 3 players via add-player endpoint (solo mode)
+    for (const name of ['Player2', 'Player3', 'Player4']) {
+      const joinedPromise = ws.waitForEvent('player_joined');
+      const res = await apiPost(`/api/rooms/${code}/add-player`, { playerName: name });
+      expect(res.status).toBe(200);
+      expect(res.data.playerId).toBeTruthy();
+
+      // Host should receive player_joined broadcast
+      const joined = await joinedPromise;
+      expect(joined.type).toBe('player_joined');
+      if (joined.type === 'player_joined') {
+        expect(joined.player.name).toBe(name);
+      }
+    }
+
+    // Verify room has 4 players
+    const roomRes = await apiGet(`/api/rooms/${code}`);
+    expect(roomRes.data.room.players).toHaveLength(4);
+
+    // Start game directly (no ready needed in solo mode)
+    const seatOrder = roomRes.data.room.players.map((p: any) => p.id);
+    const startPromise = ws.waitForEvent('game_started');
+    ws.send({ type: 'start_game', seatOrder });
+    const startEvt = await startPromise;
+
+    expect(startEvt.type).toBe('game_started');
+    if (startEvt.type === 'game_started') {
+      expect(startEvt.game.status).toBe('in_progress');
+      expect(startEvt.game.players[0].name).toBe('Host');
+    }
+
+    // Record a hand
+    const recPromise = ws.waitForEvent('hand_recorded');
+    ws.send({
+      type: 'record_hand',
+      result: { resultType: 'agari', winnerIndex: 1, loserIndex: 0, isTsumo: false, han: 2, fu: 30 },
+    });
+    const recEvt = await recPromise;
+    expect(recEvt.type).toBe('hand_recorded');
+
+    // End game
+    const endPromise = ws.waitForEvent('game_ended');
+    ws.send({ type: 'end_game' });
+    const endEvt = await endPromise;
+    expect(endEvt.type).toBe('game_ended');
+    if (endEvt.type === 'game_ended') {
+      expect(endEvt.finalScores).toHaveLength(4);
+    }
+  });
+
+  it('add-player validation: empty name, full room, nonexistent room', async () => {
+    // Empty name
+    const create = await apiPost('/api/rooms', { playerName: 'Solo' });
+    const code = create.data.roomCode;
+
+    const emptyName = await apiPost(`/api/rooms/${code}/add-player`, { playerName: '' });
+    expect(emptyName.status).toBe(400);
+
+    // Fill room
+    for (let i = 0; i < 3; i++) {
+      await apiPost(`/api/rooms/${code}/add-player`, { playerName: `P${i + 2}` });
+    }
+
+    // Full room
+    const full = await apiPost(`/api/rooms/${code}/add-player`, { playerName: 'Extra' });
+    expect(full.status).toBe(400);
+
+    // Nonexistent room
+    const notFound = await apiPost('/api/rooms/ZZZZ/add-player', { playerName: 'Ghost' });
+    expect(notFound.status).toBe(400);
+  });
+
   it('CJK player names work in room creation and joining', async () => {
     const create = await apiPost('/api/rooms', { playerName: '田中太郎' });
     expect(create.status).toBe(200);
