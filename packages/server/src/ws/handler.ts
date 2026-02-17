@@ -1,7 +1,8 @@
 import type { WSContext, WSMessageReceive } from 'hono/ws';
 import type { ClientEvent, ServerEvent, Game, FinalScore } from '@mahjong/shared';
 import { roomManager } from './room-manager.js';
-import { saveGameRecord } from '../services/game-file-service.js';
+import { saveGameRecord, getGameRecord } from '../services/game-file-service.js';
+import { updatePlayerDB } from '../services/player-db.js';
 
 interface ConnectionContext {
   roomCode: string;
@@ -168,7 +169,12 @@ export function handleWSClose(ws: WSContext): void {
 
 function saveGameToFile(game: Game, finalScores: FinalScore[]): void {
   try {
-    saveGameRecord(game, finalScores);
+    const filename = saveGameRecord(game, finalScores);
+    // Update player database
+    const record = getGameRecord(filename);
+    if (record) {
+      updatePlayerDB(record, filename);
+    }
   } catch (err) {
     console.error('Failed to save game record:', err);
   }

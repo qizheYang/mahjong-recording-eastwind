@@ -10,6 +10,7 @@ export type GameStatus = 'in_progress' | 'completed';
 export interface GamePlayer {
   id: string;
   name: string;
+  phone?: string;
   points: number;
   initialSeat: Wind;
 }

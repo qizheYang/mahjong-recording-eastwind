@@ -28,14 +28,14 @@ function generateRoomCode(): string {
 export class RoomManager {
   private rooms = new Map<string, RoomState>();
 
-  createRoom(playerName: string): { roomCode: string; playerId: string } {
+  createRoom(playerName: string, phone?: string): { roomCode: string; playerId: string } {
     let code = generateRoomCode();
     while (this.rooms.has(code)) {
       code = generateRoomCode();
     }
 
     const playerId = nanoid(12);
-    const player: Player = { id: playerId, name: playerName, seatWind: null, ready: false };
+    const player: Player = { id: playerId, name: playerName, ...(phone ? { phone } : {}), seatWind: null, ready: false };
 
     const room: Room = {
       code,
@@ -50,14 +50,14 @@ export class RoomManager {
     return { roomCode: code, playerId };
   }
 
-  joinRoom(roomCode: string, playerName: string): { playerId: string; room: Room } | { error: string } {
+  joinRoom(roomCode: string, playerName: string, phone?: string): { playerId: string; room: Room } | { error: string } {
     const state = this.rooms.get(roomCode);
     if (!state) return { error: '房间不存在 (Room not found)' };
     if (state.room.players.length >= 4) return { error: '房间已满 (Room is full)' };
     if (state.room.status !== 'waiting') return { error: '对局已开始 (Game already started)' };
 
     const playerId = nanoid(12);
-    const player: Player = { id: playerId, name: playerName, seatWind: null, ready: false };
+    const player: Player = { id: playerId, name: playerName, ...(phone ? { phone } : {}), seatWind: null, ready: false };
     state.room.players.push(player);
 
     return { playerId, room: state.room };
@@ -149,6 +149,7 @@ export class RoomManager {
       return {
         id: player.id,
         name: player.name,
+        ...(player.phone ? { phone: player.phone } : {}),
         points: ruleset.startingPoints,
         initialSeat: WINDS[i],
       };

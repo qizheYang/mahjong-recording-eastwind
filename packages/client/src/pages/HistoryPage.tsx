@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listGames, getGame, type GameListItem } from '../lib/api';
+import { listGames, getGame, listPlayerRecords, type GameListItem, type PlayerRecord } from '../lib/api';
 
 interface GameRecord {
   id: string;
@@ -49,6 +49,9 @@ export function HistoryPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
+  // Player search results
+  const [matchedPlayers, setMatchedPlayers] = useState<PlayerRecord[]>([]);
+
   // Expanded game detail
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
   const [expandedRecord, setExpandedRecord] = useState<GameRecord | null>(null);
@@ -60,6 +63,21 @@ export function HistoryPage() {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  // Search players when name filter changes
+  useEffect(() => {
+    const q = nameFilter.trim();
+    if (q.length === 0) {
+      setMatchedPlayers([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      listPlayerRecords(q)
+        .then(res => setMatchedPlayers(res.players))
+        .catch(() => setMatchedPlayers([]));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [nameFilter]);
 
   async function handleToggle(filename: string) {
     if (expandedFile === filename) {
@@ -83,11 +101,11 @@ export function HistoryPage() {
 
   // Filter games
   const filtered = games.filter(g => {
-    // Player name filter
+    // Player name filter (exact match)
     if (nameFilter.trim()) {
       const query = nameFilter.trim().toLowerCase();
-      const playerNames = g.players.replace(/_/g, ' ').toLowerCase();
-      if (!playerNames.includes(query)) return false;
+      const playerList = g.players.replace(/_/g, ' ').toLowerCase().split('-');
+      if (!playerList.some(name => name.trim() === query)) return false;
     }
 
     // Date range filter (compare date strings: "YYYY-MM-DD HH:mm:SS")
@@ -173,6 +191,26 @@ export function HistoryPage() {
 
       {error && <p className="text-mahjong-highlight text-sm mb-4">{error}</p>}
 
+      {/* Matched players */}
+      {matchedPlayers.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs text-mahjong-muted mb-2">玩家 Players</p>
+          <div className="flex flex-wrap gap-2">
+            {matchedPlayers.map(p => (
+              <button
+                key={p.name}
+                onClick={() => navigate(`/player/${encodeURIComponent(p.name)}`)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-mahjong-accent
+                  text-white text-sm active:scale-95 transition-transform"
+              >
+                <span className="font-medium">{p.name}</span>
+                <span className="text-mahjong-muted text-xs">{p.totalGames}局</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Results count */}
       <p className="text-xs text-mahjong-muted mb-3">
         {filtered.length} 场对局 {filtered.length !== 1 ? 'games' : 'game'} found
@@ -220,7 +258,12 @@ export function HistoryPage() {
                               <span className={`font-bold ${PLACEMENT_COLORS[s.placement - 1]}`}>
                                 {s.placement}
                               </span>
-                              <span>{s.name}</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigate(`/player/${encodeURIComponent(s.name)}`); }}
+                                className="hover:text-mahjong-gold transition-colors underline underline-offset-2 decoration-mahjong-accent"
+                              >
+                                {s.name}
+                              </button>
                             </div>
                             <div className="flex items-center gap-3">
                               <span className="text-mahjong-muted font-mono text-xs">

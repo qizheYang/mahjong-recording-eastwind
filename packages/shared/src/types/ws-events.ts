@@ -4,7 +4,7 @@ import type { Ruleset } from '../constants.js';
 
 // Client -> Server events
 export type ClientEvent =
-  | { type: 'join_room'; roomCode: string; playerName: string }
+  | { type: 'join_room'; roomCode: string; playerName: string; phone?: string }
   | { type: 'leave_room' }
   | { type: 'ready_toggle' }
   | { type: 'swap_seats'; playerIdA: string; playerIdB: string }

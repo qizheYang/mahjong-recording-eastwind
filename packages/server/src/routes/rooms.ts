@@ -5,13 +5,13 @@ const roomRoutes = new Hono();
 
 // Create a new room
 roomRoutes.post('/', async (c) => {
-  const body = await c.req.json<{ playerName: string }>();
+  const body = await c.req.json<{ playerName: string; phone?: string }>();
 
   if (!body.playerName || body.playerName.trim().length === 0) {
     return c.json({ error: '请输入玩家名称 (Player name required)' }, 400);
   }
 
-  const { roomCode, playerId } = roomManager.createRoom(body.playerName.trim());
+  const { roomCode, playerId } = roomManager.createRoom(body.playerName.trim(), body.phone?.trim() || undefined);
 
   return c.json({ roomCode, playerId });
 });
@@ -19,13 +19,13 @@ roomRoutes.post('/', async (c) => {
 // Join an existing room
 roomRoutes.post('/:code/join', async (c) => {
   const code = c.req.param('code').toUpperCase();
-  const body = await c.req.json<{ playerName: string }>();
+  const body = await c.req.json<{ playerName: string; phone?: string }>();
 
   if (!body.playerName || body.playerName.trim().length === 0) {
     return c.json({ error: '请输入玩家名称 (Player name required)' }, 400);
   }
 
-  const result = roomManager.joinRoom(code, body.playerName.trim());
+  const result = roomManager.joinRoom(code, body.playerName.trim(), body.phone?.trim() || undefined);
 
   if ('error' in result) {
     return c.json({ error: result.error }, 400);
@@ -37,13 +37,13 @@ roomRoutes.post('/:code/join', async (c) => {
 // Add a player by name (solo recording mode — host adds other players)
 roomRoutes.post('/:code/add-player', async (c) => {
   const code = c.req.param('code').toUpperCase();
-  const body = await c.req.json<{ playerName: string }>();
+  const body = await c.req.json<{ playerName: string; phone?: string }>();
 
   if (!body.playerName || body.playerName.trim().length === 0) {
     return c.json({ error: '请输入玩家名称 (Player name required)' }, 400);
   }
 
-  const result = roomManager.joinRoom(code, body.playerName.trim());
+  const result = roomManager.joinRoom(code, body.playerName.trim(), body.phone?.trim() || undefined);
 
   if ('error' in result) {
     return c.json({ error: result.error }, 400);

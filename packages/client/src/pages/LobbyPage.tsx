@@ -19,6 +19,7 @@ export function LobbyPage() {
   // Solo mode state
   const [soloMode, setSoloMode] = useState(false);
   const [soloNames, setSoloNames] = useState(['', '', '']);
+  const [soloPhones, setSoloPhones] = useState(['', '', '']);
   const [addingIdx, setAddingIdx] = useState<number | null>(null);
   const [soloError, setSoloError] = useState('');
 
@@ -72,9 +73,15 @@ export function LobbyPage() {
     setAddingIdx(slotIdx);
     setSoloError('');
     try {
-      await addPlayer(roomCode, name);
+      const phone = soloPhones[slotIdx]?.trim() || undefined;
+      await addPlayer(roomCode, name, phone);
       // Server broadcasts player_joined → room state updates via WS
       setSoloNames(prev => {
+        const next = [...prev];
+        next[slotIdx] = '';
+        return next;
+      });
+      setSoloPhones(prev => {
         const next = [...prev];
         next[slotIdx] = '';
         return next;
@@ -213,7 +220,12 @@ export function LobbyPage() {
                   <span className="w-6 text-center text-sm font-bold text-mahjong-gold">
                     {WIND_LABELS[WINDS[idx]]}
                   </span>
-                  <span className="font-medium">{player.name}</span>
+                  <div>
+                    <span className="font-medium">{player.name}</span>
+                    {player.phone && (
+                      <span className="text-xs text-mahjong-muted ml-2">{player.phone}</span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {player.id === playerId && (
@@ -237,40 +249,57 @@ export function LobbyPage() {
 
           {/* Empty slots */}
           {soloMode ? (
-            // Solo mode: show name inputs for empty slots
+            // Solo mode: show name + phone inputs for empty slots
             Array.from({ length: emptySlots }).map((_, i) => {
               const slotIdx = i;
               const windIdx = totalPlayers + i;
               return (
                 <div
                   key={`solo-${i}`}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-mahjong-card"
+                  className="px-4 py-2 rounded-lg bg-mahjong-card space-y-1.5"
                 >
-                  <span className="w-6 text-center text-sm font-bold text-mahjong-gold shrink-0">
-                    {WIND_LABELS[WINDS[windIdx]]}
-                  </span>
-                  <input
-                    type="text"
-                    value={soloNames[slotIdx]}
-                    onChange={e => setSoloNames(prev => {
-                      const next = [...prev];
-                      next[slotIdx] = e.target.value;
-                      return next;
-                    })}
-                    onKeyDown={e => { if (e.key === 'Enter') handleAddPlayer(slotIdx); }}
-                    maxLength={12}
-                    placeholder="输入名称..."
-                    className="flex-1 min-w-0 px-2 py-1.5 rounded bg-mahjong-bg border border-mahjong-accent
-                      text-white text-sm focus:outline-none focus:border-mahjong-highlight"
-                  />
-                  <button
-                    onClick={() => handleAddPlayer(slotIdx)}
-                    disabled={addingIdx === slotIdx || !soloNames[slotIdx]?.trim()}
-                    className="px-3 py-1.5 rounded bg-mahjong-accent text-white text-sm font-medium
-                      disabled:opacity-30 active:scale-95 transition-transform shrink-0"
-                  >
-                    {addingIdx === slotIdx ? '...' : '添加'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 text-center text-sm font-bold text-mahjong-gold shrink-0">
+                      {WIND_LABELS[WINDS[windIdx]]}
+                    </span>
+                    <input
+                      type="text"
+                      value={soloNames[slotIdx]}
+                      onChange={e => setSoloNames(prev => {
+                        const next = [...prev];
+                        next[slotIdx] = e.target.value;
+                        return next;
+                      })}
+                      onKeyDown={e => { if (e.key === 'Enter') handleAddPlayer(slotIdx); }}
+                      maxLength={12}
+                      placeholder="输入名称..."
+                      className="flex-1 min-w-0 px-2 py-1.5 rounded bg-mahjong-bg border border-mahjong-accent
+                        text-white text-sm focus:outline-none focus:border-mahjong-highlight"
+                    />
+                    <button
+                      onClick={() => handleAddPlayer(slotIdx)}
+                      disabled={addingIdx === slotIdx || !soloNames[slotIdx]?.trim()}
+                      className="px-3 py-1.5 rounded bg-mahjong-accent text-white text-sm font-medium
+                        disabled:opacity-30 active:scale-95 transition-transform shrink-0"
+                    >
+                      {addingIdx === slotIdx ? '...' : '添加'}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 pl-8">
+                    <input
+                      type="tel"
+                      value={soloPhones[slotIdx]}
+                      onChange={e => setSoloPhones(prev => {
+                        const next = [...prev];
+                        next[slotIdx] = e.target.value;
+                        return next;
+                      })}
+                      maxLength={20}
+                      placeholder="手机号 (可选)..."
+                      className="flex-1 min-w-0 px-2 py-1 rounded bg-mahjong-bg border border-mahjong-accent/50
+                        text-white text-xs focus:outline-none focus:border-mahjong-highlight"
+                    />
+                  </div>
                 </div>
               );
             })

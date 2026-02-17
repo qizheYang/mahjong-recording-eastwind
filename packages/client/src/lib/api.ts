@@ -18,24 +18,24 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return data as T;
 }
 
-export async function createRoom(playerName: string): Promise<{ roomCode: string; playerId: string }> {
+export async function createRoom(playerName: string, phone?: string): Promise<{ roomCode: string; playerId: string }> {
   return request('/rooms', {
     method: 'POST',
-    body: JSON.stringify({ playerName }),
+    body: JSON.stringify({ playerName, ...(phone ? { phone } : {}) }),
   });
 }
 
-export async function joinRoom(code: string, playerName: string): Promise<{ roomCode: string; playerId: string }> {
+export async function joinRoom(code: string, playerName: string, phone?: string): Promise<{ roomCode: string; playerId: string }> {
   return request(`/rooms/${code.toUpperCase()}/join`, {
     method: 'POST',
-    body: JSON.stringify({ playerName }),
+    body: JSON.stringify({ playerName, ...(phone ? { phone } : {}) }),
   });
 }
 
-export async function addPlayer(code: string, playerName: string): Promise<{ roomCode: string; playerId: string }> {
+export async function addPlayer(code: string, playerName: string, phone?: string): Promise<{ roomCode: string; playerId: string }> {
   return request(`/rooms/${code.toUpperCase()}/add-player`, {
     method: 'POST',
-    body: JSON.stringify({ playerName }),
+    body: JSON.stringify({ playerName, ...(phone ? { phone } : {}) }),
   });
 }
 
@@ -56,4 +56,36 @@ export async function listGames(): Promise<{ games: GameListItem[] }> {
 
 export async function getGame(filename: string): Promise<any> {
   return request(`/games/${encodeURIComponent(filename)}`);
+}
+
+// Player database
+export interface PlayerGameEntry {
+  filename: string;
+  date: string;
+  placement: number;
+  rawPoints: number;
+  gameScore: number;
+  playerNames: string[];
+}
+
+export interface PlayerRecord {
+  name: string;
+  phone?: string;
+  games: PlayerGameEntry[];
+  totalGames: number;
+  avgPlacement: number;
+  avgGameScore: number;
+}
+
+export async function listPlayerRecords(query?: string): Promise<{ players: PlayerRecord[] }> {
+  const q = query ? `?q=${encodeURIComponent(query)}` : '';
+  return request(`/players${q}`);
+}
+
+export async function getPlayerRecord(name: string): Promise<PlayerRecord> {
+  return request(`/players/${encodeURIComponent(name)}`);
+}
+
+export async function rebuildPlayerDB(): Promise<{ rebuilt: number }> {
+  return request('/players/rebuild', { method: 'POST' });
 }

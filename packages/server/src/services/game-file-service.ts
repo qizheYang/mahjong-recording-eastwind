@@ -12,6 +12,7 @@ export interface GameRecord {
   roomCode: string;
   players: {
     name: string;
+    phone?: string;
     initialSeat: string;
   }[];
   ruleset: {
@@ -90,6 +91,7 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
     roomCode: game.roomCode,
     players: game.players.map(p => ({
       name: p.name,
+      ...(p.phone ? { phone: p.phone } : {}),
       initialSeat: WIND_LABELS[p.initialSeat] || p.initialSeat,
     })),
     ruleset: {

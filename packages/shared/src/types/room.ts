@@ -4,6 +4,7 @@ import type { Game } from './game.js';
 export interface Player {
   id: string;
   name: string;
+  phone?: string;
   seatWind: Wind | null;
   ready: boolean;
 }

@@ -4,6 +4,7 @@ import { createNodeWebSocket } from '@hono/node-ws';
 import { roomRoutes } from './routes/rooms.js';
 import { handleWSOpen, handleWSMessage, handleWSClose } from './ws/handler.js';
 import { gameFileRoutes } from './routes/game-files.js';
+import { playerRoutes } from './routes/players.js';
 import { fileURLToPath } from 'url';
 import { dirname, resolve, join, extname } from 'path';
 import { readFile, stat } from 'fs/promises';
@@ -45,6 +46,7 @@ export function createApp() {
   // API routes
   api.route('/api/rooms', roomRoutes);
   api.route('/api/games', gameFileRoutes);
+  api.route('/api/players', playerRoutes);
 
   // API health
   api.get('/api/health', (c) => c.json({ status: 'ok', basePath: BASE_PATH }));

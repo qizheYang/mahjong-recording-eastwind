@@ -6,6 +6,7 @@ import { useGameStore } from '../stores/game-store';
 export function HomePage() {
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -17,7 +18,7 @@ export function HomePage() {
     setLoading(true);
     setError('');
     try {
-      const res = await createRoom(name.trim());
+      const res = await createRoom(name.trim(), phone.trim() || undefined);
       setSession(res.roomCode, res.playerId);
       navigate(`/lobby/${res.roomCode}`);
     } catch (e: any) {
@@ -33,7 +34,7 @@ export function HomePage() {
     setLoading(true);
     setError('');
     try {
-      const res = await joinRoom(roomCode.trim(), name.trim());
+      const res = await joinRoom(roomCode.trim(), name.trim(), phone.trim() || undefined);
       setSession(res.roomCode, res.playerId);
       navigate(`/lobby/${res.roomCode}`);
     } catch (e: any) {
@@ -94,6 +95,18 @@ export function HomePage() {
                 placeholder="输入名称..."
               />
             </div>
+            <div>
+              <label className="block text-sm text-mahjong-muted mb-1">手机号 Phone (optional)</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                maxLength={20}
+                className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
+                  text-white text-lg focus:outline-none focus:border-mahjong-highlight"
+                placeholder="可选..."
+              />
+            </div>
             {error && <p className="text-mahjong-highlight text-sm">{error}</p>}
             <button
               onClick={handleCreate}
@@ -138,6 +151,18 @@ export function HomePage() {
                 className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
                   text-white text-lg focus:outline-none focus:border-mahjong-highlight"
                 placeholder="输入名称..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-mahjong-muted mb-1">手机号 Phone (optional)</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                maxLength={20}
+                className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
+                  text-white text-lg focus:outline-none focus:border-mahjong-highlight"
+                placeholder="可选..."
               />
             </div>
             {error && <p className="text-mahjong-highlight text-sm">{error}</p>}
