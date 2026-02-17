@@ -612,3 +612,99 @@ describe('Custom Score Formula', () => {
     expect(total).toBe(120000);
   });
 });
+
+// ──────────────────────────────────────────────────
+// Riichi Deposits (立直)
+// ──────────────────────────────────────────────────
+describe('Riichi Deposits', () => {
+  let game: Game;
+  beforeEach(() => { game = createTestGame(); });
+
+  it('deducts 1000 per riichi player and increments riichiSticks', () => {
+    const hand = processHandResult(game, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 1, fu: 30,
+      riichiPlayers: [true, false, false, false],
+    });
+
+    // pointsBefore is pre-riichi state
+    expect(hand.pointsBefore[0]).toBe(25000);
+    // riichiSticksOnTable includes the deposit
+    expect(hand.riichiSticksOnTable).toBe(1);
+    // riichiPlayers stored on hand
+    expect(hand.riichiPlayers).toEqual([true, false, false, false]);
+    // Winner collects the riichi stick
+    expect(hand.result.type === 'agari' && hand.result.riichiSticksCollected).toBe(1);
+  });
+
+  it('multiple riichi players: all deposits applied', () => {
+    const hand = processHandResult(game, {
+      resultType: 'ryuukyoku',
+      tenpaiStatus: [true, false, false, true],
+      riichiPlayers: [true, false, true, false],
+    });
+    expect(hand.riichiSticksOnTable).toBe(2);
+    expect(game.riichiSticks).toBe(2); // not collected on ryuukyoku
+  });
+
+  it('undo reverses riichi deposits correctly', () => {
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 0, loserIndex: 1,
+      isTsumo: false, han: 1, fu: 30,
+      riichiPlayers: [false, true, false, false],
+    });
+    // After agari, riichi sticks collected (= 0)
+    expect(game.riichiSticks).toBe(0);
+
+    undoLastHand(game);
+    // Should restore to pre-deposit state (0 sticks)
+    expect(game.riichiSticks).toBe(0);
+    expect(game.players[1].points).toBe(25000); // fully restored
+  });
+
+  it('undo with pre-existing riichi sticks restores correctly', () => {
+    game.riichiSticks = 2;
+    processHandResult(game, {
+      resultType: 'ryuukyoku',
+      tenpaiStatus: [true, false, false, false],
+      riichiPlayers: [false, false, true, false],
+    });
+    // riichiSticks = 2 (existing) + 1 (new deposit) = 3
+    expect(game.riichiSticks).toBe(3);
+
+    undoLastHand(game);
+    expect(game.riichiSticks).toBe(2); // restored to pre-deposit
+  });
+
+  it('no riichiPlayers field defaults to no deposits', () => {
+    const hand = processHandResult(game, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 1, fu: 30,
+    });
+    expect(hand.riichiPlayers).toEqual([false, false, false, false]);
+    expect(hand.riichiSticksOnTable).toBe(0);
+  });
+
+  it('point conservation with riichi deposits', () => {
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 2, loserIndex: 0,
+      isTsumo: false, han: 3, fu: 30,
+      riichiPlayers: [true, true, false, false],
+    });
+    const total = game.players.reduce((s, p) => s + p.points, 0);
+    expect(total).toBe(100000);
+  });
+
+  it('all four players riichi works correctly', () => {
+    const hand = processHandResult(game, {
+      resultType: 'agari', winnerIndex: 0, loserIndex: 1,
+      isTsumo: false, han: 1, fu: 30,
+      riichiPlayers: [true, true, true, true],
+    });
+    expect(hand.riichiSticksOnTable).toBe(4);
+    expect(hand.result.type === 'agari' && hand.result.riichiSticksCollected).toBe(4);
+    // Winner collects all 4 sticks (+4000)
+    const total = game.players.reduce((s, p) => s + p.points, 0);
+    expect(total).toBe(100000);
+  });
+});

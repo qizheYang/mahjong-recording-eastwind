@@ -6,6 +6,7 @@ import { handleWSOpen, handleWSMessage, handleWSClose } from './ws/handler.js';
 import { gameFileRoutes } from './routes/game-files.js';
 import { playerRoutes } from './routes/players.js';
 import { adminRoutes } from './routes/admin.js';
+import { roomManager } from './ws/room-manager.js';
 import { fileURLToPath } from 'url';
 import { dirname, resolve, join, extname } from 'path';
 import { readFile, stat } from 'fs/promises';
@@ -49,6 +50,9 @@ export function createApp() {
   api.route('/api/games', gameFileRoutes);
   api.route('/api/players', playerRoutes);
   api.route('/api/admin', adminRoutes);
+
+  // Live games
+  api.get('/api/live-games', (c) => c.json({ games: roomManager.listRooms() }));
 
   // API health
   api.get('/api/health', (c) => c.json({ status: 'ok', basePath: BASE_PATH }));

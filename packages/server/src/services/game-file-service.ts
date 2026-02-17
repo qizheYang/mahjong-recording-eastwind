@@ -136,12 +136,17 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
           .filter((n): n is string => n !== null);
       }
 
+      const riichiPlayerNames = (hand.riichiPlayers ?? [])
+        .map((r, i) => r ? game.players[i]?.name : null)
+        .filter((n): n is string => n !== null);
+
       return {
         handNumber: hand.handNumber,
         round: roundLabel,
         dealer: game.players[hand.dealerIndex]?.name,
         honba: hand.honba,
         riichiSticksOnTable: hand.riichiSticksOnTable,
+        ...(riichiPlayerNames.length > 0 ? { riichiPlayers: riichiPlayerNames } : {}),
         result,
         pointsBefore,
         pointsAfter,

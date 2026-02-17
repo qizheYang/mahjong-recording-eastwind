@@ -37,6 +37,7 @@ export interface Hand {
   dealerIndex: number;
   honba: number;
   riichiSticksOnTable: number;
+  riichiPlayers: boolean[]; // [p0, p1, p2, p3] - who declared riichi this hand
   result: HandResult;
   pointsBefore: number[];
   pointsAfter: number[];

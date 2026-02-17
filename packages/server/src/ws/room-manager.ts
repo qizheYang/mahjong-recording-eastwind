@@ -135,6 +135,39 @@ export class RoomManager {
     return this.rooms.get(roomCode)?.room ?? null;
   }
 
+  listRooms() {
+    const result: {
+      roomCode: string;
+      status: string;
+      playerNames: string[];
+      gameInfo: {
+        currentRound: { wind: string; number: number };
+        handCount: number;
+        honbaCount: number;
+        riichiSticks: number;
+        playerPoints: { name: string; points: number }[];
+      } | null;
+    }[] = [];
+
+    for (const [code, state] of this.rooms) {
+      const room = state.room;
+      const game = room.currentGame;
+      result.push({
+        roomCode: code,
+        status: room.status,
+        playerNames: room.players.map(p => p.name),
+        gameInfo: game ? {
+          currentRound: { ...game.currentRound },
+          handCount: game.hands.length,
+          honbaCount: game.honbaCount,
+          riichiSticks: game.riichiSticks,
+          playerPoints: game.players.map(p => ({ name: p.name, points: p.points })),
+        } : null,
+      });
+    }
+    return result;
+  }
+
   startGame(roomCode: string, seatOrder: string[], customRuleset?: Partial<Ruleset>, tags?: string[]): Game | { error: string } {
     const state = this.rooms.get(roomCode);
     if (!state) return { error: '房间不存在' };

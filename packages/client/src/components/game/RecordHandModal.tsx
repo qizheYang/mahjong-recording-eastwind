@@ -12,7 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Step = 'outcome' | 'winner' | 'method' | 'loser' | 'hanfu' | 'tenpai' | 'nagashiSelect' | 'confirm';
+type Step = 'outcome' | 'winner' | 'method' | 'loser' | 'hanfu' | 'tenpai' | 'nagashiSelect' | 'riichi' | 'confirm';
 
 export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, onSubmit, onClose }: Props) {
   const [step, setStep] = useState<Step>('outcome');
@@ -24,6 +24,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
   const [fu, setFu] = useState(30);
   const [tenpaiStatus, setTenpaiStatus] = useState([false, false, false, false]);
   const [nagashiManganIndex, setNagashiManganIndex] = useState<number | null>(null);
+  const [riichiPlayers, setRiichiPlayers] = useState([false, false, false, false]);
 
   // Calculate points preview
   const pointsPreview = useMemo(() => {
@@ -32,13 +33,15 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
     return calculatePoints({ han, fu, isDealer, isTsumo });
   }, [resultType, winnerIndex, isTsumo, han, fu, currentDealer]);
 
-  // Compute total with honba and riichi
+  // Compute total with honba and riichi (including pending deposits)
   const totalWithBonuses = useMemo(() => {
     if (!pointsPreview) return 0;
     const honbaBonus = honbaCount * (isTsumo ? 300 : 300);
-    const riichiBonus = riichiSticks * 1000;
+    const newRiichiCount = riichiPlayers.filter(Boolean).length;
+    const totalRiichiSticks = riichiSticks + newRiichiCount;
+    const riichiBonus = totalRiichiSticks * 1000;
     return pointsPreview.total + honbaBonus + riichiBonus;
-  }, [pointsPreview, honbaCount, riichiSticks, isTsumo]);
+  }, [pointsPreview, honbaCount, riichiSticks, riichiPlayers, isTsumo]);
 
   function handleOutcome(type: 'agari' | 'ryuukyoku') {
     setResultType(type);
@@ -69,6 +72,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
   }
 
   function handleConfirm() {
+    const hasRiichi = riichiPlayers.some(Boolean);
     if (resultType === 'agari') {
       onSubmit({
         resultType: 'agari',
@@ -77,12 +81,14 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         isTsumo: isTsumo!,
         han,
         fu,
+        ...(hasRiichi ? { riichiPlayers } : {}),
       });
     } else {
       onSubmit({
         resultType: 'ryuukyoku',
         tenpaiStatus,
         ...(nagashiManganIndex !== null ? { nagashiManganIndex } : {}),
+        ...(hasRiichi ? { riichiPlayers } : {}),
       });
     }
   }
@@ -95,11 +101,12 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
       case 'hanfu': setStep(isTsumo ? 'method' : 'loser'); break;
       case 'tenpai': setStep('outcome'); break;
       case 'nagashiSelect': setStep('tenpai'); break;
-      case 'confirm':
+      case 'riichi':
         if (resultType === 'agari') setStep('hanfu');
         else if (nagashiManganIndex !== null) setStep('nagashiSelect');
         else setStep('tenpai');
         break;
+      case 'confirm': setStep('riichi'); break;
     }
   }
 
@@ -318,11 +325,11 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             )}
 
             <button
-              onClick={() => setStep('confirm')}
+              onClick={() => setStep('riichi')}
               className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              确认 Confirm
+              下一步 Next
             </button>
           </div>
         )}
@@ -374,11 +381,11 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             </div>
 
             <button
-              onClick={() => { setNagashiManganIndex(null); setStep('confirm'); }}
+              onClick={() => { setNagashiManganIndex(null); setStep('riichi'); }}
               className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              确认 Confirm
+              下一步 Next
             </button>
 
             <button
@@ -409,7 +416,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                     const newTenpai = [...tenpaiStatus];
                     newTenpai[idx] = true;
                     setTenpaiStatus(newTenpai);
-                    setStep('confirm');
+                    setStep('riichi');
                   }}
                   className={`w-full py-3 px-4 rounded-xl text-left flex items-center justify-between
                     ${isDealer ? 'bg-mahjong-accent' : 'bg-mahjong-card'}
@@ -425,6 +432,54 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* Step: Riichi declaration */}
+        {step === 'riichi' && (
+          <div className="space-y-4">
+            <p className="text-sm text-mahjong-muted text-center mb-4">
+              选择立直玩家 Select Riichi Players
+            </p>
+            {players.map((p, idx) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  const next = [...riichiPlayers];
+                  next[idx] = !next[idx];
+                  setRiichiPlayers(next);
+                }}
+                className={`w-full py-3 px-4 rounded-xl text-left flex items-center justify-between
+                  ${riichiPlayers[idx] ? 'bg-mahjong-gold text-mahjong-bg' : 'bg-mahjong-card'}
+                  active:scale-[0.98] transition-transform`}
+              >
+                <span>
+                  <span className={`font-bold mr-2 ${riichiPlayers[idx] ? 'text-mahjong-bg' : 'text-mahjong-gold'}`}>
+                    {WIND_LABELS[seatWind(idx)]}
+                  </span>
+                  {p.name}
+                </span>
+                <span className={`text-sm font-medium ${riichiPlayers[idx] ? '' : 'text-mahjong-muted'}`}>
+                  {riichiPlayers[idx] ? '立直 Riichi' : '—'}
+                </span>
+              </button>
+            ))}
+
+            {riichiPlayers.some(Boolean) && (
+              <div className="bg-mahjong-card rounded-xl p-3 text-sm">
+                <p className="text-mahjong-muted">
+                  立直供托: {riichiPlayers.filter(Boolean).length} x 1,000点
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={() => setStep('confirm')}
+              className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
+                active:scale-[0.98] transition-transform"
+            >
+              {riichiPlayers.some(Boolean) ? '确认 Confirm' : '无立直 No Riichi'}
+            </button>
           </div>
         )}
 
@@ -466,6 +521,13 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                     聴牌: {tenpaiStatus.map((t, i) => t ? players[i]?.name : null).filter(Boolean).join(', ') || '无 None'}
                   </p>
                 </>
+              )}
+
+              {riichiPlayers.some(Boolean) && (
+                <p className="text-sm text-mahjong-gold">
+                  立直: {riichiPlayers.map((r, i) => r ? players[i]?.name : null).filter(Boolean).join(', ')}
+                  {' '}(-{riichiPlayers.filter(Boolean).length * 1000}点)
+                </p>
               )}
             </div>
 

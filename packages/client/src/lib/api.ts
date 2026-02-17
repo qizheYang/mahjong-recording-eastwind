@@ -43,6 +43,23 @@ export async function resetRoom(code: string): Promise<void> {
   return request(`/rooms/${code}/reset`, { method: 'POST' });
 }
 
+export interface LiveGameSummary {
+  roomCode: string;
+  status: 'waiting' | 'playing' | 'finished';
+  playerNames: string[];
+  gameInfo: {
+    currentRound: { wind: string; number: number };
+    handCount: number;
+    honbaCount: number;
+    riichiSticks: number;
+    playerPoints: { name: string; points: number }[];
+  } | null;
+}
+
+export async function listLiveGames(): Promise<{ games: LiveGameSummary[] }> {
+  return request('/live-games');
+}
+
 export interface GameListItem {
   filename: string;
   date: string;

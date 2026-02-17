@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createRoom, joinRoom } from '../lib/api';
+import { createRoom, joinRoom, listLiveGames, type LiveGameSummary } from '../lib/api';
+import { WIND_LABELS, type Wind } from '@mahjong/shared';
 import { useGameStore } from '../stores/game-store';
 import { useAdminStore } from '../stores/admin-store';
 
@@ -20,7 +21,22 @@ export function HomePage() {
   const setSession = useGameStore(s => s.setSession);
   const { token: adminToken, username: adminUsername, signIn: adminSignIn, signOut: adminSignOut, checkAuth } = useAdminStore();
 
+  const [liveGames, setLiveGames] = useState<LiveGameSummary[]>([]);
+
   useEffect(() => { checkAuth(); }, [checkAuth]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchLive() {
+      try {
+        const res = await listLiveGames();
+        if (!cancelled) setLiveGames(res.games);
+      } catch { /* ignore */ }
+    }
+    fetchLive();
+    const interval = setInterval(fetchLive, 10_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   async function handleCreate() {
     if (!name.trim()) { setError('请输入名称'); return; }
@@ -109,6 +125,47 @@ export function HomePage() {
             >
               玩家统计 Player Stats
             </button>
+
+            {/* Live games section */}
+            {liveGames.length > 0 && (
+              <div className="pt-3 space-y-2">
+                <h2 className="text-sm font-medium text-mahjong-muted text-center">
+                  进行中 Live Games
+                </h2>
+                {liveGames.map(g => (
+                  <div key={g.roomCode} className="bg-mahjong-card rounded-lg p-3 border border-mahjong-accent">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono text-mahjong-gold font-bold">{g.roomCode}</span>
+                      <span className="text-xs text-mahjong-muted">
+                        {g.status === 'waiting' ? `等待中 ${g.playerNames.length}/4` : g.status === 'playing' ? '对局中' : '已结束'}
+                      </span>
+                    </div>
+                    {g.status === 'playing' && g.gameInfo ? (
+                      <div>
+                        <p className="text-xs text-mahjong-muted mb-1">
+                          {WIND_LABELS[g.gameInfo.currentRound.wind as Wind]}{g.gameInfo.currentRound.number}局
+                          {' · '}第{g.gameInfo.handCount + 1}手
+                        </p>
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                          {g.gameInfo.playerPoints.map(p => (
+                            <div key={p.name} className="flex justify-between text-xs">
+                              <span className="text-white truncate">{p.name}</span>
+                              <span className={p.points >= 25000 ? 'text-mahjong-green' : 'text-mahjong-highlight'}>
+                                {p.points.toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-white">
+                        {g.playerNames.join(', ')}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Admin section */}
             <div className="pt-2">

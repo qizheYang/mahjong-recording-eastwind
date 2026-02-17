@@ -64,6 +64,12 @@ export function HandHistory({ hands, players }: Props) {
               </div>
             )}
 
+            {hand.riichiPlayers?.some(Boolean) && (
+              <p className="text-xs text-mahjong-gold mt-1">
+                立直: {hand.riichiPlayers.map((r, i) => r ? players[i]?.name : null).filter(Boolean).join(', ')}
+              </p>
+            )}
+
             {/* Point deltas */}
             <div className="flex gap-2 mt-2">
               {hand.pointsAfter.map((after, i) => {

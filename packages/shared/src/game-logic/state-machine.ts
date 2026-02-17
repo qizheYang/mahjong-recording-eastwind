@@ -68,6 +68,15 @@ export function isAllLastHand(game: Game): boolean {
 export function processHandResult(game: Game, input: HandResultInput): Hand {
   const pointsBefore = game.players.map(p => p.points);
 
+  // Apply riichi deposits before hand processing
+  const riichiPlayers = input.riichiPlayers ?? [false, false, false, false];
+  for (let i = 0; i < 4; i++) {
+    if (riichiPlayers[i]) {
+      game.players[i].points -= 1000;
+      game.riichiSticks++;
+    }
+  }
+
   // Build the full HandResult
   let result: HandResult;
   if (input.resultType === 'agari') {
@@ -122,6 +131,7 @@ export function processHandResult(game: Game, input: HandResultInput): Hand {
     dealerIndex: game.currentDealer,
     honba: game.honbaCount,
     riichiSticksOnTable: game.riichiSticks,
+    riichiPlayers,
     result,
     pointsBefore,
     pointsAfter,
@@ -216,7 +226,9 @@ export function undoLastHand(game: Game): Hand | null {
   game.currentRound = { ...hand.round };
   game.currentDealer = hand.dealerIndex;
   game.honbaCount = hand.honba;
-  game.riichiSticks = hand.riichiSticksOnTable;
+  // riichiSticksOnTable includes this hand's deposits, so subtract them to restore pre-deposit state
+  const riichiCount = (hand.riichiPlayers ?? []).filter(Boolean).length;
+  game.riichiSticks = hand.riichiSticksOnTable - riichiCount;
   game.status = 'in_progress';
 
   return hand;

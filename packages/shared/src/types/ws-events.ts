@@ -24,6 +24,8 @@ export interface HandResultInput {
   // For ryuukyoku
   tenpaiStatus?: boolean[];
   nagashiManganIndex?: number; // 流局満貫
+  // Riichi declarations this hand
+  riichiPlayers?: boolean[]; // [p0, p1, p2, p3]
 }
 
 // Server -> Client events
