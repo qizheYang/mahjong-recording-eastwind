@@ -21,6 +21,7 @@ interface GameStore {
   setSession: (roomCode: string, playerId: string) => void;
   connect: () => void;
   disconnect: () => void;
+  toggleReady: () => void;
   startGame: (seatOrder: string[]) => void;
   recordHand: (result: HandResultInput) => void;
   undoLastHand: () => void;
@@ -94,6 +95,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
           });
           break;
 
+        case 'player_ready':
+          set((state) => {
+            if (!state.room) return state;
+            return {
+              room: {
+                ...state.room,
+                players: state.room.players.map(p =>
+                  p.id === event.playerId ? { ...p, ready: event.ready } : p
+                ),
+              },
+            };
+          });
+          break;
+
         case 'game_started':
           set({ game: event.game, finalScores: null });
           break;
@@ -125,6 +140,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       wsClient = null;
     }
     set({ connected: false });
+  },
+
+  toggleReady() {
+    wsClient?.send({ type: 'ready_toggle' });
   },
 
   startGame(seatOrder: string[]) {

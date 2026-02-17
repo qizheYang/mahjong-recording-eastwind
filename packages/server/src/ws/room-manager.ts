@@ -35,7 +35,7 @@ export class RoomManager {
     }
 
     const playerId = nanoid(12);
-    const player: Player = { id: playerId, name: playerName, seatWind: null };
+    const player: Player = { id: playerId, name: playerName, seatWind: null, ready: false };
 
     const room: Room = {
       code,
@@ -57,7 +57,7 @@ export class RoomManager {
     if (state.room.status !== 'waiting') return { error: '对局已开始 (Game already started)' };
 
     const playerId = nanoid(12);
-    const player: Player = { id: playerId, name: playerName, seatWind: null };
+    const player: Player = { id: playerId, name: playerName, seatWind: null, ready: false };
     state.room.players.push(player);
 
     return { playerId, room: state.room };
@@ -94,6 +94,20 @@ export class RoomManager {
     }
 
     this.broadcast(roomCode, { type: 'player_left', playerId });
+  }
+
+  toggleReady(roomCode: string, playerId: string): { ready: boolean; allReady: boolean } | { error: string } {
+    const state = this.rooms.get(roomCode);
+    if (!state) return { error: '房间不存在' };
+    if (state.room.status !== 'waiting') return { error: '对局已开始' };
+
+    const player = state.room.players.find(p => p.id === playerId);
+    if (!player) return { error: '玩家不存在' };
+
+    player.ready = !player.ready;
+
+    const allReady = state.room.players.length === 4 && state.room.players.every(p => p.ready);
+    return { ready: player.ready, allReady };
   }
 
   getRoom(roomCode: string): Room | null {
@@ -196,7 +210,7 @@ export class RoomManager {
 
     state.room.currentGame = null;
     state.room.status = 'waiting';
-    state.room.players.forEach(p => { p.seatWind = null; });
+    state.room.players.forEach(p => { p.seatWind = null; p.ready = false; });
 
     return state.room;
   }

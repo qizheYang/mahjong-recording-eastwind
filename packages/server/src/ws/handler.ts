@@ -47,6 +47,35 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
   const { roomCode } = ctx;
 
   switch (event.type) {
+    case 'ready_toggle': {
+      const result = roomManager.toggleReady(roomCode, ctx.playerId);
+      if ('error' in result) {
+        sendError(ws, result.error, 'READY_ERROR');
+        return;
+      }
+
+      // Broadcast ready state change
+      roomManager.broadcast(roomCode, {
+        type: 'player_ready',
+        playerId: ctx.playerId,
+        ready: result.ready,
+      });
+
+      // Auto-start when all 4 players are ready
+      if (result.allReady) {
+        const room = roomManager.getRoom(roomCode);
+        if (room) {
+          // Use current player order as seat order
+          const seatOrder = room.players.map(p => p.id);
+          const game = roomManager.startGame(roomCode, seatOrder);
+          if (!('error' in game)) {
+            roomManager.broadcast(roomCode, { type: 'game_started', game });
+          }
+        }
+      }
+      break;
+    }
+
     case 'start_game': {
       const result = roomManager.startGame(roomCode, event.seatOrder);
       if ('error' in result) {

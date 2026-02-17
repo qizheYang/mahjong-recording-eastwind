@@ -5,6 +5,7 @@ export interface Player {
   id: string;
   name: string;
   seatWind: Wind | null;
+  ready: boolean;
 }
 
 export type RoomStatus = 'waiting' | 'playing' | 'finished';
