@@ -664,6 +664,140 @@ describe('Edge Cases', () => {
     }
   });
 
+  it('swap seats reorders players and resets ready state', async () => {
+    const names = ['Alice', 'Bob', 'Charlie', 'Diana'];
+    const playerIds: string[] = [];
+
+    const create = await apiPost('/api/rooms', { playerName: names[0] });
+    const code = create.data.roomCode;
+    playerIds.push(create.data.playerId);
+
+    for (let i = 1; i < 4; i++) {
+      const join = await apiPost(`/api/rooms/${code}/join`, { playerName: names[i] });
+      playerIds.push(join.data.playerId);
+    }
+
+    const sockets: BufferedWs[] = [];
+    for (const pid of playerIds) {
+      const ws = track(await connectWs(code, pid));
+      await ws.waitForEvent('room_state');
+      sockets.push(ws);
+    }
+
+    // Player 0 readies up first
+    const readyPromises = sockets.map(ws => ws.waitForEvent('player_ready'));
+    sockets[0].send({ type: 'ready_toggle' });
+    await Promise.all(readyPromises);
+
+    // Now swap player 0 and player 2 — should reset everyone's ready state
+    const swapPromises = sockets.map(ws => ws.waitForEvent('seats_swapped'));
+    sockets[1].send({ type: 'swap_seats', playerIdA: playerIds[0], playerIdB: playerIds[2] });
+    const swapEvents = await Promise.all(swapPromises);
+
+    for (const evt of swapEvents) {
+      expect(evt.type).toBe('seats_swapped');
+      if (evt.type === 'seats_swapped') {
+        // Players should be reordered: Charlie, Bob, Alice, Diana
+        expect(evt.players[0].name).toBe('Charlie');
+        expect(evt.players[1].name).toBe('Bob');
+        expect(evt.players[2].name).toBe('Alice');
+        expect(evt.players[3].name).toBe('Diana');
+        // All ready states should be reset
+        for (const p of evt.players) {
+          expect(p.ready).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('swap seats during game is rejected', async () => {
+    const names = ['A', 'B', 'C', 'D'];
+    const playerIds: string[] = [];
+
+    const create = await apiPost('/api/rooms', { playerName: names[0] });
+    const code = create.data.roomCode;
+    playerIds.push(create.data.playerId);
+
+    for (let i = 1; i < 4; i++) {
+      const join = await apiPost(`/api/rooms/${code}/join`, { playerName: names[i] });
+      playerIds.push(join.data.playerId);
+    }
+
+    const sockets: BufferedWs[] = [];
+    for (const pid of playerIds) {
+      const ws = track(await connectWs(code, pid));
+      await ws.waitForEvent('room_state');
+      sockets.push(ws);
+    }
+
+    // Start game directly
+    const startPromises = sockets.map(ws => ws.waitForEvent('game_started'));
+    sockets[0].send({ type: 'start_game', seatOrder: playerIds });
+    await Promise.all(startPromises);
+
+    // Try to swap — should get error
+    const errorPromise = sockets[0].waitForEvent('error');
+    sockets[0].send({ type: 'swap_seats', playerIdA: playerIds[0], playerIdB: playerIds[1] });
+    const err = await errorPromise;
+    expect(err.type).toBe('error');
+  });
+
+  it('swap seats then ready system works to start game', async () => {
+    const names = ['East', 'South', 'West', 'North'];
+    const playerIds: string[] = [];
+
+    const create = await apiPost('/api/rooms', { playerName: names[0] });
+    const code = create.data.roomCode;
+    playerIds.push(create.data.playerId);
+
+    for (let i = 1; i < 4; i++) {
+      const join = await apiPost(`/api/rooms/${code}/join`, { playerName: names[i] });
+      playerIds.push(join.data.playerId);
+    }
+
+    const sockets: BufferedWs[] = [];
+    for (const pid of playerIds) {
+      const ws = track(await connectWs(code, pid));
+      await ws.waitForEvent('room_state');
+      sockets.push(ws);
+    }
+
+    // Swap player 0 and 3 (East <-> North)
+    const swapPromises = sockets.map(ws => ws.waitForEvent('seats_swapped'));
+    sockets[0].send({ type: 'swap_seats', playerIdA: playerIds[0], playerIdB: playerIds[3] });
+    const swapEvents = await Promise.all(swapPromises);
+
+    // Verify new order: North, South, West, East
+    if (swapEvents[0].type === 'seats_swapped') {
+      expect(swapEvents[0].players[0].name).toBe('North');
+      expect(swapEvents[0].players[3].name).toBe('East');
+    }
+
+    // All 4 players ready up after swap
+    for (let i = 0; i < 3; i++) {
+      const rp = sockets.map(ws => ws.waitForEvent('player_ready'));
+      sockets[i].send({ type: 'ready_toggle' });
+      await Promise.all(rp);
+    }
+
+    // Last player readies → game auto-starts
+    const gameStartedPromises = sockets.map(ws => ws.waitForEvent('game_started'));
+    const lastReadyPromises = sockets.map(ws => ws.waitForEvent('player_ready'));
+    sockets[3].send({ type: 'ready_toggle' });
+    await Promise.all(lastReadyPromises);
+    const gameEvents = await Promise.all(gameStartedPromises);
+
+    for (const evt of gameEvents) {
+      if (evt.type === 'game_started') {
+        // Game should start with swapped order: North is East seat
+        expect(evt.game.players[0].name).toBe('North');
+        expect(evt.game.players[0].initialSeat).toBe('east');
+        expect(evt.game.players[3].name).toBe('East');
+        expect(evt.game.players[3].initialSeat).toBe('north');
+      }
+    }
+  });
+
   it('CJK player names work in room creation and joining', async () => {
     const create = await apiPost('/api/rooms', { playerName: '田中太郎' });
     expect(create.status).toBe(200);

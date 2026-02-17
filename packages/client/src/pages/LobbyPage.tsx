@@ -8,10 +8,11 @@ export function LobbyPage() {
   const navigate = useNavigate();
   const {
     room, game, playerId, connected,
-    connect, toggleReady, setSession,
+    connect, toggleReady, swapSeats, setSession,
   } = useGameStore();
 
   const [copied, setCopied] = useState(false);
+  const [selectedSwap, setSelectedSwap] = useState<string | null>(null);
 
   // Restore session from storage if needed
   useEffect(() => {
@@ -42,10 +43,27 @@ export function LobbyPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  function handlePlayerTap(tappedPlayerId: string) {
+    if (totalPlayers < 2) return; // Need at least 2 players to swap
+
+    if (!selectedSwap) {
+      // First tap: select this player
+      setSelectedSwap(tappedPlayerId);
+    } else if (selectedSwap === tappedPlayerId) {
+      // Tap same player: deselect
+      setSelectedSwap(null);
+    } else {
+      // Second tap: swap with selected player
+      swapSeats(selectedSwap, tappedPlayerId);
+      setSelectedSwap(null);
+    }
+  }
+
   const myPlayer = room?.players.find(p => p.id === playerId);
   const isReady = myPlayer?.ready ?? false;
   const readyCount = room?.players.filter(p => p.ready).length ?? 0;
   const totalPlayers = room?.players.length ?? 0;
+  const anyReady = readyCount > 0;
 
   if (!connected && playerId) {
     return (
@@ -93,35 +111,50 @@ export function LobbyPage() {
         <h2 className="text-sm text-mahjong-muted mb-3">
           玩家 Players ({totalPlayers}/4)
         </h2>
+        {totalPlayers >= 2 && !anyReady && (
+          <p className="text-xs text-mahjong-gold mb-2">
+            点击两位玩家交换座位 Tap two players to swap seats
+          </p>
+        )}
         <div className="space-y-2">
-          {room?.players.map((player, idx) => (
-            <div
-              key={player.id}
-              className={`flex items-center justify-between px-4 py-3 rounded-lg
-                ${player.id === playerId ? 'bg-mahjong-accent' : 'bg-mahjong-card'}`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="w-6 text-center text-sm font-bold text-mahjong-gold">
-                  {WIND_LABELS[WINDS[idx]]}
-                </span>
-                <span className="font-medium">{player.name}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {player.id === playerId && (
-                  <span className="text-xs text-mahjong-muted">你 You</span>
-                )}
-                {player.ready ? (
-                  <span className="text-xs font-bold text-mahjong-green px-2 py-0.5 rounded bg-mahjong-green/20">
-                    Ready
+          {room?.players.map((player, idx) => {
+            const isSelected = selectedSwap === player.id;
+            return (
+              <div
+                key={player.id}
+                onClick={() => !anyReady ? handlePlayerTap(player.id) : undefined}
+                className={`flex items-center justify-between px-4 py-3 rounded-lg
+                  transition-all
+                  ${isSelected
+                    ? 'bg-mahjong-gold/30 ring-2 ring-mahjong-gold'
+                    : player.id === playerId
+                      ? 'bg-mahjong-accent'
+                      : 'bg-mahjong-card'}
+                  ${!anyReady && totalPlayers >= 2 ? 'cursor-pointer active:scale-[0.98]' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-6 text-center text-sm font-bold text-mahjong-gold">
+                    {WIND_LABELS[WINDS[idx]]}
                   </span>
-                ) : (
-                  <span className="text-xs text-mahjong-muted px-2 py-0.5 rounded bg-mahjong-card">
-                    ...
-                  </span>
-                )}
+                  <span className="font-medium">{player.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {player.id === playerId && (
+                    <span className="text-xs text-mahjong-muted">你 You</span>
+                  )}
+                  {player.ready ? (
+                    <span className="text-xs font-bold text-mahjong-green px-2 py-0.5 rounded bg-mahjong-green/20">
+                      Ready
+                    </span>
+                  ) : (
+                    <span className="text-xs text-mahjong-muted px-2 py-0.5 rounded bg-mahjong-card">
+                      ...
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {Array.from({ length: 4 - totalPlayers }).map((_, i) => (
             <div
               key={`empty-${i}`}

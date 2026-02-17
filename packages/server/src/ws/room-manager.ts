@@ -110,6 +110,27 @@ export class RoomManager {
     return { ready: player.ready, allReady };
   }
 
+  swapSeats(roomCode: string, playerIdA: string, playerIdB: string): Player[] | { error: string } {
+    const state = this.rooms.get(roomCode);
+    if (!state) return { error: '房间不存在' };
+    if (state.room.status !== 'waiting') return { error: '对局已开始' };
+
+    const indexA = state.room.players.findIndex(p => p.id === playerIdA);
+    const indexB = state.room.players.findIndex(p => p.id === playerIdB);
+    if (indexA === -1 || indexB === -1) return { error: '玩家不存在' };
+    if (indexA === indexB) return { error: '不能和自己交换' };
+
+    // Swap positions in the array
+    const temp = state.room.players[indexA];
+    state.room.players[indexA] = state.room.players[indexB];
+    state.room.players[indexB] = temp;
+
+    // Reset everyone's ready state since seats changed
+    state.room.players.forEach(p => { p.ready = false; });
+
+    return state.room.players;
+  }
+
   getRoom(roomCode: string): Room | null {
     return this.rooms.get(roomCode)?.room ?? null;
   }

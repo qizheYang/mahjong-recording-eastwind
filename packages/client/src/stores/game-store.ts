@@ -22,6 +22,7 @@ interface GameStore {
   connect: () => void;
   disconnect: () => void;
   toggleReady: () => void;
+  swapSeats: (playerIdA: string, playerIdB: string) => void;
   startGame: (seatOrder: string[]) => void;
   recordHand: (result: HandResultInput) => void;
   undoLastHand: () => void;
@@ -109,6 +110,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
           });
           break;
 
+        case 'seats_swapped':
+          set((state) => {
+            if (!state.room) return state;
+            return {
+              room: { ...state.room, players: event.players },
+            };
+          });
+          break;
+
         case 'game_started':
           set({ game: event.game, finalScores: null });
           break;
@@ -144,6 +154,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   toggleReady() {
     wsClient?.send({ type: 'ready_toggle' });
+  },
+
+  swapSeats(playerIdA: string, playerIdB: string) {
+    wsClient?.send({ type: 'swap_seats', playerIdA, playerIdB });
   },
 
   startGame(seatOrder: string[]) {

@@ -6,6 +6,7 @@ export type ClientEvent =
   | { type: 'join_room'; roomCode: string; playerName: string }
   | { type: 'leave_room' }
   | { type: 'ready_toggle' }
+  | { type: 'swap_seats'; playerIdA: string; playerIdB: string }
   | { type: 'start_game'; seatOrder: string[] }
   | { type: 'record_hand'; result: HandResultInput }
   | { type: 'undo_last_hand' }
@@ -29,6 +30,7 @@ export type ServerEvent =
   | { type: 'player_joined'; player: Player }
   | { type: 'player_left'; playerId: string }
   | { type: 'player_ready'; playerId: string; ready: boolean }
+  | { type: 'seats_swapped'; players: Player[] }
   | { type: 'game_started'; game: Game }
   | { type: 'hand_recorded'; hand: Hand; game: Game }
   | { type: 'hand_undone'; game: Game }

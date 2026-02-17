@@ -76,6 +76,16 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
       break;
     }
 
+    case 'swap_seats': {
+      const result = roomManager.swapSeats(roomCode, event.playerIdA, event.playerIdB);
+      if ('error' in result) {
+        sendError(ws, result.error, 'SWAP_ERROR');
+        return;
+      }
+      roomManager.broadcast(roomCode, { type: 'seats_swapped', players: result });
+      break;
+    }
+
     case 'start_game': {
       const result = roomManager.startGame(roomCode, event.seatOrder);
       if ('error' in result) {
