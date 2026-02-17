@@ -3,6 +3,7 @@
  * CLI script to create an admin account.
  * Usage: npx tsx packages/server/src/create-admin.ts <username> <password>
  */
+import 'dotenv/config';
 import { createAdmin } from './services/admin-service.js';
 
 const [username, password] = process.argv.slice(2);

@@ -50,3 +50,16 @@ export const finalScores = sqliteTable('final_scores', {
   uma: real('uma').notNull(),
   gameScore: real('game_score').notNull(),
 });
+
+export const adminAccounts = sqliteTable('admin_accounts', {
+  username: text('username').primaryKey(),
+  passwordHash: text('password_hash').notNull(),
+  salt: text('salt').notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
+export const adminTokens = sqliteTable('admin_tokens', {
+  token: text('token').primaryKey(),
+  username: text('username').references(() => adminAccounts.username).notNull(),
+  expiresAt: integer('expires_at').notNull(),
+});

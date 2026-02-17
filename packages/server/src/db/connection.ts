@@ -78,4 +78,17 @@ function initializeTables(db: ReturnType<typeof drizzle>) {
     uma REAL NOT NULL,
     game_score REAL NOT NULL
   )`);
+
+  db.run(sql`CREATE TABLE IF NOT EXISTS admin_accounts (
+    username TEXT PRIMARY KEY,
+    password_hash TEXT NOT NULL,
+    salt TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  )`);
+
+  db.run(sql`CREATE TABLE IF NOT EXISTS admin_tokens (
+    token TEXT PRIMARY KEY,
+    username TEXT NOT NULL REFERENCES admin_accounts(username),
+    expires_at INTEGER NOT NULL
+  )`);
 }
