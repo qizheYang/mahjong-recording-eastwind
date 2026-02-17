@@ -70,7 +70,6 @@ export function HistoryPage() {
 
   // Admin state
   const { token: adminToken } = useAdminStore();
-  const [editIsOfficial, setEditIsOfficial] = useState(false);
   const [editNotes, setEditNotes] = useState('');
   const [annotationSaving, setAnnotationSaving] = useState(false);
   const [annotationSaved, setAnnotationSaved] = useState(false);
@@ -146,8 +145,6 @@ export function HistoryPage() {
     try {
       const record = await getGame(filename);
       setExpandedRecord(record);
-      // Pre-populate annotation fields
-      setEditIsOfficial(record.adminAnnotations?.isOfficialGame ?? false);
       setEditNotes(record.adminAnnotations?.notes ?? '');
     } catch (e: any) {
       setError(e.message);
@@ -156,12 +153,38 @@ export function HistoryPage() {
     }
   }
 
+  async function handleToggleOfficial(filename: string, currentValue: boolean) {
+    if (!adminToken) return;
+    const newValue = !currentValue;
+    // Optimistic update in the games list
+    setGames(prev => prev.map(g => g.filename === filename ? { ...g, isOfficialGame: newValue } : g));
+    try {
+      // Get current notes from expanded record if this game is expanded, otherwise fetch
+      let notes = '';
+      if (expandedFile === filename && expandedRecord) {
+        notes = expandedRecord.adminAnnotations?.notes ?? '';
+      }
+      const res = await updateGameAnnotations(adminToken, filename, {
+        isOfficialGame: newValue,
+        notes,
+      });
+      // Update expanded record if it's the same game
+      if (expandedFile === filename && expandedRecord) {
+        setExpandedRecord({ ...expandedRecord, adminAnnotations: res.annotations });
+      }
+    } catch {
+      // Revert on error
+      setGames(prev => prev.map(g => g.filename === filename ? { ...g, isOfficialGame: currentValue } : g));
+    }
+  }
+
   async function handleSaveAnnotations() {
     if (!adminToken || !expandedFile) return;
+    const game = games.find(g => g.filename === expandedFile);
     setAnnotationSaving(true);
     try {
       const res = await updateGameAnnotations(adminToken, expandedFile, {
-        isOfficialGame: editIsOfficial,
+        isOfficialGame: game?.isOfficialGame ?? false,
         notes: editNotes,
       });
       if (expandedRecord) {
@@ -394,6 +417,24 @@ export function HistoryPage() {
                     )}
                   </button>
 
+                  {/* Admin: inline official game checkbox — always visible */}
+                  {adminToken && (
+                    <div className="px-4 pb-2 -mt-1">
+                      <label
+                        className="flex items-center gap-2 cursor-pointer"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={g.isOfficialGame}
+                          onChange={() => handleToggleOfficial(g.filename, g.isOfficialGame)}
+                          className="w-4 h-4 accent-mahjong-gold"
+                        />
+                        <span className="text-xs text-mahjong-muted">同步公式战</span>
+                      </label>
+                    </div>
+                  )}
+
                   {/* Expanded detail */}
                   {isExpanded && (
                     <div className="border-t border-mahjong-accent/30 px-4 py-3">
@@ -467,19 +508,10 @@ export function HistoryPage() {
                             </div>
                           )}
 
-                          {/* Admin annotation panel */}
+                          {/* Admin notes panel */}
                           {adminToken && (
                             <div className="mt-4 pt-3 border-t border-mahjong-accent/30 space-y-2">
-                              <p className="text-xs text-mahjong-muted font-medium">管理员标注 Admin</p>
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={editIsOfficial}
-                                  onChange={e => { setEditIsOfficial(e.target.checked); setAnnotationSaved(false); }}
-                                  className="w-4 h-4 accent-mahjong-gold"
-                                />
-                                <span className="text-xs">同步公式战 Official Game</span>
-                              </label>
+                              <p className="text-xs text-mahjong-muted font-medium">管理员备注 Admin Notes</p>
                               <textarea
                                 value={editNotes}
                                 onChange={e => { setEditNotes(e.target.value); setAnnotationSaved(false); }}
@@ -496,7 +528,7 @@ export function HistoryPage() {
                                     ? 'bg-mahjong-green text-mahjong-bg'
                                     : 'bg-mahjong-accent text-white'} disabled:opacity-50`}
                               >
-                                {annotationSaving ? '保存中...' : annotationSaved ? '已保存 Saved' : '保存标注 Save'}
+                                {annotationSaving ? '保存中...' : annotationSaved ? '已保存 Saved' : '保存备注 Save'}
                               </button>
                             </div>
                           )}

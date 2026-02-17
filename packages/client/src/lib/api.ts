@@ -49,6 +49,7 @@ export interface GameListItem {
   roomCode: string;
   players: string;
   tags: string[];
+  isOfficialGame: boolean;
 }
 
 export async function listGames(): Promise<{ games: GameListItem[] }> {

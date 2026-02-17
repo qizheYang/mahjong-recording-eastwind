@@ -169,7 +169,7 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
 /**
  * List all saved game records.
  */
-export function listGameRecords(): { filename: string; date: string; roomCode: string; players: string; tags: string[] }[] {
+export function listGameRecords(): { filename: string; date: string; roomCode: string; players: string; tags: string[]; isOfficialGame: boolean }[] {
   if (!existsSync(GAMES_DIR)) return [];
 
   return readdirSync(GAMES_DIR)
@@ -187,12 +187,14 @@ export function listGameRecords(): { filename: string; date: string; roomCode: s
       const date = `${timestamp.slice(0, 4)}-${timestamp.slice(4, 6)}-${timestamp.slice(6, 8)} ${timestamp.slice(8, 10)}:${timestamp.slice(10, 12)}:${timestamp.slice(12, 14)}`;
 
       let tags: string[] = [];
+      let isOfficialGame = false;
       try {
         const record = JSON.parse(readFileSync(join(GAMES_DIR, f), 'utf-8'));
         tags = record.tags ?? [];
+        isOfficialGame = record.adminAnnotations?.isOfficialGame ?? false;
       } catch { /* ignore */ }
 
-      return { filename: f, date, roomCode, players, tags };
+      return { filename: f, date, roomCode, players, tags, isOfficialGame };
     });
 }
 
