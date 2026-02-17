@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --color-mahjong-bg: #1a1a2e;
+  --color-mahjong-card: #16213e;
+  --color-mahjong-accent: #0f3460;
+  --color-mahjong-highlight: #e94560;
+  --color-mahjong-gold: #f5c518;
+  --color-mahjong-green: #4ecca3;
+  --color-mahjong-text: #e8e8e8;
+  --color-mahjong-muted: #8a8a9a;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-mahjong-bg);
+  color: var(--color-mahjong-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+#root {
+  min-height: 100dvh;
+}

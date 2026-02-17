@@ -1,0 +1,143 @@
+name: Build and Deploy to rehydratedwater.com
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all packages
+        run: npm run build
+
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: qizheYang/rehydratedwater.com
+          token: ${{ secrets.REHYDRATEDWATERCOM }}
+          path: target-repo
+
+      - name: Deploy client static files to target repo
+        run: |
+          # Create directory for client static files (served as fallback / SEO)
+          mkdir -p target-repo/mahjong-recording
+          # Copy a simple redirect page (actual SPA is served by Node.js)
+          cat > target-repo/mahjong-recording/index.html << 'HTMLEOF'
+          <!DOCTYPE html>
+          <html>
+          <head><meta http-equiv="refresh" content="0;url=/mahjong-recording/"></head>
+          <body><p>Redirecting to <a href="/mahjong-recording/">Mahjong Recorder</a>...</p></body>
+          </html>
+          HTMLEOF
+          cd target-repo
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add mahjong-recording
+          git commit -m "Auto-deploy mahjong-recording from mahjong-recording-eastwind" || echo "No changes to commit"
+          git push
+
+      - name: Deploy server via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+            SERVER_DIR=/var/www/mahjong-recording-server
+            REPO_URL=https://github.com/qizheYang/mahjong-recording-eastwind.git
+
+            # Install Node.js 22 if not present
+            if ! command -v node &> /dev/null || [[ $(node -v | cut -d. -f1 | tr -d 'v') -lt 22 ]]; then
+              echo "Installing Node.js 22..."
+              curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+            fi
+
+            # Clone or update the repo
+            if [ -d "$SERVER_DIR" ]; then
+              cd $SERVER_DIR
+              git fetch origin main
+              git reset --hard origin/main
+            else
+              git clone --depth 1 $REPO_URL $SERVER_DIR
+              cd $SERVER_DIR
+            fi
+
+            # Install dependencies and build
+            npm ci
+            npm run build
+
+            # Create data directory
+            mkdir -p $SERVER_DIR/data
+
+            # Create .env file
+            cat > $SERVER_DIR/.env << 'ENVEOF'
+            PORT=3001
+            BASE_PATH=/mahjong-recording
+            DATABASE_PATH=/var/www/mahjong-recording-server/data/mahjong.db
+            NODE_ENV=production
+            ENVEOF
+
+            # Create systemd service if it doesn't exist
+            if [ ! -f /etc/systemd/system/mahjong-recording.service ]; then
+              sudo tee /etc/systemd/system/mahjong-recording.service > /dev/null << 'SVCEOF'
+            [Unit]
+            Description=Mahjong Recording Server
+            After=network.target
+
+            [Service]
+            Type=simple
+            User=root
+            WorkingDirectory=/var/www/mahjong-recording-server
+            ExecStart=/usr/bin/node packages/server/dist/index.js
+            Restart=on-failure
+            RestartSec=5
+            Environment=NODE_ENV=production
+            Environment=PORT=3001
+            Environment=BASE_PATH=/mahjong-recording
+            Environment=DATABASE_PATH=/var/www/mahjong-recording-server/data/mahjong.db
+
+            [Install]
+            WantedBy=multi-user.target
+            SVCEOF
+              sudo systemctl daemon-reload
+              sudo systemctl enable mahjong-recording
+            fi
+
+            # Add nginx config if not present
+            NGINX_CONF=/etc/nginx/sites-available/rehydratedwater.com
+            if ! grep -q "mahjong-recording" $NGINX_CONF 2>/dev/null; then
+              # Insert the location block before the last closing brace
+              sudo sed -i '/^}/i \
+                # Mahjong Recording App (Node.js + WebSocket)\
+                location /mahjong-recording/ {\
+                    proxy_pass http://127.0.0.1:3001/mahjong-recording/;\
+                    proxy_http_version 1.1;\
+                    proxy_set_header Upgrade $http_upgrade;\
+                    proxy_set_header Connection "upgrade";\
+                    proxy_set_header Host $host;\
+                    proxy_set_header X-Real-IP $remote_addr;\
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\
+                    proxy_set_header X-Forwarded-Proto $scheme;\
+                    proxy_read_timeout 86400;\
+                }' $NGINX_CONF
+              sudo nginx -t && sudo systemctl reload nginx
+            fi
+
+            # Restart the service
+            sudo systemctl restart mahjong-recording
+            echo "Deployment complete! Service status:"
+            sudo systemctl status mahjong-recording --no-pager -l || true

@@ -1,0 +1,34 @@
+import type { Room, Player } from './room.js';
+import type { Game, Hand, FinalScore } from './game.js';
+
+// Client -> Server events
+export type ClientEvent =
+  | { type: 'join_room'; roomCode: string; playerName: string }
+  | { type: 'leave_room' }
+  | { type: 'start_game'; seatOrder: string[] }
+  | { type: 'record_hand'; result: HandResultInput }
+  | { type: 'undo_last_hand' }
+  | { type: 'end_game' };
+
+export interface HandResultInput {
+  resultType: 'agari' | 'ryuukyoku';
+  // For agari
+  winnerIndex?: number;
+  loserIndex?: number;
+  isTsumo?: boolean;
+  han?: number;
+  fu?: number;
+  // For ryuukyoku
+  tenpaiStatus?: boolean[];
+}
+
+// Server -> Client events
+export type ServerEvent =
+  | { type: 'room_state'; room: Room }
+  | { type: 'player_joined'; player: Player }
+  | { type: 'player_left'; playerId: string }
+  | { type: 'game_started'; game: Game }
+  | { type: 'hand_recorded'; hand: Hand; game: Game }
+  | { type: 'hand_undone'; game: Game }
+  | { type: 'game_ended'; game: Game; finalScores: FinalScore[] }
+  | { type: 'error'; message: string; code: string };
