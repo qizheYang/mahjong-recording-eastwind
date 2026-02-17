@@ -165,11 +165,11 @@ export function LobbyPage() {
           <button
             onClick={() => { setSoloMode(!soloMode); setSoloError(''); }}
             disabled={soloMode && totalPlayers > 1}
-            className={`w-12 h-6 rounded-full relative transition-colors disabled:opacity-50
+            className={`w-11 h-6 rounded-full p-0.5 transition-colors disabled:opacity-50 flex items-center
               ${soloMode ? 'bg-mahjong-green' : 'bg-mahjong-card border border-mahjong-accent'}`}
           >
-            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform
-              ${soloMode ? 'translate-x-6' : 'translate-x-0.5'}`}
+            <span className={`w-5 h-5 rounded-full bg-white block transition-transform
+              ${soloMode ? 'translate-x-5' : 'translate-x-0'}`}
             />
           </button>
         </div>
