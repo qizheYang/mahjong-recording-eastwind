@@ -45,7 +45,7 @@ export function HomePage() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center p-4">
+    <div className="min-h-dvh flex flex-col items-center justify-center p-4 relative">
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-8">
@@ -183,6 +183,9 @@ export function HomePage() {
           </div>
         )}
       </div>
+      <p className="absolute bottom-4 text-mahjong-muted/50 text-[10px] font-mono">
+        v{__APP_VERSION__} | {__BUILD_TIME__.replace('T', ' ').slice(0, 19)} UTC
+      </p>
     </div>
   );
 }
