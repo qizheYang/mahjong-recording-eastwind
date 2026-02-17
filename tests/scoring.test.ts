@@ -69,9 +69,10 @@ describe('Point Calculator', () => {
       expect(r.ronPayment).toBe(7700);
     });
 
-    it('non-dealer ron 4han 30fu = 7700', () => {
+    it('non-dealer ron 4han 30fu = mangan (8000, kiriage)', () => {
       const r = calculatePoints({ han: 4, fu: 30, isDealer: false, isTsumo: false });
-      expect(r.total).toBe(7700);
+      expect(r.total).toBe(8000);
+      expect(r.limitName).toBe('mangan');
     });
 
     it('non-dealer ron 3han 70fu → mangan (8000)', () => {
