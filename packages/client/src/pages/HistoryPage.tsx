@@ -168,10 +168,28 @@ export function HistoryPage() {
     return true;
   });
 
-  // Filter players for players tab
-  const filteredPlayers = nameFilter.trim()
-    ? allPlayers.filter(p => p.name.toLowerCase() === nameFilter.trim().toLowerCase())
-    : allPlayers;
+  // Filter players for players tab — recalculate stats when tag filter is active
+  const filteredPlayers = (() => {
+    let players = nameFilter.trim()
+      ? allPlayers.filter(p => p.name.toLowerCase() === nameFilter.trim().toLowerCase())
+      : allPlayers;
+
+    if (!tagFilter) return players;
+
+    // Filter to players who have games with this tag, and recalculate stats
+    return players
+      .map(p => {
+        const tagGames = p.games.filter(g => (g.tags ?? []).includes(tagFilter));
+        if (tagGames.length === 0) return null;
+        return {
+          ...p,
+          totalGames: tagGames.length,
+          avgPlacement: tagGames.reduce((s, g) => s + g.placement, 0) / tagGames.length,
+          avgGameScore: tagGames.reduce((s, g) => s + g.gameScore, 0) / tagGames.length,
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null);
+  })();
 
   function formatHandResult(hand: GameRecord['hands'][0]): string {
     const r = hand.result;
@@ -414,15 +432,33 @@ export function HistoryPage() {
       {/* === PLAYERS TAB === */}
       {tab === 'players' && (
         <div className="flex-1 mb-6">
-          {/* Rebuild button */}
-          <div className="flex justify-end mb-3">
+          {/* Tag filter */}
+          <div className="flex gap-2 mb-3 flex-wrap">
+            <button
+              onClick={() => setTagFilter('')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                ${!tagFilter ? 'bg-mahjong-accent text-white' : 'bg-mahjong-card text-mahjong-muted'}`}
+            >
+              全部 All
+            </button>
+            {PREDEFINED_TAGS.map((tag: string) => (
+              <button
+                key={tag}
+                onClick={() => setTagFilter(tagFilter === tag ? '' : tag)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                  ${tagFilter === tag ? 'bg-mahjong-gold text-mahjong-bg' : 'bg-mahjong-card text-mahjong-muted'}`}
+              >
+                {tag}
+              </button>
+            ))}
+            {/* Rebuild button */}
             <button
               onClick={handleRebuild}
               disabled={rebuilding}
-              className="text-xs text-mahjong-muted px-2 py-1 rounded bg-mahjong-card
+              className="ml-auto text-xs text-mahjong-muted px-2 py-1.5 rounded bg-mahjong-card
                 active:scale-95 transition-transform disabled:opacity-50"
             >
-              {rebuilding ? '重建中...' : '重建数据 Rebuild'}
+              {rebuilding ? '重建中...' : '重建 Rebuild'}
             </button>
           </div>
 

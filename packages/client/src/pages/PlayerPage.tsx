@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPlayerRecord, type PlayerRecord, type PlayerGameEntry } from '../lib/api';
+import { PREDEFINED_TAGS } from '@mahjong/shared';
 
 type RangeOption = 10 | 20 | 0; // 0 = all
 
@@ -111,6 +112,7 @@ export function PlayerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [range, setRange] = useState<RangeOption>(0);
+  const [tagFilter, setTagFilter] = useState('');
 
   useEffect(() => {
     if (!name) return;
@@ -140,9 +142,12 @@ export function PlayerPage() {
     );
   }
 
-  // Apply range filter
+  // Apply tag + range filters
   const allGames = player.games;
-  const displayGames = range === 0 ? allGames : allGames.slice(-range);
+  const taggedGames = tagFilter
+    ? allGames.filter(g => (g.tags ?? []).includes(tagFilter))
+    : allGames;
+  const displayGames = range === 0 ? taggedGames : taggedGames.slice(-range);
 
   // Stats for displayed games
   const avgPlacement = displayGames.length > 0
@@ -167,6 +172,27 @@ export function PlayerPage() {
         </p>
       </div>
 
+      {/* Tag filter */}
+      <div className="flex gap-2 mb-3 justify-center flex-wrap">
+        <button
+          onClick={() => setTagFilter('')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+            ${!tagFilter ? 'bg-mahjong-accent text-white' : 'bg-mahjong-card text-mahjong-muted'}`}
+        >
+          全部 All
+        </button>
+        {PREDEFINED_TAGS.map((tag: string) => (
+          <button
+            key={tag}
+            onClick={() => setTagFilter(tagFilter === tag ? '' : tag)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+              ${tagFilter === tag ? 'bg-mahjong-gold text-mahjong-bg' : 'bg-mahjong-card text-mahjong-muted'}`}
+          >
+            {tag}
+          </button>
+        ))}
+      </div>
+
       {/* Range selector */}
       <div className="flex gap-2 mb-4 justify-center">
         {([10, 20, 0] as RangeOption[]).map(r => (
@@ -178,7 +204,7 @@ export function PlayerPage() {
                 ? 'bg-mahjong-accent text-white'
                 : 'bg-mahjong-card text-mahjong-muted'}`}
           >
-            {r === 0 ? `全部 All (${allGames.length})` : `近${r}局 Last ${r}`}
+            {r === 0 ? `全部 All (${taggedGames.length})` : `近${r}局 Last ${r}`}
           </button>
         ))}
       </div>
