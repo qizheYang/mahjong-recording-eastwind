@@ -80,20 +80,20 @@ jobs:
             npm ci
             npm run build
 
-            # Create data directory
-            mkdir -p $SERVER_DIR/data
+            # Create data directories
+            mkdir -p $SERVER_DIR/data/games
 
             # Create .env file
             cat > $SERVER_DIR/.env << 'ENVEOF'
             PORT=3001
             BASE_PATH=/mahjong-recording
             DATABASE_PATH=/var/www/mahjong-recording-server/data/mahjong.db
+            GAMES_DIR=/var/www/mahjong-recording-server/data/games
             NODE_ENV=production
             ENVEOF
 
-            # Create systemd service if it doesn't exist
-            if [ ! -f /etc/systemd/system/mahjong-recording.service ]; then
-              sudo tee /etc/systemd/system/mahjong-recording.service > /dev/null << 'SVCEOF'
+            # Create/update systemd service
+            sudo tee /etc/systemd/system/mahjong-recording.service > /dev/null << 'SVCEOF'
             [Unit]
             Description=Mahjong Recording Server
             After=network.target
@@ -109,13 +109,13 @@ jobs:
             Environment=PORT=3001
             Environment=BASE_PATH=/mahjong-recording
             Environment=DATABASE_PATH=/var/www/mahjong-recording-server/data/mahjong.db
+            Environment=GAMES_DIR=/var/www/mahjong-recording-server/data/games
 
             [Install]
             WantedBy=multi-user.target
             SVCEOF
-              sudo systemctl daemon-reload
-              sudo systemctl enable mahjong-recording
-            fi
+            sudo systemctl daemon-reload
+            sudo systemctl enable mahjong-recording
 
             # Add nginx config if not present
             NGINX_CONF=/etc/nginx/sites-available/rehydratedwater.com

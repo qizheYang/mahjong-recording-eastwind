@@ -1,15 +1,29 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { serveStatic } from '@hono/node-server/serve-static';
 import { createNodeWebSocket } from '@hono/node-ws';
 import { roomRoutes } from './routes/rooms.js';
 import { handleWSOpen, handleWSMessage, handleWSClose } from './ws/handler.js';
+import { gameFileRoutes } from './routes/game-files.js';
 import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
+import { dirname, resolve, join, extname } from 'path';
+import { readFile, stat } from 'fs/promises';
 
 const BASE_PATH = process.env.BASE_PATH || '/mahjong-recording';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIST = process.env.CLIENT_DIST || resolve(__dirname, '../../client/dist');
+
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+};
 
 export function createApp() {
   const app = new Hono();
@@ -30,6 +44,7 @@ export function createApp() {
 
   // API routes
   api.route('/api/rooms', roomRoutes);
+  api.route('/api/games', gameFileRoutes);
 
   // API health
   api.get('/api/health', (c) => c.json({ status: 'ok', basePath: BASE_PATH }));
@@ -60,16 +75,37 @@ export function createApp() {
 
   // Serve static files for the client SPA (production)
   if (process.env.NODE_ENV === 'production') {
-    app.use(`${BASE_PATH}/*`, serveStatic({
-      root: CLIENT_DIST,
-      rewriteRequestPath: (path: string) => path.replace(BASE_PATH, ''),
-    }));
+    app.get(`${BASE_PATH}/*`, async (c) => {
+      // Strip the base path to get the relative file path
+      const urlPath = c.req.path.replace(BASE_PATH, '') || '/';
+      const filePath = join(CLIENT_DIST, urlPath === '/' ? 'index.html' : urlPath);
 
-    // SPA fallback
-    app.get(`${BASE_PATH}/*`, serveStatic({
-      root: CLIENT_DIST,
-      rewriteRequestPath: () => '/index.html',
-    }));
+      try {
+        // Security: prevent directory traversal
+        const resolved = resolve(filePath);
+        if (!resolved.startsWith(CLIENT_DIST)) {
+          return c.text('Forbidden', 403);
+        }
+
+        const fileStat = await stat(resolved);
+        if (!fileStat.isFile()) {
+          throw new Error('Not a file');
+        }
+
+        const content = await readFile(resolved);
+        const ext = extname(resolved);
+        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+        return c.body(content, 200, { 'Content-Type': contentType, 'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable' });
+      } catch {
+        // SPA fallback: serve index.html for any non-file route
+        try {
+          const indexContent = await readFile(join(CLIENT_DIST, 'index.html'));
+          return c.body(indexContent, 200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+        } catch {
+          return c.text('Not Found', 404);
+        }
+      }
+    });
   }
 
   return { app, injectWebSocket };

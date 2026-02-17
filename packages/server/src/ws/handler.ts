@@ -1,6 +1,7 @@
 import type { WSContext, WSMessageReceive } from 'hono/ws';
-import type { ClientEvent, ServerEvent } from '@mahjong/shared';
+import type { ClientEvent, ServerEvent, Game, FinalScore } from '@mahjong/shared';
 import { roomManager } from './room-manager.js';
+import { saveGameRecord } from '../services/game-file-service.js';
 
 interface ConnectionContext {
   roomCode: string;
@@ -68,6 +69,8 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
       if (game.status === 'completed') {
         // Game ended naturally (All Last conditions met)
         const finalScores = roomManager.getGameFinalScores(roomCode);
+        // Save game record to JSON file
+        saveGameToFile(game, finalScores ?? []);
         roomManager.broadcast(roomCode, {
           type: 'game_ended',
           game,
@@ -95,6 +98,8 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         sendError(ws, result.error, 'END_ERROR');
         return;
       }
+      // Save game record to JSON file
+      saveGameToFile(result.game, result.finalScores);
       roomManager.broadcast(roomCode, {
         type: 'game_ended',
         game: result.game,
@@ -120,6 +125,14 @@ export function handleWSClose(ws: WSContext): void {
   if (!ctx) return;
   roomManager.disconnectPlayer(ctx.roomCode, ctx.playerId);
   connectionCtx.delete(ws);
+}
+
+function saveGameToFile(game: Game, finalScores: FinalScore[]): void {
+  try {
+    saveGameRecord(game, finalScores);
+  } catch (err) {
+    console.error('Failed to save game record:', err);
+  }
 }
 
 function sendError(ws: WSContext, message: string, code: string): void {
