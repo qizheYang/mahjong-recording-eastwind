@@ -60,13 +60,29 @@ const WIND_LABELS: Record<string, string> = {
 };
 
 /**
+ * Sanitize a player name for use in filenames.
+ * CJK and other Unicode characters are kept as-is (modern OS/fs handle them fine).
+ * Only strip characters that are truly forbidden in filenames.
+ */
+function sanitizeName(name: string): string {
+  // Replace filesystem-forbidden chars and the dash separator we use
+  return name
+    .replace(/[\/\\:*?"<>|\s]/g, '_')  // forbidden in Windows/Linux filenames
+    .replace(/-/g, '_')                  // dash is our separator
+    .slice(0, 20)
+    || 'player';                          // fallback if name becomes empty
+}
+
+/**
  * Save a completed game as a detailed JSON file.
- * Filename: YYYY-MM-DD_HHmmss_<roomCode>.json
+ * Filename: YYYYMMDDHHmmSS-CODE-player1-player2-player3-player4.json
  */
 export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
   const now = new Date();
-  const timestamp = now.toISOString().replace(/[-:]/g, '').replace('T', '_').slice(0, 15);
-  const filename = `${timestamp}_${game.roomCode}.json`;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const playerNames = game.players.map(p => sanitizeName(p.name)).join('-');
+  const filename = `${timestamp}-${game.roomCode}-${playerNames}.json`;
   const filepath = join(GAMES_DIR, filename);
 
   const record: GameRecord = {
@@ -151,12 +167,15 @@ export function listGameRecords(): { filename: string; date: string; roomCode: s
     .sort()
     .reverse()
     .map(f => {
-      const parts = f.replace('.json', '').split('_');
-      const dateStr = parts[0] || '';
-      const timeStr = parts[1] || '';
-      const roomCode = parts[2] || '';
-      const date = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)} ${timeStr.slice(0, 2)}:${timeStr.slice(2, 4)}:${timeStr.slice(4, 6)}`;
-      return { filename: f, date, roomCode };
+      // Format: YYYYMMDDHHmmSS-CODE-p1-p2-p3-p4.json
+      const base = f.replace('.json', '');
+      const firstDash = base.indexOf('-');
+      const secondDash = base.indexOf('-', firstDash + 1);
+      const timestamp = base.slice(0, firstDash);
+      const roomCode = base.slice(firstDash + 1, secondDash);
+      const players = base.slice(secondDash + 1);
+      const date = `${timestamp.slice(0, 4)}-${timestamp.slice(4, 6)}-${timestamp.slice(6, 8)} ${timestamp.slice(8, 10)}:${timestamp.slice(10, 12)}:${timestamp.slice(12, 14)}`;
+      return { filename: f, date, roomCode, players };
     });
 }
 
