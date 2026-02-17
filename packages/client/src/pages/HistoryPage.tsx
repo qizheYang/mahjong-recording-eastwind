@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { listGames, getGame, listPlayerRecords, rebuildPlayerDB, type GameListItem, type PlayerRecord } from '../lib/api';
+import { listGames, getGame, listPlayerRecords, rebuildPlayerDB, getGameAnnotations, updateGameAnnotations, type GameListItem, type PlayerRecord, type AdminAnnotations } from '../lib/api';
+import { useAdminStore } from '../stores/admin-store';
 import { PREDEFINED_TAGS } from '@mahjong/shared';
 
 interface GameRecord {
@@ -35,6 +36,7 @@ interface GameRecord {
   startedAt: string;
   endedAt: string;
   totalHands: number;
+  adminAnnotations?: AdminAnnotations;
 }
 
 const PLACEMENT_COLORS = ['text-mahjong-gold', 'text-white', 'text-mahjong-muted', 'text-mahjong-highlight'];
@@ -65,6 +67,13 @@ export function HistoryPage() {
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
   const [expandedRecord, setExpandedRecord] = useState<GameRecord | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // Admin state
+  const { token: adminToken } = useAdminStore();
+  const [editIsOfficial, setEditIsOfficial] = useState(false);
+  const [editNotes, setEditNotes] = useState('');
+  const [annotationSaving, setAnnotationSaving] = useState(false);
+  const [annotationSaved, setAnnotationSaved] = useState(false);
 
   // Rebuilding state
   const [rebuilding, setRebuilding] = useState(false);
@@ -133,13 +142,37 @@ export function HistoryPage() {
     setExpandedFile(filename);
     setExpandedRecord(null);
     setDetailLoading(true);
+    setAnnotationSaved(false);
     try {
       const record = await getGame(filename);
       setExpandedRecord(record);
+      // Pre-populate annotation fields
+      setEditIsOfficial(record.adminAnnotations?.isOfficialGame ?? false);
+      setEditNotes(record.adminAnnotations?.notes ?? '');
     } catch (e: any) {
       setError(e.message);
     } finally {
       setDetailLoading(false);
+    }
+  }
+
+  async function handleSaveAnnotations() {
+    if (!adminToken || !expandedFile) return;
+    setAnnotationSaving(true);
+    try {
+      const res = await updateGameAnnotations(adminToken, expandedFile, {
+        isOfficialGame: editIsOfficial,
+        notes: editNotes,
+      });
+      if (expandedRecord) {
+        setExpandedRecord({ ...expandedRecord, adminAnnotations: res.annotations });
+      }
+      setAnnotationSaved(true);
+      setTimeout(() => setAnnotationSaved(false), 2000);
+    } catch {
+      // ignore
+    } finally {
+      setAnnotationSaving(false);
     }
   }
 
@@ -418,6 +451,55 @@ export function HistoryPage() {
                               </div>
                             ))}
                           </div>
+
+                          {/* Existing annotation display (for non-admins or read-only) */}
+                          {!adminToken && expandedRecord.adminAnnotations && (
+                            <div className="mt-4 pt-3 border-t border-mahjong-accent/30">
+                              <p className="text-xs text-mahjong-muted mb-1">管理员标注 Annotations</p>
+                              {expandedRecord.adminAnnotations.isOfficialGame && (
+                                <span className="text-xs bg-mahjong-gold/20 text-mahjong-gold px-1.5 py-0.5 rounded">
+                                  同步公式战
+                                </span>
+                              )}
+                              {expandedRecord.adminAnnotations.notes && (
+                                <p className="text-xs text-mahjong-muted mt-1">{expandedRecord.adminAnnotations.notes}</p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Admin annotation panel */}
+                          {adminToken && (
+                            <div className="mt-4 pt-3 border-t border-mahjong-accent/30 space-y-2">
+                              <p className="text-xs text-mahjong-muted font-medium">管理员标注 Admin</p>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={editIsOfficial}
+                                  onChange={e => { setEditIsOfficial(e.target.checked); setAnnotationSaved(false); }}
+                                  className="w-4 h-4 accent-mahjong-gold"
+                                />
+                                <span className="text-xs">同步公式战 Official Game</span>
+                              </label>
+                              <textarea
+                                value={editNotes}
+                                onChange={e => { setEditNotes(e.target.value); setAnnotationSaved(false); }}
+                                placeholder="备注 Notes..."
+                                rows={2}
+                                className="w-full px-2 py-1.5 rounded-lg bg-mahjong-bg border border-mahjong-accent
+                                  text-white text-xs focus:outline-none focus:border-mahjong-highlight resize-none"
+                              />
+                              <button
+                                onClick={handleSaveAnnotations}
+                                disabled={annotationSaving}
+                                className={`w-full py-1.5 rounded-lg font-bold text-xs transition-colors
+                                  ${annotationSaved
+                                    ? 'bg-mahjong-green text-mahjong-bg'
+                                    : 'bg-mahjong-accent text-white'} disabled:opacity-50`}
+                              >
+                                {annotationSaving ? '保存中...' : annotationSaved ? '已保存 Saved' : '保存标注 Save'}
+                              </button>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>

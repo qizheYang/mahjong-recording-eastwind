@@ -91,3 +91,42 @@ export async function getPlayerRecord(name: string): Promise<PlayerRecord> {
 export async function rebuildPlayerDB(): Promise<{ rebuilt: number }> {
   return request('/players/rebuild', { method: 'POST' });
 }
+
+// Admin API
+export interface AdminAnnotations {
+  isOfficialGame: boolean;
+  notes: string;
+  annotatedBy: string;
+  annotatedAt: string;
+}
+
+export async function adminSignIn(username: string, password: string): Promise<{ token: string; username: string }> {
+  return request('/admin/signin', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function adminGetMe(token: string): Promise<{ username: string }> {
+  return request('/admin/me', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function getGameAnnotations(token: string, filename: string): Promise<{ annotations: AdminAnnotations | null }> {
+  return request(`/admin/games/${encodeURIComponent(filename)}/annotations`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function updateGameAnnotations(
+  token: string,
+  filename: string,
+  data: { isOfficialGame: boolean; notes: string }
+): Promise<{ annotations: AdminAnnotations }> {
+  return request(`/admin/games/${encodeURIComponent(filename)}/annotations`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+}

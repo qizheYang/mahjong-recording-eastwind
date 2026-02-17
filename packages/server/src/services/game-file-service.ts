@@ -55,6 +55,12 @@ export interface GameRecord {
   endedAt: string;
   totalHands: number;
   tags: string[];
+  adminAnnotations?: {
+    isOfficialGame: boolean;
+    notes: string;
+    annotatedBy: string;
+    annotatedAt: string;
+  };
 }
 
 const WIND_LABELS: Record<string, string> = {
@@ -203,6 +209,34 @@ export function getGameRecord(filename: string): GameRecord | null {
 
   try {
     return JSON.parse(readFileSync(filepath, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Update admin annotations on a game record.
+ */
+export function updateGameAnnotations(
+  filename: string,
+  annotations: { isOfficialGame: boolean; notes: string; annotatedBy: string }
+): GameRecord | null {
+  if (filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+    return null;
+  }
+  const filepath = join(GAMES_DIR, filename);
+  if (!existsSync(filepath)) return null;
+
+  try {
+    const record: GameRecord = JSON.parse(readFileSync(filepath, 'utf-8'));
+    record.adminAnnotations = {
+      isOfficialGame: annotations.isOfficialGame,
+      notes: annotations.notes,
+      annotatedBy: annotations.annotatedBy,
+      annotatedAt: new Date().toISOString(),
+    };
+    writeFileSync(filepath, JSON.stringify(record, null, 2), 'utf-8');
+    return record;
   } catch {
     return null;
   }

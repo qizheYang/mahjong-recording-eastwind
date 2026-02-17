@@ -14,6 +14,7 @@ interface GameStore {
   room: Room | null;
   game: Game | null;
   finalScores: FinalScore[] | null;
+  savedFilename: string | null;
 
   // Ruleset config (for lobby)
   customRuleset: Partial<Ruleset>;
@@ -49,6 +50,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   room: null,
   game: null,
   finalScores: null,
+  savedFilename: null,
   customRuleset: {},
   gameTags: [],
   error: null,
@@ -143,7 +145,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           break;
 
         case 'game_ended':
-          set({ game: event.game, finalScores: event.finalScores });
+          set({ game: event.game, finalScores: event.finalScores, savedFilename: event.savedFilename ?? null });
           break;
 
         case 'error':
@@ -214,6 +216,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resetForNewGame() {
-    set({ game: null, finalScores: null, customRuleset: {}, gameTags: [] });
+    set({ game: null, finalScores: null, savedFilename: null, customRuleset: {}, gameTags: [] });
   },
 }));

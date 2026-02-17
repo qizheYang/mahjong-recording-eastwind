@@ -5,6 +5,7 @@ import { roomRoutes } from './routes/rooms.js';
 import { handleWSOpen, handleWSMessage, handleWSClose } from './ws/handler.js';
 import { gameFileRoutes } from './routes/game-files.js';
 import { playerRoutes } from './routes/players.js';
+import { adminRoutes } from './routes/admin.js';
 import { fileURLToPath } from 'url';
 import { dirname, resolve, join, extname } from 'path';
 import { readFile, stat } from 'fs/promises';
@@ -34,7 +35,7 @@ export function createApp() {
   app.use('*', cors({
     origin: '*',
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type'],
+    allowHeaders: ['Content-Type', 'Authorization'],
   }));
 
   // Health check (no base path prefix)
@@ -47,6 +48,7 @@ export function createApp() {
   api.route('/api/rooms', roomRoutes);
   api.route('/api/games', gameFileRoutes);
   api.route('/api/players', playerRoutes);
+  api.route('/api/admin', adminRoutes);
 
   // API health
   api.get('/api/health', (c) => c.json({ status: 'ok', basePath: BASE_PATH }));

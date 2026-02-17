@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createRoom, joinRoom } from '../lib/api';
 import { useGameStore } from '../stores/game-store';
+import { useAdminStore } from '../stores/admin-store';
 
 export function HomePage() {
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
@@ -10,8 +11,16 @@ export function HomePage() {
   const [roomCode, setRoomCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminUser, setAdminUser] = useState('');
+  const [adminPass, setAdminPass] = useState('');
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState('');
   const navigate = useNavigate();
   const setSession = useGameStore(s => s.setSession);
+  const { token: adminToken, username: adminUsername, signIn: adminSignIn, signOut: adminSignOut, checkAuth } = useAdminStore();
+
+  useEffect(() => { checkAuth(); }, [checkAuth]);
 
   async function handleCreate() {
     if (!name.trim()) { setError('请输入名称'); return; }
@@ -25,6 +34,22 @@ export function HomePage() {
       setError(e.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleAdminSignIn() {
+    if (!adminUser.trim() || !adminPass.trim()) { setAdminError('请输入用户名和密码'); return; }
+    setAdminLoading(true);
+    setAdminError('');
+    try {
+      await adminSignIn(adminUser.trim(), adminPass.trim());
+      setShowAdmin(false);
+      setAdminUser('');
+      setAdminPass('');
+    } catch (e: any) {
+      setAdminError(e.message);
+    } finally {
+      setAdminLoading(false);
     }
   }
 
@@ -84,6 +109,70 @@ export function HomePage() {
             >
               玩家统计 Player Stats
             </button>
+
+            {/* Admin section */}
+            <div className="pt-2">
+              {adminToken ? (
+                <div className="flex items-center justify-center gap-2 text-xs text-mahjong-muted">
+                  <span>管理员 {adminUsername}</span>
+                  <button
+                    onClick={adminSignOut}
+                    className="text-mahjong-highlight underline"
+                  >
+                    登出 Sign Out
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowAdmin(true)}
+                  className="w-full py-2 text-mahjong-muted/60 text-xs"
+                >
+                  管理员登录 Admin Sign In
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Admin sign in modal */}
+        {showAdmin && !adminToken && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-mahjong-card rounded-xl p-6 w-full max-w-xs space-y-4">
+              <h2 className="text-lg font-bold text-center">管理员登录 Admin</h2>
+              <input
+                type="text"
+                value={adminUser}
+                onChange={e => setAdminUser(e.target.value)}
+                placeholder="用户名 Username"
+                autoFocus
+                className="w-full px-3 py-2 rounded-lg bg-mahjong-bg border border-mahjong-accent
+                  text-white focus:outline-none focus:border-mahjong-highlight"
+              />
+              <input
+                type="password"
+                value={adminPass}
+                onChange={e => setAdminPass(e.target.value)}
+                placeholder="密码 Password"
+                onKeyDown={e => e.key === 'Enter' && handleAdminSignIn()}
+                className="w-full px-3 py-2 rounded-lg bg-mahjong-bg border border-mahjong-accent
+                  text-white focus:outline-none focus:border-mahjong-highlight"
+              />
+              {adminError && <p className="text-mahjong-highlight text-xs">{adminError}</p>}
+              <button
+                onClick={handleAdminSignIn}
+                disabled={adminLoading}
+                className="w-full py-2 rounded-lg bg-mahjong-accent text-white font-bold
+                  disabled:opacity-50"
+              >
+                {adminLoading ? '登录中...' : '登录 Sign In'}
+              </button>
+              <button
+                onClick={() => { setShowAdmin(false); setAdminError(''); }}
+                className="w-full py-1 text-mahjong-muted text-sm"
+              >
+                取消 Cancel
+              </button>
+            </div>
           </div>
         )}
 

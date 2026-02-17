@@ -110,11 +110,12 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         // Game ended naturally (All Last conditions met)
         const finalScores = roomManager.getGameFinalScores(roomCode);
         // Save game record to JSON file
-        saveGameToFile(game, finalScores ?? []);
+        const savedFilename = saveGameToFile(game, finalScores ?? []);
         roomManager.broadcast(roomCode, {
           type: 'game_ended',
           game,
           finalScores: finalScores ?? [],
+          ...(savedFilename ? { savedFilename } : {}),
         });
       } else {
         roomManager.broadcast(roomCode, { type: 'hand_recorded', hand, game });
@@ -139,11 +140,12 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         return;
       }
       // Save game record to JSON file
-      saveGameToFile(result.game, result.finalScores);
+      const savedFilename = saveGameToFile(result.game, result.finalScores);
       roomManager.broadcast(roomCode, {
         type: 'game_ended',
         game: result.game,
         finalScores: result.finalScores,
+        ...(savedFilename ? { savedFilename } : {}),
       });
       break;
     }
@@ -167,7 +169,7 @@ export function handleWSClose(ws: WSContext): void {
   connectionCtx.delete(ws);
 }
 
-function saveGameToFile(game: Game, finalScores: FinalScore[]): void {
+function saveGameToFile(game: Game, finalScores: FinalScore[]): string | null {
   try {
     const filename = saveGameRecord(game, finalScores);
     // Update player database
@@ -175,8 +177,10 @@ function saveGameToFile(game: Game, finalScores: FinalScore[]): void {
     if (record) {
       updatePlayerDB(record, filename);
     }
+    return filename;
   } catch (err) {
     console.error('Failed to save game record:', err);
+    return null;
   }
 }
 

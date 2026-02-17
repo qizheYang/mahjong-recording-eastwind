@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
+import { useAdminStore } from '../stores/admin-store';
+import { getGameAnnotations, updateGameAnnotations } from '../lib/api';
 import { formatPoints, formatGameScore } from '../lib/format';
 
 const PLACEMENT_COLORS = ['text-mahjong-gold', 'text-white', 'text-mahjong-muted', 'text-mahjong-highlight'];
@@ -10,9 +12,14 @@ export function ResultsPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
   const {
-    game, finalScores, playerId, connected,
+    game, finalScores, savedFilename, playerId, connected,
     connect, setSession, resetForNewGame,
   } = useGameStore();
+  const { token: adminToken } = useAdminStore();
+  const [isOfficial, setIsOfficial] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [annotationSaving, setAnnotationSaving] = useState(false);
+  const [annotationSaved, setAnnotationSaved] = useState(false);
 
   // Restore session
   useEffect(() => {
@@ -30,9 +37,34 @@ export function ResultsPage() {
     }
   }, [roomCode, playerId, connect]);
 
+  // Load existing annotations if admin
+  useEffect(() => {
+    if (!adminToken || !savedFilename) return;
+    getGameAnnotations(adminToken, savedFilename).then(res => {
+      if (res.annotations) {
+        setIsOfficial(res.annotations.isOfficialGame);
+        setNotes(res.annotations.notes);
+      }
+    }).catch(() => {});
+  }, [adminToken, savedFilename]);
+
   function handleNewGame() {
     resetForNewGame();
     navigate(`/lobby/${roomCode}`);
+  }
+
+  async function handleSaveAnnotations() {
+    if (!adminToken || !savedFilename) return;
+    setAnnotationSaving(true);
+    try {
+      await updateGameAnnotations(adminToken, savedFilename, { isOfficialGame: isOfficial, notes });
+      setAnnotationSaved(true);
+      setTimeout(() => setAnnotationSaved(false), 2000);
+    } catch {
+      // ignore
+    } finally {
+      setAnnotationSaving(false);
+    }
   }
 
   function handleShare() {
@@ -114,6 +146,40 @@ export function ResultsPage() {
           </div>
         ))}
       </div>
+
+      {/* Admin annotation panel */}
+      {adminToken && savedFilename && (
+        <div className="bg-mahjong-card rounded-xl p-4 mb-6 space-y-3">
+          <p className="text-xs text-mahjong-muted font-medium">管理员标注 Admin Annotations</p>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isOfficial}
+              onChange={e => { setIsOfficial(e.target.checked); setAnnotationSaved(false); }}
+              className="w-4 h-4 accent-mahjong-gold"
+            />
+            <span className="text-sm">同步公式战 Official Game</span>
+          </label>
+          <textarea
+            value={notes}
+            onChange={e => { setNotes(e.target.value); setAnnotationSaved(false); }}
+            placeholder="备注 Notes..."
+            rows={2}
+            className="w-full px-3 py-2 rounded-lg bg-mahjong-bg border border-mahjong-accent
+              text-white text-sm focus:outline-none focus:border-mahjong-highlight resize-none"
+          />
+          <button
+            onClick={handleSaveAnnotations}
+            disabled={annotationSaving}
+            className={`w-full py-2 rounded-lg font-bold text-sm transition-colors
+              ${annotationSaved
+                ? 'bg-mahjong-green text-mahjong-bg'
+                : 'bg-mahjong-accent text-white'} disabled:opacity-50`}
+          >
+            {annotationSaving ? '保存中...' : annotationSaved ? '已保存 Saved' : '保存标注 Save'}
+          </button>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="mt-auto space-y-3 pb-4">

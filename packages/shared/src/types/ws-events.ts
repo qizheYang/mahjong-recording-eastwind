@@ -36,5 +36,5 @@ export type ServerEvent =
   | { type: 'game_started'; game: Game }
   | { type: 'hand_recorded'; hand: Hand; game: Game }
   | { type: 'hand_undone'; game: Game }
-  | { type: 'game_ended'; game: Game; finalScores: FinalScore[] }
+  | { type: 'game_ended'; game: Game; finalScores: FinalScore[]; savedFilename?: string }
   | { type: 'error'; message: string; code: string };
