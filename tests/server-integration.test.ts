@@ -938,6 +938,44 @@ describe('Edge Cases', () => {
     expect(notFound.status).toBe(400);
   });
 
+  it('custom ruleset: start game with 30000 points and tobi enabled', async () => {
+    const names = ['A', 'B', 'C', 'D'];
+    const playerIds: string[] = [];
+
+    const create = await apiPost('/api/rooms', { playerName: names[0] });
+    const code = create.data.roomCode;
+    playerIds.push(create.data.playerId);
+
+    for (let i = 1; i < 4; i++) {
+      const join = await apiPost(`/api/rooms/${code}/join`, { playerName: names[i] });
+      playerIds.push(join.data.playerId);
+    }
+
+    const sockets: BufferedWs[] = [];
+    for (const pid of playerIds) {
+      const ws = track(await connectWs(code, pid));
+      await ws.waitForEvent('room_state');
+      sockets.push(ws);
+    }
+
+    // Start game with custom ruleset
+    const startPromises = sockets.map(ws => ws.waitForEvent('game_started'));
+    sockets[0].send({
+      type: 'start_game',
+      seatOrder: playerIds,
+      ruleset: { startingPoints: 30000, tobiEnabled: true },
+    });
+    const startEvents = await Promise.all(startPromises);
+
+    for (const evt of startEvents) {
+      if (evt.type === 'game_started') {
+        expect(evt.game.players[0].points).toBe(30000);
+        expect(evt.game.ruleset.startingPoints).toBe(30000);
+        expect(evt.game.ruleset.tobiEnabled).toBe(true);
+      }
+    }
+  });
+
   it('CJK player names work in room creation and joining', async () => {
     const create = await apiPost('/api/rooms', { playerName: '田中太郎' });
     expect(create.status).toBe(200);

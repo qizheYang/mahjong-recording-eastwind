@@ -2,6 +2,23 @@ import type { GamePlayer, FinalScore } from '../types/game.js';
 import type { Ruleset } from '../constants.js';
 
 /**
+ * Evaluate a score formula string with X (raw points) and Y (uma).
+ * Falls back to standard calculation on error.
+ */
+export function evaluateScoreFormula(formula: string, x: number, y: number): number {
+  try {
+    const fn = new Function('X', 'Y', `"use strict"; return (${formula});`);
+    const result = fn(x, y);
+    if (typeof result !== 'number' || !isFinite(result)) {
+      return (x - 30000) / 1000 + y;
+    }
+    return result;
+  } catch {
+    return (x - 30000) / 1000 + y;
+  }
+}
+
+/**
  * Calculate final scores including uma and oka.
  * Remaining riichi sticks are awarded to the highest scorer.
  */
@@ -28,24 +45,23 @@ export function calculateFinalScores(
   // Step 4: Calculate uma with tie-sharing
   const umas = calculateSharedUma(placements, ruleset.uma);
 
-  // Step 5: Build final scores
-  // Oka: each player started with startingPoints but return is returnPoints
-  // The difference (returnPoints - startingPoints) * 4 goes to 1st place
-  // This is reflected by using returnPoints as the baseline:
-  // gameScore = (rawPoints - returnPoints) / 1000 + uma
-  // But the oka bonus (+20 for 1st) happens because:
-  // sum of (pts - 25000)/1000 = 0 (points are conserved)
-  // sum of uma = 0
-  // But we subtract 30000 instead of 25000, creating a -5 per player = -20 total
-  // That -20 is awarded as +20 oka to 1st place
-  const okaTotal = (ruleset.returnPoints - ruleset.startingPoints) * 4 / 1000;
+  // Step 5: Build final scores using custom formula or standard calculation
+  const okaTotal = ruleset.okaEnabled
+    ? (ruleset.returnPoints - ruleset.startingPoints) * 4 / 1000
+    : 0;
 
   return indexed.map((p, sortedIdx) => {
     const placement = placements[sortedIdx];
     const uma = umas[sortedIdx];
-    const baseGameScore = (p.pts - ruleset.returnPoints) / 1000;
     const oka = placement === 1 ? okaTotal / placements.filter(pl => pl === 1).length : 0;
-    const gameScore = baseGameScore + uma + oka;
+
+    let gameScore: number;
+    if (ruleset.scoreFormula) {
+      gameScore = evaluateScoreFormula(ruleset.scoreFormula, p.pts, uma) + oka;
+    } else {
+      const baseGameScore = (p.pts - ruleset.returnPoints) / 1000;
+      gameScore = baseGameScore + uma + oka;
+    }
 
     return {
       playerIndex: p.index,
@@ -53,7 +69,7 @@ export function calculateFinalScores(
       rawPoints: p.pts,
       placement,
       uma,
-      gameScore: Math.round(gameScore * 10) / 10, // round to 1 decimal
+      gameScore: Math.round(gameScore * 10) / 10,
     };
   });
 }

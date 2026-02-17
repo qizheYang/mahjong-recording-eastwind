@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   processHandResult, undoLastHand, determineNextState, isAllLastHand,
-  M_LEAGUE_RULES,
+  M_LEAGUE_RULES, calculateFinalScores, evaluateScoreFormula,
 } from '@mahjong/shared';
-import type { Game, HandResultInput, HandResult } from '@mahjong/shared';
+import type { Game, GamePlayer, HandResultInput, HandResult } from '@mahjong/shared';
 
 function createTestGame(): Game {
   return {
@@ -421,5 +421,194 @@ describe('Full Game Simulation', () => {
 
     // Verify round advanced
     expect(game.currentRound).toEqual({ wind: 'east', number: 2 });
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Tobi (飛び)
+// ──────────────────────────────────────────────────
+describe('Tobi (飛び)', () => {
+  it('game ends immediately when a player goes negative with tobi enabled', () => {
+    const game = createTestGame();
+    game.ruleset.tobiEnabled = true;
+
+    // Give P1 only 1000 points
+    game.players[1].points = 1000;
+    game.players[0].points = 25000 + 24000; // compensate
+
+    // P0 ron on P1 for mangan (8000) → P1 goes to -7000
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 0, loserIndex: 1,
+      isTsumo: false, han: 5, fu: 30,
+    });
+
+    expect(game.players[1].points).toBeLessThan(0);
+    expect(game.status).toBe('completed');
+  });
+
+  it('game does NOT end when player reaches exactly 0 with tobi enabled', () => {
+    const game = createTestGame();
+    game.ruleset.tobiEnabled = true;
+
+    // Give P1 exactly 1000 points; P2 (non-dealer) ron for 1han 30fu = 1000
+    game.players[1].points = 1000;
+    game.players[2].points = 25000 + 24000;
+
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 2, loserIndex: 1,
+      isTsumo: false, han: 1, fu: 30,
+    });
+
+    expect(game.players[1].points).toBe(0);
+    expect(game.status).toBe('in_progress');
+  });
+
+  it('tobi disabled: game continues even when player goes negative', () => {
+    const game = createTestGame();
+    game.ruleset.tobiEnabled = false;
+
+    game.players[1].points = 1000;
+    game.players[0].points = 25000 + 24000;
+
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 0, loserIndex: 1,
+      isTsumo: false, han: 5, fu: 30,
+    });
+
+    expect(game.players[1].points).toBeLessThan(0);
+    expect(game.status).toBe('in_progress');
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Nagashi Mangan (流局満貫)
+// ──────────────────────────────────────────────────
+describe('Nagashi Mangan', () => {
+  it('non-dealer nagashi mangan: receives 8000 (2000/2000/4000)', () => {
+    const game = createTestGame();
+    processHandResult(game, {
+      resultType: 'ryuukyoku',
+      tenpaiStatus: [false, true, false, false],
+      nagashiManganIndex: 1,
+    });
+
+    // P1 (non-dealer) gets +8000 total
+    expect(game.players[1].points).toBe(25000 + 8000);
+    // Dealer (P0) pays 4000, others pay 2000
+    expect(game.players[0].points).toBe(25000 - 4000);
+    expect(game.players[2].points).toBe(25000 - 2000);
+    expect(game.players[3].points).toBe(25000 - 2000);
+
+    // Points conserved
+    const total = game.players.reduce((s, p) => s + p.points, 0);
+    expect(total).toBe(100000);
+  });
+
+  it('dealer nagashi mangan: receives 12000 (4000 each)', () => {
+    const game = createTestGame();
+    processHandResult(game, {
+      resultType: 'ryuukyoku',
+      tenpaiStatus: [true, false, false, false],
+      nagashiManganIndex: 0,
+    });
+
+    expect(game.players[0].points).toBe(25000 + 12000);
+    expect(game.players[1].points).toBe(25000 - 4000);
+    expect(game.players[2].points).toBe(25000 - 4000);
+    expect(game.players[3].points).toBe(25000 - 4000);
+  });
+
+  it('nagashi mangan counts as ryuukyoku for state transition (dealer tenpai = renchan)', () => {
+    const game = createTestGame();
+    processHandResult(game, {
+      resultType: 'ryuukyoku',
+      tenpaiStatus: [true, true, false, false],
+      nagashiManganIndex: 1,
+    });
+
+    // Dealer (P0) is tenpai → renchan
+    expect(game.currentRound).toEqual({ wind: 'east', number: 1 });
+    expect(game.currentDealer).toBe(0);
+    expect(game.honbaCount).toBe(1);
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Custom Score Formula
+// ──────────────────────────────────────────────────
+describe('Custom Score Formula', () => {
+  it('evaluateScoreFormula evaluates basic expression', () => {
+    expect(evaluateScoreFormula('(X - 30000) / 1000 + Y', 35000, 30)).toBe(35);
+    expect(evaluateScoreFormula('(X - 30000) / 1000 + Y', 20000, -30)).toBe(-40);
+  });
+
+  it('evaluateScoreFormula handles simple X + Y formula', () => {
+    expect(evaluateScoreFormula('X + Y', 25000, 10)).toBe(25010);
+  });
+
+  it('evaluateScoreFormula falls back on invalid formula', () => {
+    const result = evaluateScoreFormula('invalid!!!', 30000, 10);
+    expect(typeof result).toBe('number');
+    expect(isFinite(result)).toBe(true);
+  });
+
+  it('calculateFinalScores uses custom formula', () => {
+    const players: GamePlayer[] = [
+      { id: 'p0', name: 'A', points: 35000, initialSeat: 'east' },
+      { id: 'p1', name: 'B', points: 28000, initialSeat: 'south' },
+      { id: 'p2', name: 'C', points: 22000, initialSeat: 'west' },
+      { id: 'p3', name: 'D', points: 15000, initialSeat: 'north' },
+    ];
+    const ruleset = {
+      ...M_LEAGUE_RULES,
+      scoreFormula: '(X - 30000) / 1000 + Y',
+      okaEnabled: false,
+    };
+
+    const scores = calculateFinalScores(players, 0, ruleset);
+    // 1st: (35000-30000)/1000 + 30 = 35
+    // 2nd: (28000-30000)/1000 + 10 = 8
+    // 3rd: (22000-30000)/1000 + -10 = -18
+    // 4th: (15000-30000)/1000 + -30 = -45
+    expect(scores[0].gameScore).toBe(35);
+    expect(scores[1].gameScore).toBe(8);
+    expect(scores[2].gameScore).toBe(-18);
+    expect(scores[3].gameScore).toBe(-45);
+  });
+
+  it('calculateFinalScores with oka enabled adds bonus to 1st', () => {
+    const players: GamePlayer[] = [
+      { id: 'p0', name: 'A', points: 35000, initialSeat: 'east' },
+      { id: 'p1', name: 'B', points: 28000, initialSeat: 'south' },
+      { id: 'p2', name: 'C', points: 22000, initialSeat: 'west' },
+      { id: 'p3', name: 'D', points: 15000, initialSeat: 'north' },
+    ];
+    const ruleset = {
+      ...M_LEAGUE_RULES,
+      scoreFormula: '(X - 30000) / 1000 + Y',
+      okaEnabled: true,
+    };
+
+    const scores = calculateFinalScores(players, 0, ruleset);
+    // 1st gets +20 oka: (35000-30000)/1000 + 30 + 20 = 55
+    expect(scores[0].gameScore).toBe(55);
+    // Others unchanged
+    expect(scores[1].gameScore).toBe(8);
+  });
+
+  it('custom starting points game works end-to-end', () => {
+    const game = createTestGame();
+    game.ruleset.startingPoints = 30000;
+    game.ruleset.returnPoints = 35000;
+    for (const p of game.players) p.points = 30000;
+
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 3, fu: 30,
+    });
+
+    // Points conserved at 120000
+    const total = game.players.reduce((s, p) => s + p.points, 0);
+    expect(total).toBe(120000);
   });
 });

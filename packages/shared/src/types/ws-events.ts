@@ -1,5 +1,6 @@
 import type { Room, Player } from './room.js';
 import type { Game, Hand, FinalScore } from './game.js';
+import type { Ruleset } from '../constants.js';
 
 // Client -> Server events
 export type ClientEvent =
@@ -7,7 +8,7 @@ export type ClientEvent =
   | { type: 'leave_room' }
   | { type: 'ready_toggle' }
   | { type: 'swap_seats'; playerIdA: string; playerIdB: string }
-  | { type: 'start_game'; seatOrder: string[] }
+  | { type: 'start_game'; seatOrder: string[]; ruleset?: Partial<Ruleset> }
   | { type: 'record_hand'; result: HandResultInput }
   | { type: 'undo_last_hand' }
   | { type: 'end_game' };
@@ -22,6 +23,7 @@ export interface HandResultInput {
   fu?: number;
   // For ryuukyoku
   tenpaiStatus?: boolean[];
+  nagashiManganIndex?: number; // 流局満貫
 }
 
 // Server -> Client events

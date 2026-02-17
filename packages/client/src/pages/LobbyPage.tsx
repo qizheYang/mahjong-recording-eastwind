@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
 import { addPlayer } from '../lib/api';
-import { WINDS, WIND_LABELS } from '@mahjong/shared';
+import { WINDS, WIND_LABELS, M_LEAGUE_RULES, defaultScoreFormula } from '@mahjong/shared';
+import { RulesIsland } from '../components/game/RulesIsland';
 
 export function LobbyPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
   const {
-    room, game, playerId, connected,
-    connect, toggleReady, swapSeats, startGame, setSession,
+    room, game, playerId, connected, customRuleset,
+    connect, toggleReady, swapSeats, startGame, setSession, setRuleset,
   } = useGameStore();
 
   const [copied, setCopied] = useState(false);
@@ -106,6 +107,13 @@ export function LobbyPage() {
 
   // In solo mode, allow swapping anytime (no ready system)
   const canSwap = soloMode ? totalPlayers >= 2 : (totalPlayers >= 2 && !anyReady);
+
+  // Derived ruleset values
+  const ruleStarting = (customRuleset.startingPoints ?? M_LEAGUE_RULES.startingPoints);
+  const ruleUma = (customRuleset.uma ?? M_LEAGUE_RULES.uma);
+  const ruleTobi = (customRuleset.tobiEnabled ?? M_LEAGUE_RULES.tobiEnabled);
+  const ruleOka = (customRuleset.okaEnabled ?? M_LEAGUE_RULES.okaEnabled);
+  const ruleFormula = (customRuleset.scoreFormula ?? M_LEAGUE_RULES.scoreFormula);
 
   if (!connected && playerId) {
     return (
@@ -294,6 +302,17 @@ export function LobbyPage() {
           </p>
         </div>
       )}
+
+      {/* Rules Island */}
+      <RulesIsland
+        startingPoints={ruleStarting}
+        uma={ruleUma}
+        tobiEnabled={ruleTobi}
+        okaEnabled={ruleOka}
+        scoreFormula={ruleFormula}
+        editable={true}
+        onChange={(updates) => setRuleset(updates as Partial<typeof M_LEAGUE_RULES>)}
+      />
 
       {/* Bottom action */}
       <div className="mt-auto pb-4">

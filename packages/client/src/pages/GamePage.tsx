@@ -5,8 +5,9 @@ import { ScoreBoard } from '../components/game/ScoreBoard';
 import { HandHistory } from '../components/game/HandHistory';
 import { RecordHandModal } from '../components/game/RecordHandModal';
 import { formatRound } from '../lib/format';
-import { isAllLastHand } from '@mahjong/shared';
+import { isAllLastHand, M_LEAGUE_RULES } from '@mahjong/shared';
 import type { HandResultInput } from '@mahjong/shared';
+import { RulesIsland } from '../components/game/RulesIsland';
 
 export function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -120,6 +121,18 @@ export function GamePage() {
         currentDealer={game.currentDealer}
         currentRoundWind={game.currentRound.wind}
       />
+
+      {/* Rules info bar */}
+      <div className="mt-4">
+        <RulesIsland
+          startingPoints={game.ruleset?.startingPoints ?? M_LEAGUE_RULES.startingPoints}
+          uma={game.ruleset?.uma ?? M_LEAGUE_RULES.uma}
+          tobiEnabled={game.ruleset?.tobiEnabled ?? M_LEAGUE_RULES.tobiEnabled}
+          okaEnabled={game.ruleset?.okaEnabled ?? M_LEAGUE_RULES.okaEnabled}
+          scoreFormula={game.ruleset?.scoreFormula ?? M_LEAGUE_RULES.scoreFormula}
+          editable={false}
+        />
+      </div>
 
       {/* Action buttons */}
       <div className="mt-6 space-y-3">

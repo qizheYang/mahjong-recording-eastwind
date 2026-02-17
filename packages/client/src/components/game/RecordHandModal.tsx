@@ -12,7 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Step = 'outcome' | 'winner' | 'method' | 'loser' | 'hanfu' | 'tenpai' | 'confirm';
+type Step = 'outcome' | 'winner' | 'method' | 'loser' | 'hanfu' | 'tenpai' | 'nagashiSelect' | 'confirm';
 
 export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, onSubmit, onClose }: Props) {
   const [step, setStep] = useState<Step>('outcome');
@@ -23,6 +23,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
   const [han, setHan] = useState(1);
   const [fu, setFu] = useState(30);
   const [tenpaiStatus, setTenpaiStatus] = useState([false, false, false, false]);
+  const [nagashiManganIndex, setNagashiManganIndex] = useState<number | null>(null);
 
   // Calculate points preview
   const pointsPreview = useMemo(() => {
@@ -81,6 +82,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
       onSubmit({
         resultType: 'ryuukyoku',
         tenpaiStatus,
+        ...(nagashiManganIndex !== null ? { nagashiManganIndex } : {}),
       });
     }
   }
@@ -92,7 +94,12 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
       case 'loser': setStep('method'); break;
       case 'hanfu': setStep(isTsumo ? 'method' : 'loser'); break;
       case 'tenpai': setStep('outcome'); break;
-      case 'confirm': setStep(resultType === 'agari' ? 'hanfu' : 'tenpai'); break;
+      case 'nagashiSelect': setStep('tenpai'); break;
+      case 'confirm':
+        if (resultType === 'agari') setStep('hanfu');
+        else if (nagashiManganIndex !== null) setStep('nagashiSelect');
+        else setStep('tenpai');
+        break;
     }
   }
 
@@ -367,12 +374,57 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             </div>
 
             <button
-              onClick={() => setStep('confirm')}
+              onClick={() => { setNagashiManganIndex(null); setStep('confirm'); }}
               className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
               确认 Confirm
             </button>
+
+            <button
+              onClick={() => setStep('nagashiSelect')}
+              className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-gold font-bold
+                active:scale-[0.98] transition-transform border border-mahjong-gold/30"
+            >
+              流局满贯 Nagashi Mangan
+            </button>
+          </div>
+        )}
+
+        {/* Step: Select nagashi mangan player */}
+        {step === 'nagashiSelect' && (
+          <div className="space-y-3">
+            <p className="text-sm text-mahjong-muted text-center mb-4">
+              选择流局满贯玩家 Select Nagashi Mangan Player
+            </p>
+            {players.map((p, idx) => {
+              const isDealer = idx === currentDealer;
+              const total = isDealer ? 12000 : 8000;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setNagashiManganIndex(idx);
+                    // Auto-set tenpai: nagashi mangan player is tenpai
+                    const newTenpai = [...tenpaiStatus];
+                    newTenpai[idx] = true;
+                    setTenpaiStatus(newTenpai);
+                    setStep('confirm');
+                  }}
+                  className={`w-full py-3 px-4 rounded-xl text-left flex items-center justify-between
+                    ${isDealer ? 'bg-mahjong-accent' : 'bg-mahjong-card'}
+                    active:scale-[0.98] transition-transform`}
+                >
+                  <span>
+                    <span className="text-mahjong-gold font-bold mr-2">
+                      {WIND_LABELS[seatWind(idx)]}
+                    </span>
+                    {p.name}
+                  </span>
+                  <span className="text-sm text-mahjong-muted">+{formatPoints(total)}点</span>
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -402,7 +454,14 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                 </>
               ) : (
                 <>
-                  <p className="font-medium">流局 Draw</p>
+                  <p className="font-medium">
+                    {nagashiManganIndex !== null ? '流局满贯 Nagashi Mangan' : '流局 Draw'}
+                  </p>
+                  {nagashiManganIndex !== null && (
+                    <p className="text-sm text-mahjong-gold font-bold">
+                      {players[nagashiManganIndex]?.name} +{formatPoints(nagashiManganIndex === currentDealer ? 12000 : 8000)}点
+                    </p>
+                  )}
                   <p className="text-sm text-mahjong-muted">
                     聴牌: {tenpaiStatus.map((t, i) => t ? players[i]?.name : null).filter(Boolean).join(', ') || '无 None'}
                   </p>

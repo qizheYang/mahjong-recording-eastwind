@@ -14,6 +14,8 @@ export interface Ruleset {
   returnPoints: number;
   uma: [number, number, number, number];
   tobiEnabled: boolean;
+  scoreFormula: string; // Formula using X (raw points) and Y (uma). E.g., "(X - 30000) / 1000 + Y"
+  okaEnabled: boolean;
   enchousenEnabled: boolean;
   doubleRonEnabled: boolean;
   countedYakumanEnabled: boolean;
@@ -21,11 +23,17 @@ export interface Ruleset {
   akadoraCount: number;
 }
 
+export function defaultScoreFormula(returnPoints: number): string {
+  return `(X - ${returnPoints}) / 1000 + Y`;
+}
+
 export const M_LEAGUE_RULES: Ruleset = {
   startingPoints: 25000,
   returnPoints: 30000,
   uma: [30, 10, -10, -30],
   tobiEnabled: false,
+  scoreFormula: '(X - 30000) / 1000 + Y',
+  okaEnabled: true,
   enchousenEnabled: false,
   doubleRonEnabled: false,
   countedYakumanEnabled: false,

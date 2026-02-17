@@ -1,7 +1,7 @@
 import type { WSContext } from 'hono/ws';
 import type {
   Room, Player, Game, GamePlayer, Hand, FinalScore,
-  HandResultInput, ServerEvent,
+  HandResultInput, ServerEvent, Ruleset,
 } from '@mahjong/shared';
 import {
   M_LEAGUE_RULES, WINDS,
@@ -135,10 +135,12 @@ export class RoomManager {
     return this.rooms.get(roomCode)?.room ?? null;
   }
 
-  startGame(roomCode: string, seatOrder: string[]): Game | { error: string } {
+  startGame(roomCode: string, seatOrder: string[], customRuleset?: Partial<Ruleset>): Game | { error: string } {
     const state = this.rooms.get(roomCode);
     if (!state) return { error: '房间不存在' };
     if (state.room.players.length !== 4) return { error: '需要4位玩家 (Need 4 players)' };
+
+    const ruleset: Ruleset = { ...M_LEAGUE_RULES, ...customRuleset };
 
     // Assign seats based on seatOrder (array of player IDs)
     const gamePlayers: GamePlayer[] = seatOrder.map((id, i) => {
@@ -147,7 +149,7 @@ export class RoomManager {
       return {
         id: player.id,
         name: player.name,
-        points: M_LEAGUE_RULES.startingPoints,
+        points: ruleset.startingPoints,
         initialSeat: WINDS[i],
       };
     });
@@ -162,7 +164,7 @@ export class RoomManager {
       honbaCount: 0,
       riichiSticks: 0,
       status: 'in_progress',
-      ruleset: { ...M_LEAGUE_RULES },
+      ruleset,
     };
 
     state.room.currentGame = game;

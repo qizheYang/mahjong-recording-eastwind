@@ -21,7 +21,7 @@ export function calculateTransfers(
   if (result.type === 'agari') {
     return calculateAgariTransfers(result, dealerIndex, honbaCount, riichiSticksOnTable);
   } else {
-    return calculateRyuukyokuTransfers(result);
+    return calculateRyuukyokuTransfers(result, dealerIndex);
   }
 }
 
@@ -89,8 +89,28 @@ function calculateAgariTransfers(
   return { deltas, description };
 }
 
-function calculateRyuukyokuTransfers(result: RyuukyokuResult): TransferResult {
+function calculateRyuukyokuTransfers(
+  result: RyuukyokuResult,
+  dealerIndex?: number,
+): TransferResult {
   const deltas = [0, 0, 0, 0];
+
+  // Nagashi mangan: winner receives mangan tsumo payment
+  if (result.nagashiManganIndex !== undefined && dealerIndex !== undefined) {
+    const winIdx = result.nagashiManganIndex;
+    const isDealer = winIdx === dealerIndex;
+    for (let i = 0; i < 4; i++) {
+      if (i === winIdx) continue;
+      const payment = isDealer ? 4000 : (i === dealerIndex ? 4000 : 2000);
+      deltas[i] -= payment;
+      deltas[winIdx] += payment;
+    }
+    return {
+      deltas,
+      description: `流局満貫 (nagashi mangan) → P${winIdx + 1}`,
+    };
+  }
+
   const tenpaiCount = result.tenpaiStatus.filter(Boolean).length;
   const notenCount = 4 - tenpaiCount;
 

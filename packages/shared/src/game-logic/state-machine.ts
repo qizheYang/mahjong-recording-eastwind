@@ -94,6 +94,7 @@ export function processHandResult(game: Game, input: HandResultInput): Hand {
     result = {
       type: 'ryuukyoku',
       tenpaiStatus: input.tenpaiStatus!,
+      ...(input.nagashiManganIndex !== undefined ? { nagashiManganIndex: input.nagashiManganIndex } : {}),
     };
   }
 
@@ -128,6 +129,15 @@ export function processHandResult(game: Game, input: HandResultInput): Hand {
   };
 
   game.hands.push(hand);
+
+  // Tobi check: if enabled and any player went negative (< 0), end game immediately
+  if (game.ruleset.tobiEnabled && game.players.some(p => p.points < 0)) {
+    if (result.type === 'agari') {
+      game.riichiSticks = 0;
+    }
+    game.status = 'completed';
+    return hand;
+  }
 
   // Determine next state
   const action = determineNextState(game, result);

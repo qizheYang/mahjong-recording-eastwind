@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { Room, Game, Hand, FinalScore, ServerEvent, ClientEvent, HandResultInput } from '@mahjong/shared';
+import type { Room, Game, Hand, FinalScore, ServerEvent, ClientEvent, HandResultInput, Ruleset } from '@mahjong/shared';
+import { M_LEAGUE_RULES } from '@mahjong/shared';
 import { WsClient } from '../lib/ws-client';
 import { config } from '../config';
 
@@ -14,6 +15,9 @@ interface GameStore {
   game: Game | null;
   finalScores: FinalScore[] | null;
 
+  // Ruleset config (for lobby)
+  customRuleset: Partial<Ruleset>;
+
   // UI state
   error: string | null;
 
@@ -23,7 +27,8 @@ interface GameStore {
   disconnect: () => void;
   toggleReady: () => void;
   swapSeats: (playerIdA: string, playerIdB: string) => void;
-  startGame: (seatOrder: string[]) => void;
+  setRuleset: (updates: Partial<Ruleset>) => void;
+  startGame: (seatOrder: string[], ruleset?: Partial<Ruleset>) => void;
   recordHand: (result: HandResultInput) => void;
   undoLastHand: () => void;
   endGame: () => void;
@@ -40,6 +45,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   room: null,
   game: null,
   finalScores: null,
+  customRuleset: {},
   error: null,
 
   setSession(roomCode: string, playerId: string) {
@@ -160,8 +166,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     wsClient?.send({ type: 'swap_seats', playerIdA, playerIdB });
   },
 
-  startGame(seatOrder: string[]) {
-    wsClient?.send({ type: 'start_game', seatOrder });
+  setRuleset(updates: Partial<Ruleset>) {
+    set((state) => ({
+      customRuleset: { ...state.customRuleset, ...updates },
+    }));
+  },
+
+  startGame(seatOrder: string[], ruleset?: Partial<Ruleset>) {
+    const r = ruleset ?? get().customRuleset;
+    const hasCustom = Object.keys(r).length > 0;
+    wsClient?.send({ type: 'start_game', seatOrder, ...(hasCustom ? { ruleset: r } : {}) });
   },
 
   recordHand(result: HandResultInput) {
@@ -181,6 +195,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resetForNewGame() {
-    set({ game: null, finalScores: null });
+    set({ game: null, finalScores: null, customRuleset: {} });
   },
 }));
