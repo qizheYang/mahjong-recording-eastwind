@@ -77,6 +77,13 @@ export function HomePage() {
             >
               对局记录 Game History
             </button>
+            <button
+              onClick={() => navigate('/history?tab=players')}
+              className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-muted font-medium
+                active:scale-[0.98] transition-transform border border-mahjong-accent"
+            >
+              玩家统计 Player Stats
+            </button>
           </div>
         )}
 
