@@ -191,7 +191,7 @@ export function HomePage() {
         )}
       </div>
       <p className="absolute bottom-4 text-mahjong-muted/50 text-[10px] font-mono">
-        v{__APP_VERSION__} | {__BUILD_TIME__.replace('T', ' ').slice(0, 19)} UTC
+        v{__APP_VERSION__} ({__GIT_HASH__}) | {__BUILD_TIME__.replace('T', ' ').slice(0, 19)} UTC
       </p>
     </div>
   );
