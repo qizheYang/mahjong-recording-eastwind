@@ -2,25 +2,12 @@ import 'dotenv/config';
 import { serve } from '@hono/node-server';
 import { createApp } from './app.js';
 import { getDb } from './db/connection.js';
-import { createAdmin } from './services/admin-service.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const BASE_PATH = process.env.BASE_PATH || '/mahjong-recording';
 
 // Initialize database
 getDb();
-
-// Bootstrap admin account from env vars (idempotent)
-const bootstrapUser = process.env.ADMIN_BOOTSTRAP_USER;
-const bootstrapPass = process.env.ADMIN_BOOTSTRAP_PASS;
-if (bootstrapUser && bootstrapPass) {
-  try {
-    createAdmin(bootstrapUser, bootstrapPass);
-    console.log(`Admin account "${bootstrapUser}" bootstrapped.`);
-  } catch {
-    // Already exists — expected
-  }
-}
 
 const { app, injectWebSocket } = createApp();
 
