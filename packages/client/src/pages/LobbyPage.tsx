@@ -9,7 +9,7 @@ export function LobbyPage() {
   const navigate = useNavigate();
   const {
     room, game, playerId, connected,
-    connect, disconnect, startGame, setSession,
+    connect, startGame, setSession,
   } = useGameStore();
 
   // Seat assignment: array of player IDs in seat order [East, South, West, North]
@@ -25,13 +25,12 @@ export function LobbyPage() {
     }
   }, [roomCode, playerId, setSession]);
 
-  // Connect WebSocket
+  // Connect WebSocket (no disconnect on unmount — connection persists across pages)
   useEffect(() => {
     if (roomCode && playerId) {
       connect();
-      return () => disconnect();
     }
-  }, [roomCode, playerId, connect, disconnect]);
+  }, [roomCode, playerId, connect]);
 
   // Redirect to game page when game starts
   useEffect(() => {

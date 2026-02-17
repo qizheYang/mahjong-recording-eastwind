@@ -51,6 +51,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { roomCode, playerId } = get();
     if (!roomCode || !playerId) return;
 
+    // Idempotent: skip if already connected or connecting
+    if (wsClient?.isConnected) return;
+
     if (wsClient) {
       wsClient.disconnect();
     }

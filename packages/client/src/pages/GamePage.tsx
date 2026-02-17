@@ -13,7 +13,7 @@ export function GamePage() {
   const navigate = useNavigate();
   const {
     room, game, finalScores, playerId, connected,
-    connect, disconnect, setSession,
+    connect, setSession,
     recordHand, undoLastHand, endGame, error, clearError,
   } = useGameStore();
 
@@ -30,13 +30,12 @@ export function GamePage() {
     }
   }, [roomCode, playerId, setSession]);
 
-  // Connect
+  // Connect (no disconnect on unmount — connection persists across pages)
   useEffect(() => {
-    if (roomCode && playerId && !connected) {
+    if (roomCode && playerId) {
       connect();
-      return () => disconnect();
     }
-  }, [roomCode, playerId, connected, connect, disconnect]);
+  }, [roomCode, playerId, connect]);
 
   // Redirect to results when game ends
   useEffect(() => {

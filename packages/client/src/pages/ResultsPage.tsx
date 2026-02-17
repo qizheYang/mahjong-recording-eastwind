@@ -11,7 +11,7 @@ export function ResultsPage() {
   const navigate = useNavigate();
   const {
     game, finalScores, playerId, connected,
-    connect, disconnect, setSession, resetForNewGame,
+    connect, setSession, resetForNewGame,
   } = useGameStore();
 
   // Restore session
@@ -23,13 +23,12 @@ export function ResultsPage() {
     }
   }, [roomCode, playerId, setSession]);
 
-  // Connect if needed
+  // Connect if needed (no disconnect on unmount — connection persists across pages)
   useEffect(() => {
-    if (roomCode && playerId && !connected) {
+    if (roomCode && playerId) {
       connect();
-      return () => disconnect();
     }
-  }, [roomCode, playerId, connected, connect, disconnect]);
+  }, [roomCode, playerId, connect]);
 
   function handleNewGame() {
     resetForNewGame();
