@@ -183,6 +183,7 @@ export class RoomManager {
 
     for (const [code, state] of this.rooms) {
       const room = state.room;
+      if (room.status === 'finished') continue; // don't show finished games
       const game = room.currentGame;
       result.push({
         roomCode: code,
@@ -251,6 +252,12 @@ export class RoomManager {
     }
 
     const hand = processHandResult(game, input);
+
+    // If game ended naturally (南4 or bust), mark room as finished
+    if (game.status === 'completed') {
+      state.room.status = 'finished';
+    }
+
     this.touch(roomCode);
 
     return { hand, game };
