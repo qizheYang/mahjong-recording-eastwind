@@ -148,3 +148,34 @@ export async function updateGameAnnotations(
     body: JSON.stringify(data),
   });
 }
+
+// Tag management
+export async function listTags(): Promise<{ tags: string[] }> {
+  return request('/tags');
+}
+
+export async function createTag(name: string): Promise<{ tag: string }> {
+  return request('/tags', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function adminDeleteTag(token: string, name: string): Promise<{ deleted: string }> {
+  return request(`/tags/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function adminUpdateGameTags(
+  token: string,
+  filename: string,
+  tags: string[]
+): Promise<{ tags: string[] }> {
+  return request(`/admin/games/${encodeURIComponent(filename)}/tags`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ tags }),
+  });
+}

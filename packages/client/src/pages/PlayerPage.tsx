@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPlayerRecord, type PlayerRecord, type PlayerGameEntry } from '../lib/api';
-import { PREDEFINED_TAGS } from '@mahjong/shared';
+import { getPlayerRecord, listTags, type PlayerRecord, type PlayerGameEntry } from '../lib/api';
 
 type RangeOption = 10 | 20 | 0; // 0 = all
 
@@ -113,6 +112,11 @@ export function PlayerPage() {
   const [error, setError] = useState('');
   const [range, setRange] = useState<RangeOption>(0);
   const [tagFilter, setTagFilter] = useState('');
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+
+  useEffect(() => {
+    listTags().then(res => setAvailableTags(res.tags)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!name) return;
@@ -181,7 +185,7 @@ export function PlayerPage() {
         >
           全部 All
         </button>
-        {PREDEFINED_TAGS.map((tag: string) => (
+        {availableTags.map((tag: string) => (
           <button
             key={tag}
             onClick={() => setTagFilter(tagFilter === tag ? '' : tag)}

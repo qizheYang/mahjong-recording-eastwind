@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { signIn, getAdminFromHeader } from '../services/admin-service.js';
-import { getGameRecord, updateGameAnnotations } from '../services/game-file-service.js';
+import { getGameRecord, updateGameAnnotations, updateGameTags } from '../services/game-file-service.js';
 
 const adminRoutes = new Hono();
 
@@ -65,6 +65,28 @@ adminRoutes.patch('/games/:filename/annotations', async (c) => {
   }
 
   return c.json({ annotations: record.adminAnnotations });
+});
+
+// Update tags on a game record
+adminRoutes.patch('/games/:filename/tags', async (c) => {
+  const username = getAdminFromHeader(c.req.header('Authorization'));
+  if (!username) {
+    return c.json({ error: '未授权 (Unauthorized)' }, 401);
+  }
+
+  const filename = c.req.param('filename');
+  const body = await c.req.json<{ tags: string[] }>();
+
+  if (!Array.isArray(body.tags)) {
+    return c.json({ error: '标签格式错误 (Tags must be an array)' }, 400);
+  }
+
+  const record = updateGameTags(filename, body.tags);
+  if (!record) {
+    return c.json({ error: '记录不存在 (Record not found)' }, 404);
+  }
+
+  return c.json({ tags: record.tags });
 });
 
 export { adminRoutes };

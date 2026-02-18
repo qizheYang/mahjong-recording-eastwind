@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { listGames, getGame, listPlayerRecords, rebuildPlayerDB, getGameAnnotations, updateGameAnnotations, type GameListItem, type PlayerRecord, type AdminAnnotations } from '../lib/api';
+import { listGames, getGame, listPlayerRecords, rebuildPlayerDB, getGameAnnotations, updateGameAnnotations, listTags, adminUpdateGameTags, adminDeleteTag, type GameListItem, type PlayerRecord, type AdminAnnotations } from '../lib/api';
 import { useAdminStore } from '../stores/admin-store';
-import { PREDEFINED_TAGS } from '@mahjong/shared';
 
 interface GameRecord {
   id: string;
@@ -77,10 +76,19 @@ export function HistoryPage() {
   // Rebuilding state
   const [rebuilding, setRebuilding] = useState(false);
 
+  // Tags from API
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+
+  // Retag state
+  const [retagFile, setRetagFile] = useState<string | null>(null);
+  const [retagTags, setRetagTags] = useState<string[]>([]);
+  const [retagSaving, setRetagSaving] = useState(false);
+
   useEffect(() => {
     Promise.all([
       listGames().then(res => setGames(res.games)),
       loadPlayers(),
+      listTags().then(res => setAvailableTags(res.tags)).catch(() => {}),
     ])
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -95,6 +103,31 @@ export function HistoryPage() {
       setAllPlayers(res2.players);
     } else {
       setAllPlayers(res.players);
+    }
+  }
+
+  async function handleRetag(filename: string) {
+    if (!adminToken) return;
+    setRetagSaving(true);
+    try {
+      const res = await adminUpdateGameTags(adminToken, filename, retagTags);
+      setGames(prev => prev.map(g => g.filename === filename ? { ...g, tags: res.tags } : g));
+      setRetagFile(null);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setRetagSaving(false);
+    }
+  }
+
+  async function handleDeleteTag(tagName: string) {
+    if (!adminToken) return;
+    try {
+      await adminDeleteTag(adminToken, tagName);
+      setAvailableTags(prev => prev.filter(t => t !== tagName));
+      if (tagFilter === tagName) setTagFilter('');
+    } catch (e: any) {
+      setError(e.message);
     }
   }
 
@@ -346,15 +379,25 @@ export function HistoryPage() {
             >
               全部 All
             </button>
-            {PREDEFINED_TAGS.map((tag: string) => (
-              <button
-                key={tag}
-                onClick={() => setTagFilter(tagFilter === tag ? '' : tag)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                  ${tagFilter === tag ? 'bg-mahjong-gold text-mahjong-bg' : 'bg-mahjong-card text-mahjong-muted'}`}
-              >
-                {tag}
-              </button>
+            {availableTags.map((tag: string) => (
+              <span key={tag} className="inline-flex items-center gap-1">
+                <button
+                  onClick={() => setTagFilter(tagFilter === tag ? '' : tag)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                    ${tagFilter === tag ? 'bg-mahjong-gold text-mahjong-bg' : 'bg-mahjong-card text-mahjong-muted'}`}
+                >
+                  {tag}
+                </button>
+                {adminToken && (
+                  <button
+                    onClick={() => handleDeleteTag(tag)}
+                    className="text-mahjong-highlight/60 hover:text-mahjong-highlight text-xs leading-none"
+                    title={`删除标签 ${tag}`}
+                  >
+                    x
+                  </button>
+                )}
+              </span>
             ))}
           </div>
 
@@ -417,9 +460,9 @@ export function HistoryPage() {
                     )}
                   </button>
 
-                  {/* Admin: inline official game checkbox — always visible */}
+                  {/* Admin: inline controls — always visible */}
                   {adminToken && (
-                    <div className="px-4 pb-2 -mt-1">
+                    <div className="px-4 pb-2 -mt-1 space-y-2">
                       <label
                         className="flex items-center gap-2 cursor-pointer"
                         onClick={e => e.stopPropagation()}
@@ -432,6 +475,40 @@ export function HistoryPage() {
                         />
                         <span className="text-xs text-mahjong-muted">同步公式战</span>
                       </label>
+                      {retagFile === g.filename ? (
+                        <div className="space-y-1" onClick={e => e.stopPropagation()}>
+                          <div className="flex flex-wrap gap-1">
+                            {availableTags.map(tag => (
+                              <button key={tag}
+                                onClick={() => setRetagTags(prev =>
+                                  prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                                )}
+                                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors
+                                  ${retagTags.includes(tag)
+                                    ? 'bg-mahjong-gold text-mahjong-bg'
+                                    : 'bg-mahjong-bg text-mahjong-muted border border-mahjong-accent'}`}
+                              >
+                                {tag}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleRetag(g.filename)} disabled={retagSaving}
+                              className="px-3 py-1 rounded text-xs bg-mahjong-green text-mahjong-bg font-bold disabled:opacity-50">
+                              {retagSaving ? '...' : '保存 Save'}
+                            </button>
+                            <button onClick={() => setRetagFile(null)}
+                              className="px-3 py-1 rounded text-xs bg-mahjong-card text-mahjong-muted">
+                              取消 Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={(e) => { e.stopPropagation(); setRetagFile(g.filename); setRetagTags([...(g.tags ?? [])]); }}
+                          className="text-xs text-mahjong-muted underline">
+                          修改标签 Retag
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -555,7 +632,7 @@ export function HistoryPage() {
             >
               全部 All
             </button>
-            {PREDEFINED_TAGS.map((tag: string) => (
+            {availableTags.map((tag: string) => (
               <button
                 key={tag}
                 onClick={() => setTagFilter(tagFilter === tag ? '' : tag)}

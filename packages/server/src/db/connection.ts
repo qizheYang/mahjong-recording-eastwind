@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import * as schema from './schema.js';
 import { mkdirSync } from 'fs';
 import { dirname } from 'path';
+import { PREDEFINED_TAGS } from '@mahjong/shared';
 
 let db: ReturnType<typeof drizzle> | null = null;
 
@@ -91,4 +92,15 @@ function initializeTables(db: ReturnType<typeof drizzle>) {
     username TEXT NOT NULL REFERENCES admin_accounts(username),
     expires_at INTEGER NOT NULL
   )`);
+
+  db.run(sql`CREATE TABLE IF NOT EXISTS tags (
+    name TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL
+  )`);
+
+  // Seed predefined tags
+  const now = Date.now();
+  for (const tagName of PREDEFINED_TAGS) {
+    db.run(sql`INSERT OR IGNORE INTO tags (name, created_at) VALUES (${tagName}, ${now})`);
+  }
 }

@@ -63,3 +63,8 @@ export const adminTokens = sqliteTable('admin_tokens', {
   username: text('username').references(() => adminAccounts.username).notNull(),
   expiresAt: integer('expires_at').notNull(),
 });
+
+export const tags = sqliteTable('tags', {
+  name: text('name').primaryKey(),
+  createdAt: integer('created_at').notNull(),
+});

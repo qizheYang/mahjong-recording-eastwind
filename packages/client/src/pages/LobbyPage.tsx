@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
-import { addPlayer } from '../lib/api';
-import { WINDS, WIND_LABELS, M_LEAGUE_RULES, defaultScoreFormula, PREDEFINED_TAGS } from '@mahjong/shared';
+import { addPlayer, listTags, createTag } from '../lib/api';
+import { WINDS, WIND_LABELS, M_LEAGUE_RULES, defaultScoreFormula } from '@mahjong/shared';
 import { RulesIsland } from '../components/game/RulesIsland';
 
 export function LobbyPage() {
@@ -22,6 +22,31 @@ export function LobbyPage() {
   const [soloPhones, setSoloPhones] = useState(['', '', '']);
   const [addingIdx, setAddingIdx] = useState<number | null>(null);
   const [soloError, setSoloError] = useState('');
+
+  // Tags from API
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState('');
+  const [creatingTag, setCreatingTag] = useState(false);
+
+  useEffect(() => {
+    listTags().then(res => setAvailableTags(res.tags)).catch(() => {});
+  }, []);
+
+  async function handleCreateTag() {
+    const name = newTagInput.trim();
+    if (!name) return;
+    setCreatingTag(true);
+    try {
+      const res = await createTag(name);
+      setAvailableTags(prev => prev.includes(res.tag) ? prev : [...prev, res.tag]);
+      if (!gameTags.includes(res.tag)) {
+        toggleTag(res.tag);
+      }
+      setNewTagInput('');
+    } catch { /* ignore */ } finally {
+      setCreatingTag(false);
+    }
+  }
 
   // Restore session from storage if needed
   useEffect(() => {
@@ -347,7 +372,7 @@ export function LobbyPage() {
       <div className="mt-3 px-4 py-2 rounded-xl bg-mahjong-card">
         <p className="text-xs text-mahjong-muted mb-2">标签 Tags</p>
         <div className="flex flex-wrap gap-2">
-          {PREDEFINED_TAGS.map((tag: string) => (
+          {availableTags.map((tag: string) => (
             <button
               key={tag}
               onClick={() => toggleTag(tag)}
@@ -359,6 +384,26 @@ export function LobbyPage() {
               {tag}
             </button>
           ))}
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              value={newTagInput}
+              onChange={e => setNewTagInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleCreateTag(); }}
+              placeholder="新标签..."
+              maxLength={20}
+              className="w-24 px-2 py-1.5 rounded-lg bg-mahjong-bg border border-mahjong-accent
+                text-white text-sm focus:outline-none focus:border-mahjong-highlight"
+            />
+            <button
+              onClick={handleCreateTag}
+              disabled={creatingTag || !newTagInput.trim()}
+              className="px-2 py-1.5 rounded-lg bg-mahjong-accent text-white text-sm font-medium
+                disabled:opacity-30 active:scale-95 transition-transform"
+            >
+              +
+            </button>
+          </div>
         </div>
       </div>
 

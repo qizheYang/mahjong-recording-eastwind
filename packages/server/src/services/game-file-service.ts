@@ -222,6 +222,29 @@ export function getGameRecord(filename: string): GameRecord | null {
 }
 
 /**
+ * Update tags on a game record.
+ */
+export function updateGameTags(
+  filename: string,
+  newTags: string[]
+): GameRecord | null {
+  if (filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+    return null;
+  }
+  const filepath = join(GAMES_DIR, filename);
+  if (!existsSync(filepath)) return null;
+
+  try {
+    const record: GameRecord = JSON.parse(readFileSync(filepath, 'utf-8'));
+    record.tags = newTags;
+    writeFileSync(filepath, JSON.stringify(record, null, 2), 'utf-8');
+    return record;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Update admin annotations on a game record.
  */
 export function updateGameAnnotations(
