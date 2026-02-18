@@ -12,6 +12,7 @@ import { nanoid } from 'nanoid';
 interface RoomState {
   room: Room;
   connections: Map<string, WSContext>; // playerId -> ws
+  lastActivityAt: number;
 }
 
 // Characters that won't be confused (no 0/O, 1/I/L)
@@ -25,8 +26,35 @@ function generateRoomCode(): string {
   return code;
 }
 
+const INACTIVITY_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours
+const CLEANUP_INTERVAL = 10 * 60 * 1000; // check every 10 minutes
+
 export class RoomManager {
   private rooms = new Map<string, RoomState>();
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
+  constructor() {
+    this.cleanupTimer = setInterval(() => this.cleanupInactiveRooms(), CLEANUP_INTERVAL);
+  }
+
+  private touch(code: string) {
+    const state = this.rooms.get(code);
+    if (state) state.lastActivityAt = Date.now();
+  }
+
+  private cleanupInactiveRooms() {
+    const now = Date.now();
+    for (const [code, state] of this.rooms) {
+      if (now - state.lastActivityAt >= INACTIVITY_TIMEOUT) {
+        console.log(`Cleaning up inactive room ${code} (idle ${Math.round((now - state.lastActivityAt) / 60000)}min)`);
+        // Close any remaining WebSocket connections
+        for (const ws of state.connections.values()) {
+          try { ws.close(); } catch { /* ignore */ }
+        }
+        this.rooms.delete(code);
+      }
+    }
+  }
 
   createRoom(playerName: string, phone?: string): { roomCode: string; playerId: string } {
     let code = generateRoomCode();
@@ -45,7 +73,7 @@ export class RoomManager {
       createdAt: Date.now(),
     };
 
-    this.rooms.set(code, { room, connections: new Map() });
+    this.rooms.set(code, { room, connections: new Map(), lastActivityAt: Date.now() });
 
     return { roomCode: code, playerId };
   }
@@ -59,6 +87,7 @@ export class RoomManager {
     const playerId = nanoid(12);
     const player: Player = { id: playerId, name: playerName, ...(phone ? { phone } : {}), seatWind: null, ready: false };
     state.room.players.push(player);
+    this.touch(roomCode);
 
     return { playerId, room: state.room };
   }
@@ -71,6 +100,7 @@ export class RoomManager {
     if (!player) return null;
 
     state.connections.set(playerId, ws);
+    this.touch(roomCode);
     return state.room;
   }
 
@@ -105,6 +135,7 @@ export class RoomManager {
     if (!player) return { error: '玩家不存在' };
 
     player.ready = !player.ready;
+    this.touch(roomCode);
 
     const allReady = state.room.players.length === 4 && state.room.players.every(p => p.ready);
     return { ready: player.ready, allReady };
@@ -127,6 +158,7 @@ export class RoomManager {
 
     // Reset everyone's ready state since seats changed
     state.room.players.forEach(p => { p.ready = false; });
+    this.touch(roomCode);
 
     return state.room.players;
   }
@@ -204,6 +236,7 @@ export class RoomManager {
 
     state.room.currentGame = game;
     state.room.status = 'playing';
+    this.touch(roomCode);
 
     return game;
   }
@@ -218,6 +251,7 @@ export class RoomManager {
     }
 
     const hand = processHandResult(game, input);
+    this.touch(roomCode);
 
     return { hand, game };
   }
@@ -231,6 +265,7 @@ export class RoomManager {
 
     const removed = undoLastHand(game);
     if (!removed) return { error: '没有可撤销的记录 (No hands to undo)' };
+    this.touch(roomCode);
 
     return game;
   }
@@ -250,6 +285,7 @@ export class RoomManager {
     );
 
     state.room.status = 'finished';
+    this.touch(roomCode);
 
     return { game, finalScores };
   }
@@ -269,6 +305,7 @@ export class RoomManager {
     state.room.currentGame = null;
     state.room.status = 'waiting';
     state.room.players.forEach(p => { p.seatWind = null; p.ready = false; });
+    this.touch(roomCode);
 
     return state.room;
   }
