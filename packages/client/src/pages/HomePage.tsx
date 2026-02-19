@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createRoom, joinRoom, listLiveGames, type LiveGameSummary } from '../lib/api';
-import { WIND_LABELS, type Wind } from '@mahjong/shared';
+import type { Wind } from '@mahjong/shared';
 import { useGameStore } from '../stores/game-store';
 import { useAdminStore } from '../stores/admin-store';
+import { useLocale } from '../i18n';
 
 export function HomePage() {
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
@@ -20,6 +21,7 @@ export function HomePage() {
   const navigate = useNavigate();
   const setSession = useGameStore(s => s.setSession);
   const { token: adminToken, username: adminUsername, signIn: adminSignIn, signOut: adminSignOut, checkAuth } = useAdminStore();
+  const { t } = useLocale();
 
   const [liveGames, setLiveGames] = useState<LiveGameSummary[]>([]);
 
@@ -39,7 +41,7 @@ export function HomePage() {
   }, []);
 
   async function handleCreate() {
-    if (!name.trim()) { setError('请输入名称'); return; }
+    if (!name.trim()) { setError(t('validation.enterName')); return; }
     setLoading(true);
     setError('');
     try {
@@ -54,7 +56,7 @@ export function HomePage() {
   }
 
   async function handleAdminSignIn() {
-    if (!adminUser.trim() || !adminPass.trim()) { setAdminError('请输入用户名和密码'); return; }
+    if (!adminUser.trim() || !adminPass.trim()) { setAdminError(t('validation.enterCredentials')); return; }
     setAdminLoading(true);
     setAdminError('');
     try {
@@ -70,8 +72,8 @@ export function HomePage() {
   }
 
   async function handleJoin() {
-    if (!name.trim()) { setError('请输入名称'); return; }
-    if (!roomCode.trim()) { setError('请输入房间号'); return; }
+    if (!name.trim()) { setError(t('validation.enterName')); return; }
+    if (!roomCode.trim()) { setError(t('validation.enterRoomCode')); return; }
     setLoading(true);
     setError('');
     try {
@@ -90,9 +92,9 @@ export function HomePage() {
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">🀄 麻雀記録</h1>
-          <p className="text-mahjong-muted text-sm">Riichi Mahjong Recorder</p>
-          <p className="text-mahjong-muted text-xs mt-1">M-League Rules</p>
+          <h1 className="text-4xl font-bold mb-2">{t('home.title')}</h1>
+          <p className="text-mahjong-muted text-sm">{t('home.subtitle')}</p>
+          <p className="text-mahjong-muted text-xs mt-1">{t('home.mLeague')}</p>
         </div>
 
         {mode === 'menu' && (
@@ -102,49 +104,49 @@ export function HomePage() {
               className="w-full py-4 rounded-xl bg-mahjong-highlight text-white font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              创建房间 Create Room
+              {t('home.createRoom')}
             </button>
             <button
               onClick={() => setMode('join')}
               className="w-full py-4 rounded-xl bg-mahjong-accent text-white font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              加入房间 Join Room
+              {t('home.joinRoom')}
             </button>
             <button
               onClick={() => navigate('/history')}
               className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-muted font-medium
                 active:scale-[0.98] transition-transform border border-mahjong-accent"
             >
-              对局记录 Game History
+              {t('home.gameHistory')}
             </button>
             <button
               onClick={() => navigate('/history?tab=players')}
               className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-muted font-medium
                 active:scale-[0.98] transition-transform border border-mahjong-accent"
             >
-              玩家统计 Player Stats
+              {t('home.playerStats')}
             </button>
 
             {/* Live games section */}
             {liveGames.length > 0 && (
               <div className="pt-3 space-y-2">
                 <h2 className="text-sm font-medium text-mahjong-muted text-center">
-                  进行中 Live Games
+                  {t('home.liveGames')}
                 </h2>
                 {liveGames.map(g => (
                   <div key={g.roomCode} className="bg-mahjong-card rounded-lg p-3 border border-mahjong-accent">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-mono text-mahjong-gold font-bold">{g.roomCode}</span>
                       <span className="text-xs text-mahjong-muted">
-                        {g.status === 'waiting' ? `等待中 ${g.playerNames.length}/4` : g.status === 'playing' ? '对局中' : '已结束'}
+                        {g.status === 'waiting' ? t('home.waitingCount', { n: g.playerNames.length }) : g.status === 'playing' ? t('home.playing') : t('home.finished')}
                       </span>
                     </div>
                     {g.status === 'playing' && g.gameInfo ? (
                       <div>
                         <p className="text-xs text-mahjong-muted mb-1">
-                          {WIND_LABELS[g.gameInfo.currentRound.wind as Wind]}{g.gameInfo.currentRound.number}局
-                          {' · '}第{g.gameInfo.handCount + 1}手
+                          {t(`mahjong.wind.${g.gameInfo.currentRound.wind}`)}{g.gameInfo.currentRound.number}{t('mahjong.round')}
+                          {' · '}{t('home.handNumber', { n: g.gameInfo.handCount + 1 })}
                         </p>
                         <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
                           {g.gameInfo.playerPoints.map(p => (
@@ -171,12 +173,12 @@ export function HomePage() {
             <div className="pt-2">
               {adminToken ? (
                 <div className="flex items-center justify-center gap-2 text-xs text-mahjong-muted">
-                  <span>管理员 {adminUsername}</span>
+                  <span>{t('home.adminUser', { name: adminUsername ?? '' })}</span>
                   <button
                     onClick={adminSignOut}
                     className="text-mahjong-highlight underline"
                   >
-                    登出 Sign Out
+                    {t('home.signOut')}
                   </button>
                 </div>
               ) : (
@@ -184,7 +186,7 @@ export function HomePage() {
                   onClick={() => setShowAdmin(true)}
                   className="w-full py-2 text-mahjong-muted/60 text-xs"
                 >
-                  管理员登录 Admin Sign In
+                  {t('home.adminSignIn')}
                 </button>
               )}
             </div>
@@ -195,12 +197,12 @@ export function HomePage() {
         {showAdmin && !adminToken && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
             <div className="bg-mahjong-card rounded-xl p-6 w-full max-w-xs space-y-4">
-              <h2 className="text-lg font-bold text-center">管理员登录 Admin</h2>
+              <h2 className="text-lg font-bold text-center">{t('home.adminSignIn')}</h2>
               <input
                 type="text"
                 value={adminUser}
                 onChange={e => setAdminUser(e.target.value)}
-                placeholder="用户名 Username"
+                placeholder={t('home.username')}
                 autoFocus
                 className="w-full px-3 py-2 rounded-lg bg-mahjong-bg border border-mahjong-accent
                   text-white focus:outline-none focus:border-mahjong-highlight"
@@ -209,7 +211,7 @@ export function HomePage() {
                 type="password"
                 value={adminPass}
                 onChange={e => setAdminPass(e.target.value)}
-                placeholder="密码 Password"
+                placeholder={t('home.password')}
                 onKeyDown={e => e.key === 'Enter' && handleAdminSignIn()}
                 className="w-full px-3 py-2 rounded-lg bg-mahjong-bg border border-mahjong-accent
                   text-white focus:outline-none focus:border-mahjong-highlight"
@@ -221,13 +223,13 @@ export function HomePage() {
                 className="w-full py-2 rounded-lg bg-mahjong-accent text-white font-bold
                   disabled:opacity-50"
               >
-                {adminLoading ? '登录中...' : '登录 Sign In'}
+                {adminLoading ? t('home.signingIn') : t('home.signIn')}
               </button>
               <button
                 onClick={() => { setShowAdmin(false); setAdminError(''); }}
                 className="w-full py-1 text-mahjong-muted text-sm"
               >
-                取消 Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -236,7 +238,7 @@ export function HomePage() {
         {mode === 'create' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-mahjong-muted mb-1">你的名称 Your Name</label>
+              <label className="block text-sm text-mahjong-muted mb-1">{t('home.yourName')}</label>
               <input
                 type="text"
                 value={name}
@@ -245,11 +247,11 @@ export function HomePage() {
                 autoFocus
                 className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
                   text-white text-lg focus:outline-none focus:border-mahjong-highlight"
-                placeholder="输入名称..."
+                placeholder={t('home.enterName')}
               />
             </div>
             <div>
-              <label className="block text-sm text-mahjong-muted mb-1">手机号 Phone (optional)</label>
+              <label className="block text-sm text-mahjong-muted mb-1">{t('home.phone')} ({t('home.phoneOptional')})</label>
               <input
                 type="tel"
                 value={phone}
@@ -257,7 +259,7 @@ export function HomePage() {
                 maxLength={20}
                 className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
                   text-white text-lg focus:outline-none focus:border-mahjong-highlight"
-                placeholder="可选..."
+                placeholder={t('home.phoneOptional')}
               />
             </div>
             {error && <p className="text-mahjong-highlight text-sm">{error}</p>}
@@ -267,13 +269,13 @@ export function HomePage() {
               className="w-full py-3 rounded-xl bg-mahjong-highlight text-white font-bold text-lg
                 disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
-              {loading ? '创建中...' : '创建 Create'}
+              {loading ? t('home.creating') : t('home.create')}
             </button>
             <button
               onClick={() => { setMode('menu'); setError(''); }}
               className="w-full py-2 text-mahjong-muted text-sm"
             >
-              返回 Back
+              {t('common.back')}
             </button>
           </div>
         )}
@@ -281,7 +283,7 @@ export function HomePage() {
         {mode === 'join' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-mahjong-muted mb-1">房间号 Room Code</label>
+              <label className="block text-sm text-mahjong-muted mb-1">{t('home.roomCode')}</label>
               <input
                 type="text"
                 value={roomCode}
@@ -295,7 +297,7 @@ export function HomePage() {
               />
             </div>
             <div>
-              <label className="block text-sm text-mahjong-muted mb-1">你的名称 Your Name</label>
+              <label className="block text-sm text-mahjong-muted mb-1">{t('home.yourName')}</label>
               <input
                 type="text"
                 value={name}
@@ -303,11 +305,11 @@ export function HomePage() {
                 maxLength={12}
                 className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
                   text-white text-lg focus:outline-none focus:border-mahjong-highlight"
-                placeholder="输入名称..."
+                placeholder={t('home.enterName')}
               />
             </div>
             <div>
-              <label className="block text-sm text-mahjong-muted mb-1">手机号 Phone (optional)</label>
+              <label className="block text-sm text-mahjong-muted mb-1">{t('home.phone')} ({t('home.phoneOptional')})</label>
               <input
                 type="tel"
                 value={phone}
@@ -315,7 +317,7 @@ export function HomePage() {
                 maxLength={20}
                 className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
                   text-white text-lg focus:outline-none focus:border-mahjong-highlight"
-                placeholder="可选..."
+                placeholder={t('home.phoneOptional')}
               />
             </div>
             {error && <p className="text-mahjong-highlight text-sm">{error}</p>}
@@ -325,13 +327,13 @@ export function HomePage() {
               className="w-full py-3 rounded-xl bg-mahjong-accent text-white font-bold text-lg
                 disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
-              {loading ? '加入中...' : '加入 Join'}
+              {loading ? t('home.joining') : t('home.join')}
             </button>
             <button
               onClick={() => { setMode('menu'); setError(''); }}
               className="w-full py-2 text-mahjong-muted text-sm"
             >
-              返回 Back
+              {t('common.back')}
             </button>
           </div>
         )}
@@ -352,7 +354,7 @@ export function HomePage() {
             <path d="M356.33 313.13 317 290.42"/>
             <path d="M234.07 268.63 273.4 291.34"/>
           </svg>
-          by Qizhe Yang for East Wind Riichi
+          {t('home.byLine')}
         </a>
       </div>
     </div>

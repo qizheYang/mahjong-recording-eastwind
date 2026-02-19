@@ -1,6 +1,7 @@
-import type { GamePlayer, Wind } from '@mahjong/shared';
-import { WIND_LABELS, WINDS } from '@mahjong/shared';
+import type { GamePlayer } from '@mahjong/shared';
+import { WINDS } from '@mahjong/shared';
 import { formatPoints } from '../../lib/format';
+import { useLocale } from '../../i18n';
 
 interface Props {
   players: GamePlayer[];
@@ -9,14 +10,12 @@ interface Props {
 }
 
 export function ScoreBoard({ players, currentDealer, currentRoundWind }: Props) {
+  const { t } = useLocale();
+
   return (
     <div className="grid grid-cols-2 gap-2">
       {players.map((player, idx) => {
         const isDealer = idx === currentDealer;
-        const currentWind = WINDS[(idx - currentDealer + 4) % 4];
-        // Actually, the current wind is based on how many dealer rotations have happened.
-        // Simpler: the dealer is always "East" of the current hand.
-        // So player at dealer position = East, dealer+1 = South, etc.
         const seatWind = WINDS[(idx - currentDealer + 4) % 4];
 
         return (
@@ -30,7 +29,7 @@ export function ScoreBoard({ players, currentDealer, currentRoundWind }: Props) 
             <span className={`absolute top-1 right-2 text-xs font-bold ${
               isDealer ? 'text-mahjong-gold' : 'text-mahjong-muted'
             }`}>
-              {WIND_LABELS[seatWind]}
+              {t(`mahjong.wind.${seatWind}`)}
             </span>
 
             {/* Player name */}
@@ -48,7 +47,7 @@ export function ScoreBoard({ players, currentDealer, currentRoundWind }: Props) 
             {/* Dealer indicator */}
             {isDealer && (
               <span className="absolute bottom-1 right-2 text-xs text-mahjong-gold">
-                親
+                {t('mahjong.dealer')}
               </span>
             )}
           </div>

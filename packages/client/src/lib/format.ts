@@ -14,8 +14,10 @@ export function formatDelta(delta: number): string {
   return '±0';
 }
 
-export function formatRound(round: Round): string {
-  return `${WIND_LABELS[round.wind as Wind]}${round.number}局`;
+export function formatRound(round: Round, t?: (key: string) => string): string {
+  const windLabel = t ? t(`mahjong.wind.${round.wind}`) : WIND_LABELS[round.wind as Wind];
+  const suffix = t ? t('mahjong.round') : '局';
+  return `${windLabel}${round.number}${suffix}`;
 }
 
 export function formatGameScore(score: number): string {
@@ -23,6 +25,6 @@ export function formatGameScore(score: number): string {
   return `${sign}${score.toFixed(1)}`;
 }
 
-export function formatWind(wind: Wind): string {
-  return WIND_LABELS[wind];
+export function formatWind(wind: Wind, t?: (key: string) => string): string {
+  return t ? t(`mahjong.wind.${wind}`) : WIND_LABELS[wind];
 }

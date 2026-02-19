@@ -24,6 +24,7 @@ interface GameStore {
 
   // UI state
   error: string | null;
+  errorCode: string | null;
 
   // Actions
   setSession: (roomCode: string, playerId: string) => void;
@@ -55,6 +56,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   customRuleset: {},
   gameTags: [],
   error: null,
+  errorCode: null,
 
   setSession(roomCode: string, playerId: string) {
     const prev = get();
@@ -164,7 +166,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           break;
 
         case 'error':
-          set({ error: event.message });
+          set({ error: event.message, errorCode: event.code ?? null });
           // Invalid room/player — clear stale session so we don't retry on reload
           if (event.code === 'INVALID_ROOM') {
             sessionStorage.removeItem('roomCode');
@@ -241,7 +243,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   clearError() {
-    set({ error: null });
+    set({ error: null, errorCode: null });
   },
 
   resetForNewGame() {

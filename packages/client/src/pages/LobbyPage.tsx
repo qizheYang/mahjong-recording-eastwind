@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
 import { addPlayer, listTags, createTag } from '../lib/api';
-import { WINDS, WIND_LABELS, M_LEAGUE_RULES, defaultScoreFormula } from '@mahjong/shared';
+import { WINDS, M_LEAGUE_RULES, defaultScoreFormula } from '@mahjong/shared';
 import { RulesIsland } from '../components/game/RulesIsland';
+import { useLocale } from '../i18n';
 
 export function LobbyPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
+  const { t } = useLocale();
   const {
     room, game, playerId, connected, customRuleset, gameTags,
     connect, toggleReady, swapSeats, startGame, setSession, setRuleset, toggleTag,
@@ -92,7 +94,7 @@ export function LobbyPage() {
 
   async function handleAddPlayer(slotIdx: number) {
     const name = soloNames[slotIdx]?.trim();
-    if (!name) { setSoloError('请输入名称'); return; }
+    if (!name) { setSoloError(t('validation.enterName')); return; }
     if (!roomCode) return;
 
     setAddingIdx(slotIdx);
@@ -150,7 +152,7 @@ export function LobbyPage() {
   if (!connected && playerId) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
-        <p className="text-mahjong-muted">连接中... Connecting...</p>
+        <p className="text-mahjong-muted">{t('common.connecting')}</p>
       </div>
     );
   }
@@ -159,12 +161,12 @@ export function LobbyPage() {
     return (
       <div className="min-h-dvh flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-mahjong-muted mb-4">未加入此房间</p>
+          <p className="text-mahjong-muted mb-4">{t('lobby.notJoined')}</p>
           <button
             onClick={() => navigate('/')}
             className="px-6 py-2 rounded-lg bg-mahjong-accent text-white"
           >
-            返回首页 Back to Home
+            {t('common.backToHome')}
           </button>
         </div>
       </div>
@@ -176,7 +178,7 @@ export function LobbyPage() {
       {/* Room Code — hidden in solo mode */}
       {!soloMode && (
         <div className="text-center my-6">
-          <p className="text-mahjong-muted text-sm mb-1">房间号 Room Code</p>
+          <p className="text-mahjong-muted text-sm mb-1">{t('lobby.roomCode')}</p>
           <button
             onClick={handleCopyCode}
             className="text-5xl font-mono font-bold tracking-[0.3em] text-mahjong-gold
@@ -185,7 +187,7 @@ export function LobbyPage() {
             {roomCode}
           </button>
           <p className="text-mahjong-muted text-xs mt-1">
-            {copied ? '已复制! Copied!' : '点击复制 Tap to copy'}
+            {copied ? t('lobby.copied') : t('lobby.tapToCopy')}
           </p>
         </div>
       )}
@@ -193,15 +195,15 @@ export function LobbyPage() {
       {/* Solo mode header */}
       {soloMode && (
         <div className="text-center my-6">
-          <h2 className="text-xl font-bold text-mahjong-gold">单人记录模式</h2>
-          <p className="text-mahjong-muted text-sm">Solo Recording</p>
+          <h2 className="text-xl font-bold text-mahjong-gold">{t('lobby.soloMode')}</h2>
+          <p className="text-mahjong-muted text-sm">{t('lobby.soloRecording')}</p>
         </div>
       )}
 
       {/* Solo mode toggle — only when creator is alone */}
       {(canToggleSolo || soloMode) && (
         <div className="flex items-center justify-center gap-3 mb-4">
-          <span className="text-sm text-mahjong-muted">单人记录 Solo</span>
+          <span className="text-sm text-mahjong-muted">{t('lobby.solo')}</span>
           <button
             onClick={() => { setSoloMode(!soloMode); setSoloError(''); }}
             disabled={soloMode && totalPlayers > 1}
@@ -218,11 +220,11 @@ export function LobbyPage() {
       {/* Players */}
       <div className="mb-6">
         <h2 className="text-sm text-mahjong-muted mb-3">
-          玩家 Players ({totalPlayers}/4)
+          {t('lobby.playersCount', { n: totalPlayers })}
         </h2>
         {canSwap && (
           <p className="text-xs text-mahjong-gold mb-2">
-            点击两位玩家交换座位 Tap two players to swap seats
+            {t('lobby.swapHint')}
           </p>
         )}
         <div className="space-y-2">
@@ -243,7 +245,7 @@ export function LobbyPage() {
               >
                 <div className="flex items-center gap-3">
                   <span className="w-6 text-center text-sm font-bold text-mahjong-gold">
-                    {WIND_LABELS[WINDS[idx]]}
+                    {t(`mahjong.wind.${WINDS[idx]}`)}
                   </span>
                   <div>
                     <span className="font-medium">{player.name}</span>
@@ -254,12 +256,12 @@ export function LobbyPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {player.id === playerId && (
-                    <span className="text-xs text-mahjong-muted">你 You</span>
+                    <span className="text-xs text-mahjong-muted">{t('lobby.you')}</span>
                   )}
                   {!soloMode && (
                     player.ready ? (
                       <span className="text-xs font-bold text-mahjong-green px-2 py-0.5 rounded bg-mahjong-green/20">
-                        Ready
+                        {t('lobby.ready')}
                       </span>
                     ) : (
                       <span className="text-xs text-mahjong-muted px-2 py-0.5 rounded bg-mahjong-card">
@@ -285,7 +287,7 @@ export function LobbyPage() {
                 >
                   <div className="flex items-center gap-2">
                     <span className="w-6 text-center text-sm font-bold text-mahjong-gold shrink-0">
-                      {WIND_LABELS[WINDS[windIdx]]}
+                      {t(`mahjong.wind.${WINDS[windIdx]}`)}
                     </span>
                     <input
                       type="text"
@@ -297,7 +299,7 @@ export function LobbyPage() {
                       })}
                       onKeyDown={e => { if (e.key === 'Enter') handleAddPlayer(slotIdx); }}
                       maxLength={12}
-                      placeholder="输入名称..."
+                      placeholder={t('home.enterName')}
                       className="flex-1 min-w-0 px-2 py-1.5 rounded bg-mahjong-bg border border-mahjong-accent
                         text-white text-sm focus:outline-none focus:border-mahjong-highlight"
                     />
@@ -307,7 +309,7 @@ export function LobbyPage() {
                       className="px-3 py-1.5 rounded bg-mahjong-accent text-white text-sm font-medium
                         disabled:opacity-30 active:scale-95 transition-transform shrink-0"
                     >
-                      {addingIdx === slotIdx ? '...' : '添加'}
+                      {addingIdx === slotIdx ? '...' : t('lobby.add')}
                     </button>
                   </div>
                   <div className="flex items-center gap-2 pl-8">
@@ -320,7 +322,7 @@ export function LobbyPage() {
                         return next;
                       })}
                       maxLength={20}
-                      placeholder="手机号 (可选)..."
+                      placeholder={t('lobby.phoneOptional')}
                       className="flex-1 min-w-0 px-2 py-1 rounded bg-mahjong-bg border border-mahjong-accent/50
                         text-white text-xs focus:outline-none focus:border-mahjong-highlight"
                     />
@@ -336,7 +338,7 @@ export function LobbyPage() {
                 className="flex items-center justify-center px-4 py-3 rounded-lg
                   bg-mahjong-card border border-dashed border-mahjong-accent text-mahjong-muted"
               >
-                等待加入... Waiting...
+                {t('lobby.waitingSlot')}
               </div>
             ))
           )}
@@ -351,8 +353,8 @@ export function LobbyPage() {
       {!soloMode && totalPlayers === 4 && (
         <div className="text-center mb-4">
           <p className="text-sm text-mahjong-muted">
-            {readyCount}/4 准备就绪 Ready
-            {readyCount === 4 && ' - 对局即将开始!'}
+            {t('lobby.readyCount', { n: readyCount })}
+            {readyCount === 4 && ` - ${t('lobby.gameStarting')}`}
           </p>
         </div>
       )}
@@ -370,7 +372,7 @@ export function LobbyPage() {
 
       {/* Game Tags */}
       <div className="mt-3 px-4 py-2 rounded-xl bg-mahjong-card">
-        <p className="text-xs text-mahjong-muted mb-2">标签 Tags</p>
+        <p className="text-xs text-mahjong-muted mb-2">{t('lobby.tags')}</p>
         <div className="flex flex-wrap gap-2">
           {availableTags.map((tag: string) => (
             <button
@@ -390,7 +392,7 @@ export function LobbyPage() {
               value={newTagInput}
               onChange={e => setNewTagInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleCreateTag(); }}
-              placeholder="新标签..."
+              placeholder={t('lobby.newTag')}
               maxLength={20}
               className="w-24 px-2 py-1.5 rounded-lg bg-mahjong-bg border border-mahjong-accent
                 text-white text-sm focus:outline-none focus:border-mahjong-highlight"
@@ -418,11 +420,11 @@ export function LobbyPage() {
               className="w-full py-4 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 transition-all active:scale-[0.98] disabled:opacity-30"
             >
-              开始对局 Start Game
+              {t('lobby.startGame')}
             </button>
             {totalPlayers < 4 && (
               <p className="text-center text-xs text-mahjong-muted mt-2">
-                还需添加{emptySlots}位玩家 Add {emptySlots} more player{emptySlots > 1 ? 's' : ''}
+                {t('lobby.needPlayers', { count: emptySlots })}
               </p>
             )}
           </>
@@ -439,11 +441,11 @@ export function LobbyPage() {
                   : 'bg-mahjong-green text-mahjong-bg'}
                 disabled:opacity-30`}
             >
-              {isReady ? '取消准备 Cancel Ready' : '准备 Ready'}
+              {isReady ? t('lobby.cancelReady') : t('lobby.readyUp')}
             </button>
             {totalPlayers < 4 && (
               <p className="text-center text-xs text-mahjong-muted mt-2">
-                等待{emptySlots}位玩家加入 Waiting for {emptySlots} more player{emptySlots > 1 ? 's' : ''}
+                {t('lobby.waitingPlayers', { count: emptySlots })}
               </p>
             )}
           </>

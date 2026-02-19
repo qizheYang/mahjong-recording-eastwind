@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { listGames, getGame, listPlayerRecords, rebuildPlayerDB, getGameAnnotations, updateGameAnnotations, listTags, adminUpdateGameTags, adminDeleteTag, type GameListItem, type PlayerRecord, type AdminAnnotations } from '../lib/api';
 import { useAdminStore } from '../stores/admin-store';
+import { useLocale } from '../i18n';
 
 interface GameRecord {
   id: string;
@@ -45,6 +46,7 @@ type Tab = 'games' | 'players';
 export function HistoryPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { t } = useLocale();
   const initialTab = searchParams.get('tab') === 'players' ? 'players' : 'games';
   const [tab, setTab] = useState<Tab>(initialTab);
 
@@ -283,10 +285,10 @@ export function HistoryPage() {
   function formatHandResult(hand: GameRecord['hands'][0]): string {
     const r = hand.result;
     if (r.type === 'ryuukyoku') {
-      const tp = r.tenpaiPlayers?.join(', ') || 'none';
-      return `流局 Draw (tenpai: ${tp})`;
+      const tp = r.tenpaiPlayers?.join(', ') || t('common.none');
+      return `${t('history.drawResult')} (tenpai: ${tp})`;
     }
-    const method = r.method === 'tsumo' ? 'Tsumo' : 'Ron';
+    const method = r.method === 'tsumo' ? t('mahjong.tsumo') : t('mahjong.ron');
     const loserPart = r.loser ? ` ← ${r.loser}` : '';
     const pointsPart = r.pointsWon ? ` +${r.pointsWon.toLocaleString()}` : '';
     const honbaPart = r.honbaBonus ? ` (+${r.honbaBonus} honba)` : '';
@@ -296,7 +298,7 @@ export function HistoryPage() {
   if (loading) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
-        <p className="text-mahjong-muted">加载中... Loading...</p>
+        <p className="text-mahjong-muted">{t('common.loading')}</p>
       </div>
     );
   }
@@ -305,8 +307,7 @@ export function HistoryPage() {
     <div className="min-h-dvh flex flex-col p-4 max-w-md mx-auto">
       {/* Header */}
       <div className="text-center my-6">
-        <h1 className="text-3xl font-bold mb-1">对局记录</h1>
-        <p className="text-mahjong-muted text-sm">Game History</p>
+        <h1 className="text-3xl font-bold mb-1">{t('history.title')}</h1>
       </div>
 
       {/* Tabs */}
@@ -316,14 +317,14 @@ export function HistoryPage() {
           className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors
             ${tab === 'games' ? 'bg-mahjong-accent text-white' : 'bg-mahjong-card text-mahjong-muted'}`}
         >
-          对局 Games ({games.length})
+          {t('history.gamesTab')} ({games.length})
         </button>
         <button
           onClick={() => switchTab('players')}
           className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors
             ${tab === 'players' ? 'bg-mahjong-accent text-white' : 'bg-mahjong-card text-mahjong-muted'}`}
         >
-          玩家 Players ({allPlayers.length})
+          {t('history.playersTab')} ({allPlayers.length})
         </button>
       </div>
 
@@ -333,7 +334,7 @@ export function HistoryPage() {
           type="text"
           value={nameFilter}
           onChange={e => setNameFilter(e.target.value)}
-          placeholder={tab === 'games' ? '搜索玩家名称 (精确匹配)...' : '搜索玩家 Search player...'}
+          placeholder={tab === 'games' ? t('history.searchGames') : t('history.searchPlayers')}
           className="w-full px-3 py-2 rounded-lg bg-mahjong-card border border-mahjong-accent
             text-white text-sm focus:outline-none focus:border-mahjong-highlight"
         />
@@ -347,7 +348,7 @@ export function HistoryPage() {
           {/* Date filters */}
           <div className="flex gap-3 mb-4">
             <div className="flex-1">
-              <label className="block text-xs text-mahjong-muted mb-1">从 From</label>
+              <label className="block text-xs text-mahjong-muted mb-1">{t('history.from')}</label>
               <input
                 type="date"
                 value={dateFrom}
@@ -358,7 +359,7 @@ export function HistoryPage() {
               />
             </div>
             <div className="flex-1">
-              <label className="block text-xs text-mahjong-muted mb-1">到 To</label>
+              <label className="block text-xs text-mahjong-muted mb-1">{t('history.to')}</label>
               <input
                 type="date"
                 value={dateTo}
@@ -377,7 +378,7 @@ export function HistoryPage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
                 ${!tagFilter ? 'bg-mahjong-accent text-white' : 'bg-mahjong-card text-mahjong-muted'}`}
             >
-              全部 All
+              {t('common.all')}
             </button>
             {availableTags.map((tag: string) => (
               <span key={tag} className="inline-flex items-center gap-1">
@@ -392,7 +393,7 @@ export function HistoryPage() {
                   <button
                     onClick={() => handleDeleteTag(tag)}
                     className="text-mahjong-highlight/60 hover:text-mahjong-highlight text-xs leading-none"
-                    title={`删除标签 ${tag}`}
+                    title={`Delete ${tag}`}
                   >
                     x
                   </button>
@@ -404,7 +405,7 @@ export function HistoryPage() {
           {/* Matched players */}
           {matchedPlayers.length > 0 && (
             <div className="mb-4">
-              <p className="text-xs text-mahjong-muted mb-2">玩家 Players</p>
+              <p className="text-xs text-mahjong-muted mb-2">{t('lobby.players')}</p>
               <div className="flex flex-wrap gap-2">
                 {matchedPlayers.map(p => (
                   <button
@@ -414,7 +415,7 @@ export function HistoryPage() {
                       text-white text-sm active:scale-95 transition-transform"
                   >
                     <span className="font-medium">{p.name}</span>
-                    <span className="text-mahjong-muted text-xs">{p.totalGames}局</span>
+                    <span className="text-mahjong-muted text-xs">{p.totalGames}{t('history.games')}</span>
                   </button>
                 ))}
               </div>
@@ -423,14 +424,14 @@ export function HistoryPage() {
 
           {/* Results count */}
           <p className="text-xs text-mahjong-muted mb-3">
-            {filtered.length} 场对局 {filtered.length !== 1 ? 'games' : 'game'} found
+            {t('history.gamesCount', { count: filtered.length })}
           </p>
 
           {/* Game list */}
           <div className="space-y-3 flex-1 mb-6">
             {filtered.length === 0 && (
               <p className="text-center text-mahjong-muted py-8">
-                暂无记录 No records found
+                {t('history.noRecords')}
               </p>
             )}
             {filtered.map(g => {
@@ -449,7 +450,7 @@ export function HistoryPage() {
                       <div className="flex items-center gap-2">
                         {g.interrupted && (
                           <span className="text-xs bg-mahjong-highlight/20 text-mahjong-highlight px-1.5 py-0.5 rounded">
-                            中断
+                            {t('history.interrupted')}
                           </span>
                         )}
                         {(g.tags ?? []).length > 0 && (
@@ -505,7 +506,7 @@ export function HistoryPage() {
                           onChange={() => handleToggleOfficial(g.filename, g.isOfficialGame)}
                           className="w-4 h-4 accent-mahjong-gold"
                         />
-                        <span className="text-xs text-mahjong-muted">同步公式战</span>
+                        <span className="text-xs text-mahjong-muted">{t('history.officialGame')}</span>
                       </label>
                       {retagFile === g.filename ? (
                         <div className="space-y-1" onClick={e => e.stopPropagation()}>
@@ -527,18 +528,18 @@ export function HistoryPage() {
                           <div className="flex gap-2">
                             <button onClick={() => handleRetag(g.filename)} disabled={retagSaving}
                               className="px-3 py-1 rounded text-xs bg-mahjong-green text-mahjong-bg font-bold disabled:opacity-50">
-                              {retagSaving ? '...' : '保存 Save'}
+                              {retagSaving ? '...' : t('common.save')}
                             </button>
                             <button onClick={() => setRetagFile(null)}
                               className="px-3 py-1 rounded text-xs bg-mahjong-card text-mahjong-muted">
-                              取消 Cancel
+                              {t('common.cancel')}
                             </button>
                           </div>
                         </div>
                       ) : (
                         <button onClick={(e) => { e.stopPropagation(); setRetagFile(g.filename); setRetagTags([...(g.tags ?? [])]); }}
                           className="text-xs text-mahjong-muted underline">
-                          修改标签 Retag
+                          {t('history.retag')}
                         </button>
                       )}
                     </div>
@@ -548,12 +549,12 @@ export function HistoryPage() {
                   {isExpanded && (
                     <div className="border-t border-mahjong-accent/30 px-4 py-3">
                       {detailLoading && (
-                        <p className="text-mahjong-muted text-sm text-center py-2">加载中...</p>
+                        <p className="text-mahjong-muted text-sm text-center py-2">{t('common.loading')}</p>
                       )}
                       {expandedRecord && (
                         <>
                           {/* Final scores */}
-                          <h3 className="text-xs text-mahjong-muted mb-2">最终成绩 Final Scores</h3>
+                          <h3 className="text-xs text-mahjong-muted mb-2">{t('history.finalScores')}</h3>
                           <div className="space-y-1.5 mb-4">
                             {expandedRecord.finalScores.map(s => (
                               <div key={s.name} className="flex items-center justify-between text-sm">
@@ -584,7 +585,7 @@ export function HistoryPage() {
 
                           {/* Hand history */}
                           <h3 className="text-xs text-mahjong-muted mb-2">
-                            对局详情 Hands ({expandedRecord.totalHands})
+                            {t('history.handsCount', { count: expandedRecord.totalHands })}
                           </h3>
                           <div className="space-y-1.5">
                             {expandedRecord.hands.map(hand => (
@@ -594,7 +595,7 @@ export function HistoryPage() {
                                     {hand.round}
                                   </span>
                                   <span className="text-mahjong-muted">
-                                    {hand.honba > 0 && `${hand.honba}本場 `}
+                                    {hand.honba > 0 && `${hand.honba}${t('mahjong.honba')} `}
                                     {formatHandResult(hand)}
                                   </span>
                                 </div>
@@ -605,10 +606,10 @@ export function HistoryPage() {
                           {/* Existing annotation display (for non-admins or read-only) */}
                           {!adminToken && expandedRecord.adminAnnotations && (
                             <div className="mt-4 pt-3 border-t border-mahjong-accent/30">
-                              <p className="text-xs text-mahjong-muted mb-1">管理员标注 Annotations</p>
+                              <p className="text-xs text-mahjong-muted mb-1">{t('history.annotations')}</p>
                               {expandedRecord.adminAnnotations.isOfficialGame && (
                                 <span className="text-xs bg-mahjong-gold/20 text-mahjong-gold px-1.5 py-0.5 rounded">
-                                  同步公式战
+                                  {t('history.officialGame')}
                                 </span>
                               )}
                               {expandedRecord.adminAnnotations.notes && (
@@ -620,11 +621,11 @@ export function HistoryPage() {
                           {/* Admin notes panel */}
                           {adminToken && (
                             <div className="mt-4 pt-3 border-t border-mahjong-accent/30 space-y-2">
-                              <p className="text-xs text-mahjong-muted font-medium">管理员备注 Admin Notes</p>
+                              <p className="text-xs text-mahjong-muted font-medium">{t('history.adminNotes')}</p>
                               <textarea
                                 value={editNotes}
                                 onChange={e => { setEditNotes(e.target.value); setAnnotationSaved(false); }}
-                                placeholder="备注 Notes..."
+                                placeholder={t('results.notes')}
                                 rows={2}
                                 className="w-full px-2 py-1.5 rounded-lg bg-mahjong-bg border border-mahjong-accent
                                   text-white text-xs focus:outline-none focus:border-mahjong-highlight resize-none"
@@ -637,7 +638,7 @@ export function HistoryPage() {
                                     ? 'bg-mahjong-green text-mahjong-bg'
                                     : 'bg-mahjong-accent text-white'} disabled:opacity-50`}
                               >
-                                {annotationSaving ? '保存中...' : annotationSaved ? '已保存 Saved' : '保存备注 Save'}
+                                {annotationSaving ? t('common.saving') : annotationSaved ? t('common.saved') : t('history.saveNotes')}
                               </button>
                             </div>
                           )}
@@ -662,7 +663,7 @@ export function HistoryPage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
                 ${!tagFilter ? 'bg-mahjong-accent text-white' : 'bg-mahjong-card text-mahjong-muted'}`}
             >
-              全部 All
+              {t('common.all')}
             </button>
             {availableTags.map((tag: string) => (
               <button
@@ -681,13 +682,13 @@ export function HistoryPage() {
               className="ml-auto text-xs text-mahjong-muted px-2 py-1.5 rounded bg-mahjong-card
                 active:scale-95 transition-transform disabled:opacity-50"
             >
-              {rebuilding ? '重建中...' : '重建 Rebuild'}
+              {rebuilding ? t('history.rebuilding') : t('history.rebuild')}
             </button>
           </div>
 
           {filteredPlayers.length === 0 && (
             <p className="text-center text-mahjong-muted py-8">
-              暂无玩家数据 No player data
+              {t('history.noPlayerData')}
             </p>
           )}
 
@@ -702,7 +703,7 @@ export function HistoryPage() {
                 <div>
                   <span className="font-medium">{p.name}</span>
                   {p.phone && <span className="text-xs text-mahjong-muted ml-2">{p.phone}</span>}
-                  <p className="text-xs text-mahjong-muted mt-0.5">{p.totalGames} 局 games</p>
+                  <p className="text-xs text-mahjong-muted mt-0.5">{p.totalGames} {t('history.games')}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-mono text-mahjong-gold">{p.avgPlacement.toFixed(2)}</p>
@@ -722,7 +723,7 @@ export function HistoryPage() {
           onClick={() => navigate('/')}
           className="w-full py-2 text-mahjong-muted text-sm"
         >
-          返回首页 Back to Home
+          {t('common.backToHome')}
         </button>
       </div>
     </div>

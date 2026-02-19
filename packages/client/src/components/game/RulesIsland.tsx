@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { defaultScoreFormula, evaluateScoreFormula } from '@mahjong/shared';
+import { useLocale } from '../../i18n';
 
 interface RulesIslandProps {
   startingPoints: number;
@@ -32,6 +33,7 @@ export function RulesIsland({
   startingPoints, uma, tobiEnabled, okaEnabled, scoreFormula,
   editable, onChange,
 }: RulesIslandProps) {
+  const { t } = useLocale();
   const [expanded, setExpanded] = useState(false);
   const [customPoints, setCustomPoints] = useState('');
   const [editingFormula, setEditingFormula] = useState(false);
@@ -89,7 +91,7 @@ export function RulesIsland({
         <span className="text-mahjong-gold font-mono">{startingPoints.toLocaleString()}</span>
         <span className="text-mahjong-muted">Uma {umaStr}</span>
         <span className={tobiEnabled ? 'text-mahjong-highlight' : 'text-mahjong-muted'}>
-          {tobiEnabled ? '飛あり' : '飛なし'}
+          {tobiEnabled ? t('mahjong.tobi.enabled') : t('mahjong.tobi.disabled')}
         </span>
         {editable && (
           <span className="text-mahjong-muted text-xs ml-1">{expanded ? '▲' : '▼'}</span>
@@ -99,11 +101,11 @@ export function RulesIsland({
       {/* Expanded panel */}
       {expanded && editable && (
         <div className="mt-2 p-4 rounded-xl bg-mahjong-card space-y-4">
-          <h3 className="text-sm font-bold text-mahjong-gold text-center">规则设置 Game Rules</h3>
+          <h3 className="text-sm font-bold text-mahjong-gold text-center">{t('rules.title')}</h3>
 
           {/* Starting Points */}
           <div>
-            <label className="block text-xs text-mahjong-muted mb-2">起始点数 Starting Points</label>
+            <label className="block text-xs text-mahjong-muted mb-2">{t('rules.startingPoints')}</label>
             <div className="flex gap-2 flex-wrap">
               {STARTING_PRESETS.map(pts => (
                 <button
@@ -122,7 +124,7 @@ export function RulesIsland({
                   type="number"
                   value={customPoints}
                   onChange={e => setCustomPoints(e.target.value)}
-                  placeholder="自定义..."
+                  placeholder={t('rules.custom')}
                   className="w-24 px-2 py-1.5 rounded-lg bg-mahjong-bg border border-mahjong-accent
                     text-white text-sm font-mono focus:outline-none focus:border-mahjong-highlight"
                 />
@@ -135,7 +137,7 @@ export function RulesIsland({
                   className="px-2 py-1.5 rounded-lg bg-mahjong-accent text-white text-xs
                     disabled:opacity-30"
                 >
-                  OK
+                  {t('rules.ok')}
                 </button>
               </div>
             </div>
@@ -143,7 +145,7 @@ export function RulesIsland({
 
           {/* Uma */}
           <div>
-            <label className="block text-xs text-mahjong-muted mb-2">Uma 顺位点</label>
+            <label className="block text-xs text-mahjong-muted mb-2">{t('rules.uma')}</label>
             <div className="flex gap-2 flex-wrap">
               {UMA_PRESETS.map(preset => (
                 <button
@@ -163,8 +165,8 @@ export function RulesIsland({
           {/* Tobi */}
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-sm text-white">飛び Tobi</span>
-              <p className="text-xs text-mahjong-muted">负分结束 Negative = end</p>
+              <span className="text-sm text-white">{t('rules.tobi')}</span>
+              <p className="text-xs text-mahjong-muted">{t('rules.tobiDesc')}</p>
             </div>
             <button
               onClick={() => onChange?.({ tobiEnabled: !tobiEnabled })}
@@ -180,9 +182,9 @@ export function RulesIsland({
           {/* Oka */}
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-sm text-white">Oka</span>
+              <span className="text-sm text-white">{t('rules.oka')}</span>
               <p className="text-xs text-mahjong-muted">
-                {okaEnabled ? `+${okaTotal} → 1位` : '无 Disabled'}
+                {okaEnabled ? t('rules.okaValue', { total: okaTotal }) : t('rules.okaDisabled')}
               </p>
             </div>
             <button
@@ -199,14 +201,14 @@ export function RulesIsland({
           {/* Score Formula */}
           <div className="border-t border-mahjong-accent/30 pt-3">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs text-mahjong-gold">计分公式 Score Formula</h4>
+              <h4 className="text-xs text-mahjong-gold">{t('rules.scoreFormula')}</h4>
               {!editingFormula ? (
                 <button
                   onClick={() => { setFormulaDraft(scoreFormula); setEditingFormula(true); }}
                   className="text-xs text-mahjong-muted px-2 py-0.5 rounded bg-mahjong-bg
                     border border-mahjong-accent"
                 >
-                  编辑 Edit
+                  {t('rules.edit')}
                 </button>
               ) : (
                 <button
@@ -214,13 +216,13 @@ export function RulesIsland({
                   className="text-xs text-mahjong-muted px-2 py-0.5 rounded bg-mahjong-bg
                     border border-mahjong-accent"
                 >
-                  重置 Reset
+                  {t('rules.reset')}
                 </button>
               )}
             </div>
 
             <div className="text-xs text-mahjong-muted mb-2">
-              <p>X = 终了点数 Raw points &nbsp; Y = Uma</p>
+              <p>{t('rules.formulaVars')}</p>
             </div>
 
             {editingFormula ? (
@@ -234,7 +236,7 @@ export function RulesIsland({
                     ${formulaValid ? 'border-mahjong-accent focus:border-mahjong-highlight' : 'border-mahjong-highlight'}`}
                 />
                 {!formulaValid && (
-                  <p className="text-xs text-mahjong-highlight">公式无效 Invalid formula</p>
+                  <p className="text-xs text-mahjong-highlight">{t('rules.invalidFormula')}</p>
                 )}
                 <div className="flex gap-2">
                   <button
@@ -243,14 +245,14 @@ export function RulesIsland({
                     className="flex-1 py-1.5 rounded-lg bg-mahjong-green text-mahjong-bg text-xs font-bold
                       disabled:opacity-30"
                   >
-                    确认 Confirm
+                    {t('common.confirm')}
                   </button>
                   <button
                     onClick={() => setEditingFormula(false)}
                     className="flex-1 py-1.5 rounded-lg bg-mahjong-bg text-mahjong-muted text-xs
                       border border-mahjong-accent"
                   >
-                    取消 Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
@@ -263,12 +265,12 @@ export function RulesIsland({
 
           {/* Final score explanation */}
           <div className="border-t border-mahjong-accent/30 pt-3">
-            <h4 className="text-xs text-mahjong-gold mb-1">计分说明 Scoring</h4>
+            <h4 className="text-xs text-mahjong-gold mb-1">{t('rules.scoring')}</h4>
             <div className="text-xs text-mahjong-muted space-y-0.5">
-              <p>起始点 Start = {startingPoints.toLocaleString()}</p>
-              <p>返还点 Return = {returnPoints.toLocaleString()}</p>
+              <p>{t('rules.start')} = {startingPoints.toLocaleString()}</p>
+              <p>{t('rules.return')} = {returnPoints.toLocaleString()}</p>
               <p>Uma = {umaStr}</p>
-              {okaEnabled && <p>Oka = +{okaTotal} → 1位</p>}
+              {okaEnabled && <p>Oka = {t('rules.okaValue', { total: okaTotal })}</p>}
               <p className="text-white font-mono mt-1">
                 Final = {scoreFormula}{okaEnabled ? ' + Oka(1st)' : ''}
               </p>

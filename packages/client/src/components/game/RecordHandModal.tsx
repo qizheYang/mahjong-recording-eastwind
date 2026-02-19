@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import type { GamePlayer, HandResultInput } from '@mahjong/shared';
-import { calculatePoints, WINDS, WIND_LABELS } from '@mahjong/shared';
+import { calculatePoints, WINDS } from '@mahjong/shared';
 import { formatPoints } from '../../lib/format';
+import { useLocale } from '../../i18n';
 
 interface Props {
   players: GamePlayer[];
@@ -15,6 +16,7 @@ interface Props {
 type Step = 'outcome' | 'winner' | 'method' | 'loser' | 'hanfu' | 'tenpai' | 'nagashiSelect' | 'oyaTenpai' | 'riichi' | 'confirm';
 
 export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, onSubmit, onClose }: Props) {
+  const { t } = useLocale();
   const [step, setStep] = useState<Step>('outcome');
   const [resultType, setResultType] = useState<'agari' | 'ryuukyoku'>('agari');
   const [winnerIndex, setWinnerIndex] = useState<number | null>(null);
@@ -130,34 +132,34 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         <div className="flex items-center justify-between mb-4">
           {step !== 'outcome' ? (
             <button onClick={goBack} className="text-mahjong-muted text-sm px-2 py-1">
-              ← 返回
+              {t('record.back')}
             </button>
           ) : (
             <div />
           )}
-          <h2 className="text-lg font-bold">记录本局 Record Hand</h2>
+          <h2 className="text-lg font-bold">{t('record.title')}</h2>
           <button onClick={onClose} className="text-mahjong-muted text-sm px-2 py-1">
-            取消
+            {t('common.cancel')}
           </button>
         </div>
 
         {/* Step: Choose outcome */}
         {step === 'outcome' && (
           <div className="space-y-3">
-            <p className="text-sm text-mahjong-muted text-center mb-4">本局结果 Outcome</p>
+            <p className="text-sm text-mahjong-muted text-center mb-4">{t('record.outcome')}</p>
             <button
               onClick={() => handleOutcome('agari')}
               className="w-full py-4 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              和牌 Win (Agari)
+              {t('record.winAgari')}
             </button>
             <button
               onClick={() => handleOutcome('ryuukyoku')}
               className="w-full py-4 rounded-xl bg-mahjong-accent text-white font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              流局 Draw (Ryuukyoku)
+              {t('record.drawRyuukyoku')}
             </button>
           </div>
         )}
@@ -165,7 +167,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         {/* Step: Select winner */}
         {step === 'winner' && (
           <div className="space-y-3">
-            <p className="text-sm text-mahjong-muted text-center mb-4">选择和牌者 Select Winner</p>
+            <p className="text-sm text-mahjong-muted text-center mb-4">{t('record.selectWinner')}</p>
             {players.map((p, idx) => (
               <button
                 key={p.id}
@@ -176,7 +178,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               >
                 <span>
                   <span className="text-mahjong-gold font-bold mr-2">
-                    {WIND_LABELS[seatWind(idx)]}
+                    {t(`mahjong.wind.${seatWind(idx)}`)}
                   </span>
                   {p.name}
                 </span>
@@ -190,22 +192,22 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         {step === 'method' && (
           <div className="space-y-3">
             <p className="text-sm text-mahjong-muted text-center mb-2">
-              和牌者: <span className="text-white font-medium">{players[winnerIndex!]?.name}</span>
+              {t('record.winner')}: <span className="text-white font-medium">{players[winnerIndex!]?.name}</span>
             </p>
-            <p className="text-sm text-mahjong-muted text-center mb-4">和牌方式 Win Method</p>
+            <p className="text-sm text-mahjong-muted text-center mb-4">{t('record.winMethod')}</p>
             <button
               onClick={() => handleMethod(true)}
               className="w-full py-4 rounded-xl bg-mahjong-gold text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              自摸 Tsumo
+              {t('mahjong.tsumo')}
             </button>
             <button
               onClick={() => handleMethod(false)}
               className="w-full py-4 rounded-xl bg-mahjong-highlight text-white font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              荣和 Ron
+              {t('mahjong.ron')}
             </button>
           </div>
         )}
@@ -213,7 +215,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         {/* Step: Select loser (for Ron) */}
         {step === 'loser' && (
           <div className="space-y-3">
-            <p className="text-sm text-mahjong-muted text-center mb-4">选择放铳者 Select Discarder</p>
+            <p className="text-sm text-mahjong-muted text-center mb-4">{t('record.selectDiscarder')}</p>
             {players.map((p, idx) => {
               if (idx === winnerIndex) return null;
               return (
@@ -225,7 +227,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                 >
                   <span>
                     <span className="text-mahjong-gold font-bold mr-2">
-                      {WIND_LABELS[seatWind(idx)]}
+                      {t(`mahjong.wind.${seatWind(idx)}`)}
                     </span>
                     {p.name}
                   </span>
@@ -241,13 +243,13 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
           <div className="space-y-4">
             <p className="text-sm text-mahjong-muted text-center">
               {players[winnerIndex!]?.name}
-              {' '}{isTsumo ? '自摸 Tsumo' : '荣和 Ron'}
+              {' '}{isTsumo ? t('mahjong.tsumo') : t('mahjong.ron')}
               {!isTsumo && loserIndex !== null && ` ← ${players[loserIndex]?.name}`}
             </p>
 
             {/* Han selector */}
             <div>
-              <label className="block text-sm text-mahjong-muted mb-2">番数 Han</label>
+              <label className="block text-sm text-mahjong-muted mb-2">{t('record.hanLabel')}</label>
               <div className="flex flex-wrap gap-2">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(h => (
                   <button
@@ -268,7 +270,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             {/* Fu selector (only for < 5 han) */}
             {han < 5 && (
               <div>
-                <label className="block text-sm text-mahjong-muted mb-2">符数 Fu</label>
+                <label className="block text-sm text-mahjong-muted mb-2">{t('record.fuLabel')}</label>
                 <div className="flex flex-wrap gap-2">
                   {FU_OPTIONS.map(f => (
                     <button
@@ -290,37 +292,37 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             {/* Points preview */}
             {pointsPreview && (
               <div className="bg-mahjong-card rounded-xl p-4">
-                <p className="text-sm text-mahjong-muted mb-1">得点 Points</p>
-                {pointsPreview.limitNameCn && (
+                <p className="text-sm text-mahjong-muted mb-1">{t('record.pointsLabel')}</p>
+                {pointsPreview.limitName && (
                   <p className="text-mahjong-gold font-bold text-lg mb-1">
-                    {pointsPreview.limitNameCn} ({pointsPreview.limitName})
+                    {t(`mahjong.limit.${pointsPreview.limitName}`)}
                   </p>
                 )}
                 <p className="text-xl font-bold">
-                  {formatPoints(pointsPreview.total)}点
+                  {formatPoints(pointsPreview.total)}{t('mahjong.points')}
                 </p>
                 {isTsumo ? (
                   <p className="text-sm text-mahjong-muted mt-1">
                     {winnerIndex === currentDealer
-                      ? `各 ${formatPoints(pointsPreview.tsumoNonDealerPayment)} all`
-                      : `${formatPoints(pointsPreview.tsumoNonDealerPayment)}/${formatPoints(pointsPreview.tsumoDealerPayment)}`
+                      ? t('record.eachAll', { points: formatPoints(pointsPreview.tsumoNonDealerPayment) })
+                      : t('record.tsumoSplit', { nonDealer: formatPoints(pointsPreview.tsumoNonDealerPayment), dealer: formatPoints(pointsPreview.tsumoDealerPayment) })
                     }
                   </p>
                 ) : (
                   <p className="text-sm text-mahjong-muted mt-1">
-                    {formatPoints(pointsPreview.ronPayment)}点 from discarder
+                    {t('record.fromDiscarder', { points: formatPoints(pointsPreview.ronPayment) })}
                   </p>
                 )}
                 {(honbaCount > 0 || riichiSticks > 0) && (
                   <div className="text-xs text-mahjong-muted mt-2 space-y-0.5">
                     {honbaCount > 0 && (
-                      <p>+ {honbaCount * (isTsumo ? 300 : 300)}点 honba ({honbaCount}本场)</p>
+                      <p>{t('record.honbaBonus', { points: honbaCount * (isTsumo ? 300 : 300), count: honbaCount })}</p>
                     )}
                     {riichiSticks > 0 && (
-                      <p>+ {riichiSticks * 1000}点 riichi ({riichiSticks}供托)</p>
+                      <p>{t('record.riichiBonus', { points: riichiSticks * 1000, count: riichiSticks })}</p>
                     )}
                     <p className="text-mahjong-green font-medium">
-                      合计 Total: {formatPoints(totalWithBonuses)}点
+                      {t('record.total', { points: formatPoints(totalWithBonuses) })}
                     </p>
                   </div>
                 )}
@@ -332,7 +334,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              下一步 Next
+              {t('common.next')}
             </button>
           </div>
         )}
@@ -341,7 +343,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         {step === 'tenpai' && (
           <div className="space-y-4">
             <p className="text-sm text-mahjong-muted text-center mb-4">
-              选择聴牌玩家 Select Tenpai Players
+              {t('record.selectTenpai')}
             </p>
             {players.map((p, idx) => (
               <button
@@ -357,12 +359,12 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               >
                 <span>
                   <span className={`font-bold mr-2 ${tenpaiStatus[idx] ? 'text-mahjong-bg' : 'text-mahjong-gold'}`}>
-                    {WIND_LABELS[seatWind(idx)]}
+                    {t(`mahjong.wind.${seatWind(idx)}`)}
                   </span>
                   {p.name}
                 </span>
                 <span className={`text-sm font-medium ${tenpaiStatus[idx] ? '' : 'text-mahjong-muted'}`}>
-                  {tenpaiStatus[idx] ? '聴牌 Tenpai' : '不聴 Noten'}
+                  {tenpaiStatus[idx] ? t('mahjong.tenpai') : t('mahjong.noten')}
                 </span>
               </button>
             ))}
@@ -372,12 +374,12 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               {(() => {
                 const tCount = tenpaiStatus.filter(Boolean).length;
                 const nCount = 4 - tCount;
-                if (tCount === 0 || tCount === 4) return <p className="text-mahjong-muted">得点移動なし No point changes</p>;
+                if (tCount === 0 || tCount === 4) return <p className="text-mahjong-muted">{t('record.noPointChanges')}</p>;
                 const tReceive = 3000 / tCount;
                 const nPay = 3000 / nCount;
                 return (
                   <p className="text-mahjong-muted">
-                    聴牌 +{formatPoints(tReceive)} each / 不聴 -{formatPoints(nPay)} each
+                    {t('record.tenpaiReceive', { points: formatPoints(tReceive), npoints: formatPoints(nPay) })}
                   </p>
                 );
               })()}
@@ -388,7 +390,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              下一步 Next
+              {t('common.next')}
             </button>
 
             <button
@@ -396,7 +398,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-gold font-bold
                 active:scale-[0.98] transition-transform border border-mahjong-gold/30"
             >
-              流局满贯 Nagashi Mangan
+              {t('mahjong.nagashiMangan')}
             </button>
           </div>
         )}
@@ -405,7 +407,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         {step === 'nagashiSelect' && (
           <div className="space-y-3">
             <p className="text-sm text-mahjong-muted text-center mb-4">
-              选择流局满贯玩家 Select Nagashi Mangan Players
+              {t('record.selectNagashi')}
             </p>
             {players.map((p, idx) => {
               const isDealer = idx === currentDealer;
@@ -424,12 +426,12 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                 >
                   <span>
                     <span className={`font-bold mr-2 ${nagashiManganPlayers[idx] ? 'text-mahjong-bg' : 'text-mahjong-gold'}`}>
-                      {WIND_LABELS[seatWind(idx)]}
+                      {t(`mahjong.wind.${seatWind(idx)}`)}
                     </span>
                     {p.name}
                   </span>
                   <span className={`text-sm ${nagashiManganPlayers[idx] ? '' : 'text-mahjong-muted'}`}>
-                    {nagashiManganPlayers[idx] ? `流局满贯 +${formatPoints(total)}点` : formatPoints(p.points)}
+                    {nagashiManganPlayers[idx] ? t('record.nagashiPoints', { points: formatPoints(total) }) : formatPoints(p.points)}
                   </span>
                 </button>
               );
@@ -444,7 +446,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                   ? 'bg-mahjong-green text-mahjong-bg'
                   : 'bg-mahjong-card text-mahjong-muted'}`}
             >
-              下一步 Next
+              {t('common.next')}
             </button>
           </div>
         )}
@@ -453,25 +455,25 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         {step === 'oyaTenpai' && (
           <div className="space-y-4">
             <p className="text-sm text-mahjong-muted text-center mb-2">
-              亲家聴牌？ Is Dealer Tenpai?
+              {t('record.dealerTenpai')}
             </p>
 
             {/* Nagashi context */}
             <div className="bg-mahjong-card rounded-xl p-3 text-sm">
-              <p className="text-mahjong-gold font-medium mb-1">流局满贯 Nagashi Mangan:</p>
+              <p className="text-mahjong-gold font-medium mb-1">{t('record.nagashiContext')}</p>
               {nagashiManganPlayers.map((n, i) => n ? (
                 <p key={i} className="text-mahjong-gold">
-                  {WIND_LABELS[seatWind(i)]} {players[i]?.name} +{formatPoints(i === currentDealer ? 12000 : 8000)}点
+                  {t(`mahjong.wind.${seatWind(i)}`)} {players[i]?.name} +{formatPoints(i === currentDealer ? 12000 : 8000)}{t('mahjong.points')}
                 </p>
               ) : null)}
             </div>
 
             <p className="text-center text-white font-medium">
-              <span className="text-mahjong-gold">{WIND_LABELS[seatWind(currentDealer)]}</span>
+              <span className="text-mahjong-gold">{t(`mahjong.wind.${seatWind(currentDealer)}`)}</span>
               {' '}{players[currentDealer]?.name}
             </p>
             <p className="text-xs text-mahjong-muted text-center">
-              親テンパイで連荘 Dealer tenpai → renchan
+              {t('record.dealerTenpaiHint')}
             </p>
 
             <button
@@ -484,7 +486,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               className="w-full py-4 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              聴牌 Tenpai (連荘 Renchan)
+              {t('record.tenpaiRenchan')}
             </button>
             <button
               onClick={() => {
@@ -494,7 +496,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               className="w-full py-4 rounded-xl bg-mahjong-card text-white font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              不聴 Noten (流れ Rotate)
+              {t('record.notenRotate')}
             </button>
           </div>
         )}
@@ -503,7 +505,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         {step === 'riichi' && (
           <div className="space-y-4">
             <p className="text-sm text-mahjong-muted text-center mb-4">
-              选择立直玩家 Select Riichi Players
+              {t('record.selectRiichi')}
             </p>
             {players.map((p, idx) => (
               <button
@@ -519,12 +521,12 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               >
                 <span>
                   <span className={`font-bold mr-2 ${riichiPlayers[idx] ? 'text-mahjong-bg' : 'text-mahjong-gold'}`}>
-                    {WIND_LABELS[seatWind(idx)]}
+                    {t(`mahjong.wind.${seatWind(idx)}`)}
                   </span>
                   {p.name}
                 </span>
                 <span className={`text-sm font-medium ${riichiPlayers[idx] ? '' : 'text-mahjong-muted'}`}>
-                  {riichiPlayers[idx] ? '立直 Riichi' : '—'}
+                  {riichiPlayers[idx] ? t('mahjong.riichi') : '—'}
                 </span>
               </button>
             ))}
@@ -532,7 +534,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             {riichiPlayers.some(Boolean) && (
               <div className="bg-mahjong-card rounded-xl p-3 text-sm">
                 <p className="text-mahjong-muted">
-                  立直供托: {riichiPlayers.filter(Boolean).length} x 1,000点
+                  {t('record.riichiDeposit', { count: riichiPlayers.filter(Boolean).length })}
                 </p>
               </div>
             )}
@@ -542,7 +544,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              {riichiPlayers.some(Boolean) ? '确认 Confirm' : '无立直 No Riichi'}
+              {riichiPlayers.some(Boolean) ? t('common.confirm') : t('record.noRiichi')}
             </button>
           </div>
         )}
@@ -550,7 +552,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         {/* Step: Final confirmation */}
         {step === 'confirm' && (
           <div className="space-y-4">
-            <p className="text-sm text-mahjong-muted text-center mb-2">确认记录 Confirm Record</p>
+            <p className="text-sm text-mahjong-muted text-center mb-2">{t('record.confirmRecord')}</p>
 
             <div className="bg-mahjong-card rounded-xl p-4 space-y-2">
               {resultType === 'agari' ? (
@@ -558,41 +560,40 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                   <p className="font-medium">
                     <span className="text-mahjong-green">{players[winnerIndex!]?.name}</span>
                     {' '}
-                    <span className="text-mahjong-gold">{isTsumo ? '自摸 Tsumo' : '荣和 Ron'}</span>
+                    <span className="text-mahjong-gold">{isTsumo ? t('mahjong.tsumo') : t('mahjong.ron')}</span>
                   </p>
                   {!isTsumo && loserIndex !== null && (
                     <p className="text-sm text-mahjong-muted">
-                      放铳: {players[loserIndex]?.name}
+                      {t('record.discarder')}: {players[loserIndex]?.name}
                     </p>
                   )}
                   <p className="text-sm">{han}han {han < 5 ? `${fu}fu` : ''}</p>
-                  {pointsPreview?.limitNameCn && (
-                    <p className="text-mahjong-gold font-bold">{pointsPreview.limitNameCn}</p>
+                  {pointsPreview?.limitName && (
+                    <p className="text-mahjong-gold font-bold">{t(`mahjong.limit.${pointsPreview.limitName}`)}</p>
                   )}
-                  <p className="text-lg font-bold">{formatPoints(totalWithBonuses)}点</p>
+                  <p className="text-lg font-bold">{formatPoints(totalWithBonuses)}{t('mahjong.points')}</p>
                 </>
               ) : (
                 <>
                   <p className="font-medium">
-                    {nagashiManganPlayers.some(Boolean) ? '流局满贯 Nagashi Mangan' : '流局 Draw'}
+                    {nagashiManganPlayers.some(Boolean) ? t('mahjong.nagashiMangan') : t('mahjong.draw')}
                   </p>
                   {nagashiManganPlayers.some(Boolean) && (
                     <div className="text-sm text-mahjong-gold font-bold">
                       {nagashiManganPlayers.map((n, i) => n ? (
-                        <p key={i}>{players[i]?.name} +{formatPoints(i === currentDealer ? 12000 : 8000)}点</p>
+                        <p key={i}>{players[i]?.name} +{formatPoints(i === currentDealer ? 12000 : 8000)}{t('mahjong.points')}</p>
                       ) : null)}
                     </div>
                   )}
                   <p className="text-sm text-mahjong-muted">
-                    聴牌: {tenpaiStatus.map((t, i) => t ? players[i]?.name : null).filter(Boolean).join(', ') || '无 None'}
+                    {t('mahjong.tenpai')}: {tenpaiStatus.map((tp, i) => tp ? players[i]?.name : null).filter(Boolean).join(', ') || t('common.none')}
                   </p>
                 </>
               )}
 
               {riichiPlayers.some(Boolean) && (
                 <p className="text-sm text-mahjong-gold">
-                  立直: {riichiPlayers.map((r, i) => r ? players[i]?.name : null).filter(Boolean).join(', ')}
-                  {' '}(-{riichiPlayers.filter(Boolean).length * 1000}点)
+                  {t('record.riichiPoints', { names: riichiPlayers.map((r, i) => r ? players[i]?.name : null).filter(Boolean).join(', '), points: riichiPlayers.filter(Boolean).length * 1000 })}
                 </p>
               )}
             </div>
@@ -602,7 +603,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               className="w-full py-4 rounded-xl bg-mahjong-highlight text-white font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
-              提交 Submit
+              {t('common.submit')}
             </button>
           </div>
         )}

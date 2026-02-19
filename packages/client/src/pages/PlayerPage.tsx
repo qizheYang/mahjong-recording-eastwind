@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPlayerRecord, listTags, type PlayerRecord, type PlayerGameEntry } from '../lib/api';
+import { useLocale } from '../i18n';
 
 type RangeOption = 10 | 20 | 0; // 0 = all
 
@@ -107,6 +108,7 @@ const PLACEMENT_COLORS = ['text-mahjong-gold', 'text-white', 'text-mahjong-muted
 export function PlayerPage() {
   const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
+  const { t } = useLocale();
   const [player, setPlayer] = useState<PlayerRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -130,7 +132,7 @@ export function PlayerPage() {
   if (loading) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
-        <p className="text-mahjong-muted">加载中... Loading...</p>
+        <p className="text-mahjong-muted">{t('common.loading')}</p>
       </div>
     );
   }
@@ -138,9 +140,9 @@ export function PlayerPage() {
   if (error || !player) {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center p-4">
-        <p className="text-mahjong-highlight mb-4">{error || '玩家不存在 Player not found'}</p>
+        <p className="text-mahjong-highlight mb-4">{error || t('player.notFound')}</p>
         <button onClick={() => navigate('/history')} className="text-mahjong-muted text-sm">
-          返回 Back
+          {t('player.backToHistory')}
         </button>
       </div>
     );
@@ -172,7 +174,7 @@ export function PlayerPage() {
           <p className="text-mahjong-muted text-sm mt-1">{player.phone}</p>
         )}
         <p className="text-mahjong-muted text-xs mt-1">
-          {player.totalGames} 场对局 games played
+          {t('player.gamesPlayed', { count: player.totalGames })}
         </p>
       </div>
 
@@ -183,7 +185,7 @@ export function PlayerPage() {
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
             ${!tagFilter ? 'bg-mahjong-accent text-white' : 'bg-mahjong-card text-mahjong-muted'}`}
         >
-          全部 All
+          {t('common.all')}
         </button>
         {availableTags.map((tag: string) => (
           <button
@@ -208,7 +210,7 @@ export function PlayerPage() {
                 ? 'bg-mahjong-accent text-white'
                 : 'bg-mahjong-card text-mahjong-muted'}`}
           >
-            {r === 0 ? `全部 All (${taggedGames.length})` : `近${r}局 Last ${r}`}
+            {r === 0 ? t('player.allGames', { count: taggedGames.length }) : t('player.lastN', { count: r })}
           </button>
         ))}
       </div>
@@ -216,11 +218,11 @@ export function PlayerPage() {
       {/* Stats summary */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="bg-mahjong-card rounded-lg p-3 text-center">
-          <p className="text-xs text-mahjong-muted mb-1">平均顺位 Avg Rank</p>
+          <p className="text-xs text-mahjong-muted mb-1">{t('player.avgRank')}</p>
           <p className="text-xl font-bold text-mahjong-gold">{avgPlacement.toFixed(2)}</p>
         </div>
         <div className="bg-mahjong-card rounded-lg p-3 text-center">
-          <p className="text-xs text-mahjong-muted mb-1">平均得点 Avg Score</p>
+          <p className="text-xs text-mahjong-muted mb-1">{t('player.avgScore')}</p>
           <p className={`text-xl font-bold ${avgScore >= 0 ? 'text-mahjong-green' : 'text-mahjong-highlight'}`}>
             {avgScore > 0 ? '+' : ''}{avgScore.toFixed(1)}
           </p>
@@ -229,12 +231,12 @@ export function PlayerPage() {
 
       {/* Placement distribution */}
       <div className="bg-mahjong-card rounded-lg p-3 mb-6">
-        <p className="text-xs text-mahjong-muted mb-2">顺位分布 Placement Distribution</p>
+        <p className="text-xs text-mahjong-muted mb-2">{t('player.placementDist')}</p>
         <div className="flex gap-3 justify-around">
           {placementCounts.map((count, i) => (
             <div key={i} className="text-center">
-              <span className={`text-lg font-bold ${PLACEMENT_COLORS[i]}`}>{i + 1}st</span>
-              <p className="text-sm text-mahjong-muted">{count}回</p>
+              <span className={`text-lg font-bold ${PLACEMENT_COLORS[i]}`}>{t(`results.placement.${i + 1}`)}</span>
+              <p className="text-sm text-mahjong-muted">{count}{t('player.times')}</p>
               <p className="text-xs text-mahjong-muted">
                 {displayGames.length > 0 ? ((count / displayGames.length) * 100).toFixed(0) : 0}%
               </p>
@@ -249,7 +251,7 @@ export function PlayerPage() {
           <TrendChart
             data={displayGames}
             getValue={g => g.placement}
-            label="顺位趋势 Placement Trend"
+            label={t('player.placementTrend')}
             formatY={v => v.toFixed(0)}
             color="#f5c518"
             refLine={2.5}
@@ -257,7 +259,7 @@ export function PlayerPage() {
           <TrendChart
             data={displayGames}
             getValue={g => g.rawPoints}
-            label="素点趋势 Raw Points Trend"
+            label={t('player.rawPointsTrend')}
             formatY={v => (v / 1000).toFixed(0) + 'k'}
             color="#4ecca3"
             refLine={25000}
@@ -267,7 +269,7 @@ export function PlayerPage() {
 
       {/* Game list */}
       <h3 className="text-xs text-mahjong-muted mb-2">
-        对局列表 Game List ({displayGames.length})
+        {t('player.gameListCount', { count: displayGames.length })}
       </h3>
       <div className="space-y-2 mb-6">
         {[...displayGames].reverse().map((g, i) => (
@@ -310,7 +312,7 @@ export function PlayerPage() {
           onClick={() => navigate('/history')}
           className="w-full py-2 text-mahjong-muted text-sm"
         >
-          返回记录 Back to History
+          {t('player.backToHistory')}
         </button>
       </div>
     </div>

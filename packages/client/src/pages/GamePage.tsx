@@ -8,14 +8,16 @@ import { formatRound } from '../lib/format';
 import { isAllLastHand, M_LEAGUE_RULES } from '@mahjong/shared';
 import type { HandResultInput } from '@mahjong/shared';
 import { RulesIsland } from '../components/game/RulesIsland';
+import { useLocale } from '../i18n';
 
 export function GamePage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
+  const { t } = useLocale();
   const {
     room, game, finalScores, playerId, connected,
     connect, setSession,
-    recordHand, undoLastHand, endGame, forceQuitGame, error, clearError,
+    recordHand, undoLastHand, endGame, forceQuitGame, error, errorCode, clearError,
   } = useGameStore();
 
   const [showRecordModal, setShowRecordModal] = useState(false);
@@ -71,7 +73,7 @@ export function GamePage() {
   if (!connected || !game) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
-        <p className="text-mahjong-muted">连接中... Connecting...</p>
+        <p className="text-mahjong-muted">{t('common.connecting')}</p>
       </div>
     );
   }
@@ -86,7 +88,7 @@ export function GamePage() {
           rounded-lg p-3 text-sm flex items-center justify-between"
           onClick={clearError}
         >
-          <span>{error}</span>
+          <span>{errorCode ? t(`error.${errorCode}`) : error}</span>
           <span className="text-xs ml-2">✕</span>
         </div>
       )}
@@ -95,23 +97,23 @@ export function GamePage() {
       <div className="text-center mb-4">
         <div className="flex items-center justify-center gap-3">
           <span className="text-2xl font-bold text-mahjong-gold">
-            {formatRound(game.currentRound)}
+            {formatRound(game.currentRound, t)}
           </span>
           {isAllLast && (
             <span className="text-xs bg-mahjong-highlight text-white px-2 py-0.5 rounded">
-              All Last
+              {t('mahjong.allLast')}
             </span>
           )}
         </div>
         <div className="flex items-center justify-center gap-4 text-sm text-mahjong-muted mt-1">
           {game.honbaCount > 0 && (
-            <span>{game.honbaCount}本場</span>
+            <span>{game.honbaCount}{t('mahjong.honba')}</span>
           )}
           {game.riichiSticks > 0 && (
-            <span>{game.riichiSticks}供託</span>
+            <span>{game.riichiSticks}{t('mahjong.kyoutaku')}</span>
           )}
           {game.honbaCount === 0 && game.riichiSticks === 0 && (
-            <span>0本場</span>
+            <span>0{t('mahjong.honba')}</span>
           )}
         </div>
       </div>
@@ -142,7 +144,7 @@ export function GamePage() {
           className="w-full py-4 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-xl
             active:scale-[0.98] transition-transform"
         >
-          记录本局 Record Hand
+          {t('game.recordHand')}
         </button>
 
         <div className="flex gap-2">
@@ -152,14 +154,14 @@ export function GamePage() {
             className="flex-1 py-2 rounded-lg bg-mahjong-card text-mahjong-muted text-sm
               disabled:opacity-30 active:scale-[0.98] transition-transform"
           >
-            {confirmUndo ? '确认撤销? Confirm?' : '撤销 Undo'}
+            {confirmUndo ? t('game.confirmUndo') : t('game.undo')}
           </button>
           <button
             onClick={() => setShowHistory(!showHistory)}
             className="flex-1 py-2 rounded-lg bg-mahjong-card text-mahjong-muted text-sm
               active:scale-[0.98] transition-transform"
           >
-            {showHistory ? '隐藏记录 Hide' : `记录 History (${game.hands.length})`}
+            {showHistory ? t('game.hideHistory') : t('game.historyCount', { count: game.hands.length })}
           </button>
         </div>
 
@@ -168,7 +170,7 @@ export function GamePage() {
           className="w-full py-2 rounded-lg text-mahjong-highlight/60 text-xs
             active:scale-[0.98] transition-transform"
         >
-          强制结束 Force Quit Game
+          {t('game.forceQuit')}
         </button>
       </div>
 
@@ -197,30 +199,30 @@ export function GamePage() {
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowForceQuit(false)} />
           <div className="relative w-full max-w-xs bg-mahjong-bg rounded-2xl p-5 space-y-4">
             <h3 className="text-lg font-bold text-center text-mahjong-highlight">
-              强制结束 Force Quit
+              {t('game.forceQuitTitle')}
             </h3>
             <p className="text-sm text-mahjong-muted text-center">
-              对局尚未结束，确定要强制结束吗？
+              {t('game.forceQuitConfirm')}
             </p>
             <button
               onClick={() => { forceQuitGame(true); setShowForceQuit(false); }}
               className="w-full py-3 rounded-xl bg-mahjong-accent text-white font-bold
                 active:scale-[0.98] transition-transform"
             >
-              保留记录 Keep Record (中断)
+              {t('game.keepRecord')}
             </button>
             <button
               onClick={() => { forceQuitGame(false); setShowForceQuit(false); }}
               className="w-full py-3 rounded-xl bg-mahjong-highlight text-white font-bold
                 active:scale-[0.98] transition-transform"
             >
-              不保留 Discard
+              {t('game.discard')}
             </button>
             <button
               onClick={() => setShowForceQuit(false)}
               className="w-full py-2 text-mahjong-muted text-sm"
             >
-              取消 Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </div>

@@ -4,13 +4,14 @@ import { useGameStore } from '../stores/game-store';
 import { useAdminStore } from '../stores/admin-store';
 import { getGameAnnotations, updateGameAnnotations } from '../lib/api';
 import { formatPoints, formatGameScore } from '../lib/format';
+import { useLocale } from '../i18n';
 
 const PLACEMENT_COLORS = ['text-mahjong-gold', 'text-white', 'text-mahjong-muted', 'text-mahjong-highlight'];
-const PLACEMENT_LABELS = ['1st', '2nd', '3rd', '4th'];
 
 export function ResultsPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
+  const { t } = useLocale();
   const {
     game, finalScores, savedFilename, playerId, connected,
     connect, setSession, resetForNewGame,
@@ -70,12 +71,12 @@ export function ResultsPage() {
   function handleShare() {
     if (!finalScores || !game) return;
     const lines = [
-      `🀄 麻雀記録 - 対局結果`,
-      `${game.hands.length} hands played`,
+      t('results.shareTitle'),
+      t('results.handsPlayed', { count: game.hands.length }),
       '',
       ...finalScores.map((s, i) => {
-        const rank = PLACEMENT_LABELS[s.placement - 1];
-        return `${rank} ${s.name}: ${formatPoints(s.rawPoints)}点 (${formatGameScore(s.gameScore)})`;
+        const rank = t(`results.placement.${s.placement}`);
+        return `${rank} ${s.name}: ${formatPoints(s.rawPoints)}${t('mahjong.points')} (${formatGameScore(s.gameScore)})`;
       }),
     ];
     navigator.clipboard.writeText(lines.join('\n'));
@@ -85,12 +86,12 @@ export function ResultsPage() {
     return (
       <div className="min-h-dvh flex items-center justify-center">
         <div className="text-center">
-          <p className="text-mahjong-muted mb-4">暂无结果 No results yet</p>
+          <p className="text-mahjong-muted mb-4">{t('results.noResults')}</p>
           <button
             onClick={() => navigate(`/game/${roomCode}`)}
             className="px-6 py-2 rounded-lg bg-mahjong-accent text-white"
           >
-            返回对局 Back to Game
+            {t('results.backToGame')}
           </button>
         </div>
       </div>
@@ -100,10 +101,9 @@ export function ResultsPage() {
   return (
     <div className="min-h-dvh flex flex-col p-4 max-w-md mx-auto">
       <div className="text-center my-6">
-        <h1 className="text-3xl font-bold mb-1">対局結果</h1>
-        <p className="text-mahjong-muted text-sm">Game Results</p>
+        <h1 className="text-3xl font-bold mb-1">{t('results.title')}</h1>
         {game && (
-          <p className="text-mahjong-muted text-xs mt-1">{game.hands.length} hands played</p>
+          <p className="text-mahjong-muted text-xs mt-1">{t('results.handsPlayed', { count: game.hands.length })}</p>
         )}
       </div>
 
@@ -123,7 +123,7 @@ export function ResultsPage() {
                   {score.placement}
                 </span>
                 <span className="text-mahjong-muted text-sm ml-1">
-                  {PLACEMENT_LABELS[score.placement - 1]}
+                  {t(`results.placement.${score.placement}`)}
                 </span>
               </div>
               <div className="text-right">
@@ -132,14 +132,14 @@ export function ResultsPage() {
                 }`}>
                   {formatGameScore(score.gameScore)}
                 </p>
-                <p className="text-xs text-mahjong-muted">game score</p>
+                <p className="text-xs text-mahjong-muted">{t('results.gameScore')}</p>
               </div>
             </div>
 
             <div className="mt-2 flex items-center justify-between">
               <p className="font-medium text-lg">{score.name}</p>
               <div className="text-right text-sm">
-                <span className="text-mahjong-muted">{formatPoints(score.rawPoints)}点</span>
+                <span className="text-mahjong-muted">{formatPoints(score.rawPoints)}{t('mahjong.points')}</span>
                 <span className="text-mahjong-muted ml-2">uma {score.uma > 0 ? '+' : ''}{score.uma}</span>
               </div>
             </div>
@@ -150,7 +150,7 @@ export function ResultsPage() {
       {/* Admin annotation panel */}
       {adminToken && savedFilename && (
         <div className="bg-mahjong-card rounded-xl p-4 mb-6 space-y-3">
-          <p className="text-xs text-mahjong-muted font-medium">管理员标注 Admin Annotations</p>
+          <p className="text-xs text-mahjong-muted font-medium">{t('results.adminAnnotations')}</p>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -158,12 +158,12 @@ export function ResultsPage() {
               onChange={e => { setIsOfficial(e.target.checked); setAnnotationSaved(false); }}
               className="w-4 h-4 accent-mahjong-gold"
             />
-            <span className="text-sm">同步公式战 Official Game</span>
+            <span className="text-sm">{t('results.officialGame')}</span>
           </label>
           <textarea
             value={notes}
             onChange={e => { setNotes(e.target.value); setAnnotationSaved(false); }}
-            placeholder="备注 Notes..."
+            placeholder={t('results.notes')}
             rows={2}
             className="w-full px-3 py-2 rounded-lg bg-mahjong-bg border border-mahjong-accent
               text-white text-sm focus:outline-none focus:border-mahjong-highlight resize-none"
@@ -176,7 +176,7 @@ export function ResultsPage() {
                 ? 'bg-mahjong-green text-mahjong-bg'
                 : 'bg-mahjong-accent text-white'} disabled:opacity-50`}
           >
-            {annotationSaving ? '保存中...' : annotationSaved ? '已保存 Saved' : '保存标注 Save'}
+            {annotationSaving ? t('common.saving') : annotationSaved ? t('common.saved') : t('results.saveAnnotations')}
           </button>
         </div>
       )}
@@ -188,20 +188,20 @@ export function ResultsPage() {
           className="w-full py-3 rounded-xl bg-mahjong-accent text-white font-bold
             active:scale-[0.98] transition-transform"
         >
-          复制结果 Copy Results
+          {t('results.copyResults')}
         </button>
         <button
           onClick={handleNewGame}
           className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold
             active:scale-[0.98] transition-transform"
         >
-          新对局 New Game
+          {t('results.newGame')}
         </button>
         <button
           onClick={() => navigate('/')}
           className="w-full py-2 text-mahjong-muted text-sm"
         >
-          返回首页 Back to Home
+          {t('common.backToHome')}
         </button>
       </div>
     </div>
