@@ -67,6 +67,7 @@ export interface GameListItem {
   players: string;
   tags: string[];
   isOfficialGame: boolean;
+  finalScores: { placement: number; name: string; rawPoints: number; gameScore: number }[];
 }
 
 export async function listGames(): Promise<{ games: GameListItem[] }> {

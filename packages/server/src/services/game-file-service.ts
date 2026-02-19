@@ -174,7 +174,7 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
 /**
  * List all saved game records.
  */
-export function listGameRecords(): { filename: string; date: string; roomCode: string; players: string; tags: string[]; isOfficialGame: boolean }[] {
+export function listGameRecords(): { filename: string; date: string; roomCode: string; players: string; tags: string[]; isOfficialGame: boolean; finalScores: { placement: number; name: string; rawPoints: number; gameScore: number }[] }[] {
   if (!existsSync(GAMES_DIR)) return [];
 
   return readdirSync(GAMES_DIR)
@@ -193,13 +193,20 @@ export function listGameRecords(): { filename: string; date: string; roomCode: s
 
       let tags: string[] = [];
       let isOfficialGame = false;
+      let finalScores: { placement: number; name: string; rawPoints: number; gameScore: number }[] = [];
       try {
         const record = JSON.parse(readFileSync(join(GAMES_DIR, f), 'utf-8'));
         tags = record.tags ?? [];
         isOfficialGame = record.adminAnnotations?.isOfficialGame ?? false;
+        finalScores = (record.finalScores ?? []).map((s: any) => ({
+          placement: s.placement,
+          name: s.name,
+          rawPoints: s.rawPoints,
+          gameScore: s.gameScore,
+        }));
       } catch { /* ignore */ }
 
-      return { filename: f, date, roomCode, players, tags, isOfficialGame };
+      return { filename: f, date, roomCode, players, tags, isOfficialGame, finalScores };
     });
 }
 

@@ -446,17 +446,44 @@ export function HistoryPage() {
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm text-mahjong-muted">{g.date}</span>
-                      <span className="text-xs font-mono text-mahjong-gold">{g.roomCode}</span>
+                      <div className="flex items-center gap-2">
+                        {(g.tags ?? []).length > 0 && (
+                          <div className="flex gap-1">
+                            {g.tags.map(tag => (
+                              <span key={tag} className="text-xs bg-mahjong-gold/20 text-mahjong-gold px-1.5 py-0.5 rounded">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <span className="text-xs font-mono text-mahjong-gold">{g.roomCode}</span>
+                      </div>
                     </div>
-                    <p className="text-sm font-medium">{playerNames}</p>
-                    {(g.tags ?? []).length > 0 && (
-                      <div className="flex gap-1 mt-1">
-                        {g.tags.map(tag => (
-                          <span key={tag} className="text-xs bg-mahjong-gold/20 text-mahjong-gold px-1.5 py-0.5 rounded">
-                            {tag}
-                          </span>
+                    {g.finalScores.length > 0 ? (
+                      <div className="space-y-0.5">
+                        {g.finalScores.map(s => (
+                          <div key={s.name} className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold w-4 text-center ${PLACEMENT_COLORS[s.placement - 1]}`}>
+                                {s.placement}
+                              </span>
+                              <span className="font-medium">{s.name}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-mahjong-muted font-mono text-xs">
+                                {s.rawPoints.toLocaleString()}
+                              </span>
+                              <span className={`font-mono font-bold text-xs ${
+                                s.gameScore >= 0 ? 'text-mahjong-green' : 'text-mahjong-highlight'
+                              }`}>
+                                {s.gameScore > 0 ? '+' : ''}{s.gameScore.toFixed(1)}
+                              </span>
+                            </div>
+                          </div>
                         ))}
                       </div>
+                    ) : (
+                      <p className="text-sm font-medium">{playerNames}</p>
                     )}
                   </button>
 
