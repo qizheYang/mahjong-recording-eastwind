@@ -56,7 +56,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   error: null,
 
   setSession(roomCode: string, playerId: string) {
-    set({ roomCode, playerId });
+    const prev = get();
+    // If switching to a different room, disconnect old WS and clear stale state
+    if (prev.roomCode && prev.roomCode !== roomCode) {
+      if (wsClient) {
+        wsClient.disconnect();
+        wsClient = null;
+      }
+      set({
+        roomCode, playerId,
+        room: null, game: null, finalScores: null, savedFilename: null,
+        connected: false, customRuleset: {}, gameTags: [],
+      });
+    } else {
+      set({ roomCode, playerId });
+    }
     // Persist for reconnection
     sessionStorage.setItem('roomCode', roomCode);
     sessionStorage.setItem('playerId', playerId);
