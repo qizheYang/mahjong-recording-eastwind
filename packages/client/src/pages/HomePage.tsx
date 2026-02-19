@@ -342,7 +342,8 @@ export function HomePage() {
         </p>
         <a href="https://yangqizhe.com" target="_blank" rel="noopener noreferrer"
           className="flex items-center gap-1.5 text-mahjong-muted/50 hover:text-mahjong-muted transition-colors text-[10px]">
-          <img src="https://yangqizhe.com/img/yqz_logo.svg" alt="YQZ" className="h-4 w-4" />
+          <img src="https://yangqizhe.com/img/yqz_logo.svg" alt="YQZ"
+            className="h-4 w-4 brightness-0 invert opacity-30" />
           by Qizhe Yang for East Wind Riichi
         </a>
       </div>
