@@ -341,7 +341,8 @@ export function HomePage() {
           v{__APP_VERSION__} ({__GIT_HASH__}) | {__BUILD_TIME__.replace('T', ' ').slice(0, 19)} UTC
         </p>
         <a href="https://yangqizhe.com" target="_blank" rel="noopener noreferrer"
-          className="text-mahjong-muted/50 hover:text-mahjong-muted transition-colors text-[10px]">
+          className="flex items-center gap-1.5 text-mahjong-muted/50 hover:text-mahjong-muted transition-colors text-[10px]">
+          <img src="https://yangqizhe.com/img/yqz_logo.svg" alt="YQZ" className="h-4 w-4" />
           by Qizhe Yang for East Wind Riichi
         </a>
       </div>
