@@ -484,7 +484,7 @@ describe('Tobi (飛び)', () => {
 // Nagashi Mangan (流局満貫)
 // ──────────────────────────────────────────────────
 describe('Nagashi Mangan', () => {
-  it('non-dealer nagashi mangan: tenpai/noten penalties + mangan tsumo layered', () => {
+  it('non-dealer nagashi mangan: replaces tenpai/noten penalties', () => {
     const game = createTestGame();
     processHandResult(game, {
       resultType: 'ryuukyoku',
@@ -492,20 +492,19 @@ describe('Nagashi Mangan', () => {
       nagashiManganPlayers: [false, true, false, false],
     });
 
-    // Normal draw: P1 tenpai +3000, P0/P2/P3 noten -1000 each
-    // Nagashi P1 (non-dealer): P0(dealer) -4000, P2 -2000, P3 -2000, P1 +8000
-    // Combined: P0=-5000, P1=+11000, P2=-3000, P3=-3000
-    expect(game.players[0].points).toBe(25000 - 5000);
-    expect(game.players[1].points).toBe(25000 + 11000);
-    expect(game.players[2].points).toBe(25000 - 3000);
-    expect(game.players[3].points).toBe(25000 - 3000);
+    // Nagashi replaces tenpai/noten entirely
+    // P1 (non-dealer) nagashi: P0(dealer) -4000, P2 -2000, P3 -2000, P1 +8000
+    expect(game.players[0].points).toBe(25000 - 4000);
+    expect(game.players[1].points).toBe(25000 + 8000);
+    expect(game.players[2].points).toBe(25000 - 2000);
+    expect(game.players[3].points).toBe(25000 - 2000);
 
     // Points conserved
     const total = game.players.reduce((s, p) => s + p.points, 0);
     expect(total).toBe(100000);
   });
 
-  it('dealer nagashi mangan: tenpai/noten penalties + mangan tsumo layered', () => {
+  it('dealer nagashi mangan: replaces tenpai/noten penalties', () => {
     const game = createTestGame();
     processHandResult(game, {
       resultType: 'ryuukyoku',
@@ -513,13 +512,12 @@ describe('Nagashi Mangan', () => {
       nagashiManganPlayers: [true, false, false, false],
     });
 
-    // Normal draw: P0 tenpai +3000, P1/P2/P3 noten -1000 each
-    // Nagashi P0 (dealer): P1 -4000, P2 -4000, P3 -4000, P0 +12000
-    // Combined: P0=+15000, P1=-5000, P2=-5000, P3=-5000
-    expect(game.players[0].points).toBe(25000 + 15000);
-    expect(game.players[1].points).toBe(25000 - 5000);
-    expect(game.players[2].points).toBe(25000 - 5000);
-    expect(game.players[3].points).toBe(25000 - 5000);
+    // Nagashi replaces tenpai/noten entirely
+    // P0 (dealer) nagashi: P1 -4000, P2 -4000, P3 -4000, P0 +12000
+    expect(game.players[0].points).toBe(25000 + 12000);
+    expect(game.players[1].points).toBe(25000 - 4000);
+    expect(game.players[2].points).toBe(25000 - 4000);
+    expect(game.players[3].points).toBe(25000 - 4000);
   });
 
   it('nagashi mangan counts as ryuukyoku for state transition (dealer tenpai = renchan)', () => {
@@ -536,7 +534,7 @@ describe('Nagashi Mangan', () => {
     expect(game.honbaCount).toBe(1);
   });
 
-  it('multiple players nagashi mangan: both payments layered on tenpai/noten', () => {
+  it('multiple players nagashi mangan: both payments, no tenpai/noten', () => {
     const game = createTestGame();
     processHandResult(game, {
       resultType: 'ryuukyoku',
@@ -544,14 +542,14 @@ describe('Nagashi Mangan', () => {
       nagashiManganPlayers: [true, true, false, false],
     });
 
-    // Normal draw: 2 tenpai (P0, P1) +1500 each, 2 noten (P2, P3) -1500 each
-    // Nagashi P0 (dealer): P1 -4000, P2 -4000, P3 -4000, P0 +12000
-    // Nagashi P1 (non-dealer): P0(dealer) -4000, P2 -2000, P3 -2000, P1 +8000
-    // Combined: P0=+1500+12000-4000=+9500, P1=+1500+8000-4000=+5500, P2=-1500-4000-2000=-7500, P3=-1500-4000-2000=-7500
-    expect(game.players[0].points).toBe(25000 + 9500);
-    expect(game.players[1].points).toBe(25000 + 5500);
-    expect(game.players[2].points).toBe(25000 - 7500);
-    expect(game.players[3].points).toBe(25000 - 7500);
+    // Nagashi replaces tenpai/noten entirely
+    // P0 (dealer) nagashi: P1 -4000, P2 -4000, P3 -4000, P0 +12000
+    // P1 (non-dealer) nagashi: P0(dealer) -4000, P2 -2000, P3 -2000, P1 +8000
+    // Combined: P0=+12000-4000=+8000, P1=-4000+8000=+4000, P2=-4000-2000=-6000, P3=-4000-2000=-6000
+    expect(game.players[0].points).toBe(25000 + 8000);
+    expect(game.players[1].points).toBe(25000 + 4000);
+    expect(game.players[2].points).toBe(25000 - 6000);
+    expect(game.players[3].points).toBe(25000 - 6000);
 
     const total = game.players.reduce((s, p) => s + p.points, 0);
     expect(total).toBe(100000);

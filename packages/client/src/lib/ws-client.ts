@@ -35,7 +35,11 @@ export class WsClient {
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (evt) => {
+      // Don't reconnect if server rejected the room/player (4001)
+      if (evt.code === 4001) {
+        this.shouldReconnect = false;
+      }
       if (this.shouldReconnect) {
         this.reconnectTimer = setTimeout(() => {
           this.doConnect(url);

@@ -12,7 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Step = 'outcome' | 'winner' | 'method' | 'loser' | 'hanfu' | 'tenpai' | 'nagashiSelect' | 'riichi' | 'confirm';
+type Step = 'outcome' | 'winner' | 'method' | 'loser' | 'hanfu' | 'tenpai' | 'nagashiSelect' | 'oyaTenpai' | 'riichi' | 'confirm';
 
 export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, onSubmit, onClose }: Props) {
   const [step, setStep] = useState<Step>('outcome');
@@ -101,9 +101,12 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
       case 'hanfu': setStep(isTsumo ? 'method' : 'loser'); break;
       case 'tenpai': setStep('outcome'); break;
       case 'nagashiSelect': setStep('tenpai'); break;
+      case 'oyaTenpai': setStep('nagashiSelect'); break;
       case 'riichi':
         if (resultType === 'agari') setStep('hanfu');
-        else if (nagashiManganPlayers.some(Boolean)) setStep('nagashiSelect');
+        else if (nagashiManganPlayers.some(Boolean)) {
+          setStep(nagashiManganPlayers[currentDealer] ? 'oyaTenpai' : 'nagashiSelect');
+        }
         else setStep('tenpai');
         break;
       case 'confirm': setStep('riichi'); break;
@@ -389,7 +392,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             </button>
 
             <button
-              onClick={() => setStep('nagashiSelect')}
+              onClick={() => { setTenpaiStatus([false, false, false, false]); setStep('nagashiSelect'); }}
               className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-gold font-bold
                 active:scale-[0.98] transition-transform border border-mahjong-gold/30"
             >
@@ -433,7 +436,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             })}
 
             <button
-              onClick={() => setStep('riichi')}
+              onClick={() => setStep(nagashiManganPlayers[currentDealer] ? 'oyaTenpai' : 'riichi')}
               disabled={!nagashiManganPlayers.some(Boolean)}
               className={`w-full py-3 rounded-xl font-bold text-lg
                 active:scale-[0.98] transition-transform
@@ -442,6 +445,56 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                   : 'bg-mahjong-card text-mahjong-muted'}`}
             >
               下一步 Next
+            </button>
+          </div>
+        )}
+
+        {/* Step: Ask if dealer is tenpai (only when dealer has nagashi mangan) */}
+        {step === 'oyaTenpai' && (
+          <div className="space-y-4">
+            <p className="text-sm text-mahjong-muted text-center mb-2">
+              亲家聴牌？ Is Dealer Tenpai?
+            </p>
+
+            {/* Nagashi context */}
+            <div className="bg-mahjong-card rounded-xl p-3 text-sm">
+              <p className="text-mahjong-gold font-medium mb-1">流局满贯 Nagashi Mangan:</p>
+              {nagashiManganPlayers.map((n, i) => n ? (
+                <p key={i} className="text-mahjong-gold">
+                  {WIND_LABELS[seatWind(i)]} {players[i]?.name} +{formatPoints(i === currentDealer ? 12000 : 8000)}点
+                </p>
+              ) : null)}
+            </div>
+
+            <p className="text-center text-white font-medium">
+              <span className="text-mahjong-gold">{WIND_LABELS[seatWind(currentDealer)]}</span>
+              {' '}{players[currentDealer]?.name}
+            </p>
+            <p className="text-xs text-mahjong-muted text-center">
+              親テンパイで連荘 Dealer tenpai → renchan
+            </p>
+
+            <button
+              onClick={() => {
+                const next = [false, false, false, false];
+                next[currentDealer] = true;
+                setTenpaiStatus(next);
+                setStep('riichi');
+              }}
+              className="w-full py-4 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
+                active:scale-[0.98] transition-transform"
+            >
+              聴牌 Tenpai (連荘 Renchan)
+            </button>
+            <button
+              onClick={() => {
+                setTenpaiStatus([false, false, false, false]);
+                setStep('riichi');
+              }}
+              className="w-full py-4 rounded-xl bg-mahjong-card text-white font-bold text-lg
+                active:scale-[0.98] transition-transform"
+            >
+              不聴 Noten (流れ Rotate)
             </button>
           </div>
         )}

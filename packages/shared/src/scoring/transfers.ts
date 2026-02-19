@@ -94,23 +94,10 @@ function calculateRyuukyokuTransfers(
   dealerIndex?: number,
 ): TransferResult {
   const deltas = [0, 0, 0, 0];
-
-  // Step 1: Always apply normal tenpai/noten penalties first
-  const tenpaiCount = result.tenpaiStatus.filter(Boolean).length;
-  const notenCount = 4 - tenpaiCount;
-
-  if (tenpaiCount > 0 && tenpaiCount < 4) {
-    const tenpaiReceive = 3000 / tenpaiCount;
-    const notenPay = 3000 / notenCount;
-
-    for (let i = 0; i < 4; i++) {
-      deltas[i] = result.tenpaiStatus[i] ? tenpaiReceive : -notenPay;
-    }
-  }
-
-  // Step 2: Layer nagashi mangan payments on top (can be multiple players)
   const hasNagashi = result.nagashiManganPlayers?.some(Boolean);
+
   if (hasNagashi && dealerIndex !== undefined) {
+    // Nagashi mangan replaces tenpai/noten penalties entirely
     for (let winIdx = 0; winIdx < 4; winIdx++) {
       if (!result.nagashiManganPlayers![winIdx]) continue;
       const isDealer = winIdx === dealerIndex;
@@ -119,6 +106,19 @@ function calculateRyuukyokuTransfers(
         const payment = isDealer ? 4000 : (i === dealerIndex ? 4000 : 2000);
         deltas[i] -= payment;
         deltas[winIdx] += payment;
+      }
+    }
+  } else {
+    // Normal draw: tenpai/noten penalties
+    const tenpaiCount = result.tenpaiStatus.filter(Boolean).length;
+    const notenCount = 4 - tenpaiCount;
+
+    if (tenpaiCount > 0 && tenpaiCount < 4) {
+      const tenpaiReceive = 3000 / tenpaiCount;
+      const notenPay = 3000 / notenCount;
+
+      for (let i = 0; i < 4; i++) {
+        deltas[i] = result.tenpaiStatus[i] ? tenpaiReceive : -notenPay;
       }
     }
   }
@@ -137,9 +137,10 @@ function calculateRyuukyokuTransfers(
   const tenpaiNames = result.tenpaiStatus
     .map((t, i) => t ? `P${i + 1}` : null)
     .filter(Boolean);
-  const description = tenpaiCount === 0
+  const tCount = result.tenpaiStatus.filter(Boolean).length;
+  const description = tCount === 0
     ? '全員不聴 (all noten)'
-    : tenpaiCount === 4
+    : tCount === 4
     ? '全員聴牌 (all tenpai)'
     : `流局: ${tenpaiNames.join(', ')} 聴牌`;
 

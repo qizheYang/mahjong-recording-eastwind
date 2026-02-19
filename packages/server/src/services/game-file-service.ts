@@ -67,6 +67,23 @@ const WIND_LABELS: Record<string, string> = {
   east: '東', south: '南', west: '西', north: '北',
 };
 
+const LA_TZ = 'America/Los_Angeles';
+
+/** Format a Date as YYYY-MM-DDTHH:mm:ss in LA time */
+function toLA_ISO(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: LA_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(date);
+  const get = (t: string) => parts.find(p => p.type === t)!.value;
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`;
+}
+
+/** Format a Date as YYYYMMDDHHmmSS in LA time (for filenames) */
+function toLA_Timestamp(date: Date): string {
+  return toLA_ISO(date).replace(/[-T:]/g, '');
+}
+
 /**
  * Sanitize a player name for use in filenames.
  * CJK and other Unicode characters are kept as-is (modern OS/fs handle them fine).
@@ -87,8 +104,7 @@ function sanitizeName(name: string): string {
  */
 export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
   const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const timestamp = toLA_Timestamp(now);
   const playerNames = game.players.map(p => sanitizeName(p.name)).join('-');
   const filename = `${timestamp}-${game.roomCode}-${playerNames}.json`;
   const filepath = join(GAMES_DIR, filename);
@@ -160,8 +176,8 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
       uma: s.uma,
       gameScore: s.gameScore,
     })),
-    startedAt: new Date(game.hands[0]?.recordedAt || Date.now()).toISOString(),
-    endedAt: now.toISOString(),
+    startedAt: toLA_ISO(new Date(game.hands[0]?.recordedAt || Date.now())),
+    endedAt: toLA_ISO(now),
     totalHands: game.hands.length,
     tags: game.tags ?? [],
   };

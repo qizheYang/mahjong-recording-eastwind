@@ -164,6 +164,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
         case 'error':
           set({ error: event.message });
+          // Invalid room/player — clear stale session so we don't retry on reload
+          if (event.code === 'INVALID_ROOM') {
+            sessionStorage.removeItem('roomCode');
+            sessionStorage.removeItem('playerId');
+            if (wsClient) {
+              wsClient.disconnect();
+              wsClient = null;
+            }
+            set({ roomCode: null, playerId: null, connected: false });
+          }
           break;
       }
     });
