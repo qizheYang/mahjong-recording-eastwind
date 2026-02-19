@@ -61,7 +61,7 @@ export interface AgariResult {
 export interface RyuukyokuResult {
   type: 'ryuukyoku';
   tenpaiStatus: boolean[]; // [p0, p1, p2, p3]
-  nagashiManganIndex?: number; // player who achieved nagashi mangan (流局満貫)
+  nagashiManganPlayers?: boolean[]; // [p0, p1, p2, p3] - who achieved nagashi mangan (流局満貫)
 }
 
 export interface FinalScore {

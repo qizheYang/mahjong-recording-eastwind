@@ -23,7 +23,7 @@ export interface HandResultInput {
   fu?: number;
   // For ryuukyoku
   tenpaiStatus?: boolean[];
-  nagashiManganIndex?: number; // 流局満貫
+  nagashiManganPlayers?: boolean[]; // [p0, p1, p2, p3] 流局満貫
   // Riichi declarations this hand
   riichiPlayers?: boolean[]; // [p0, p1, p2, p3]
 }

@@ -23,7 +23,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
   const [han, setHan] = useState(1);
   const [fu, setFu] = useState(30);
   const [tenpaiStatus, setTenpaiStatus] = useState([false, false, false, false]);
-  const [nagashiManganIndex, setNagashiManganIndex] = useState<number | null>(null);
+  const [nagashiManganPlayers, setNagashiManganPlayers] = useState([false, false, false, false]);
   const [riichiPlayers, setRiichiPlayers] = useState([false, false, false, false]);
 
   // Calculate points preview
@@ -87,7 +87,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
       onSubmit({
         resultType: 'ryuukyoku',
         tenpaiStatus,
-        ...(nagashiManganIndex !== null ? { nagashiManganIndex } : {}),
+        ...(nagashiManganPlayers.some(Boolean) ? { nagashiManganPlayers } : {}),
         ...(hasRiichi ? { riichiPlayers } : {}),
       });
     }
@@ -103,7 +103,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
       case 'nagashiSelect': setStep('tenpai'); break;
       case 'riichi':
         if (resultType === 'agari') setStep('hanfu');
-        else if (nagashiManganIndex !== null) setStep('nagashiSelect');
+        else if (nagashiManganPlayers.some(Boolean)) setStep('nagashiSelect');
         else setStep('tenpai');
         break;
       case 'confirm': setStep('riichi'); break;
@@ -381,7 +381,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             </div>
 
             <button
-              onClick={() => { setNagashiManganIndex(null); setStep('riichi'); }}
+              onClick={() => { setNagashiManganPlayers([false, false, false, false]); setStep('riichi'); }}
               className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
@@ -398,11 +398,11 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
           </div>
         )}
 
-        {/* Step: Select nagashi mangan player */}
+        {/* Step: Select nagashi mangan players (multi-select) */}
         {step === 'nagashiSelect' && (
           <div className="space-y-3">
             <p className="text-sm text-mahjong-muted text-center mb-4">
-              选择流局满贯玩家 Select Nagashi Mangan Player
+              选择流局满贯玩家 Select Nagashi Mangan Players
             </p>
             {players.map((p, idx) => {
               const isDealer = idx === currentDealer;
@@ -411,27 +411,38 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                 <button
                   key={p.id}
                   onClick={() => {
-                    setNagashiManganIndex(idx);
-                    // Auto-set tenpai: nagashi mangan player is tenpai
-                    const newTenpai = [...tenpaiStatus];
-                    newTenpai[idx] = true;
-                    setTenpaiStatus(newTenpai);
-                    setStep('riichi');
+                    const next = [...nagashiManganPlayers];
+                    next[idx] = !next[idx];
+                    setNagashiManganPlayers(next);
                   }}
                   className={`w-full py-3 px-4 rounded-xl text-left flex items-center justify-between
-                    ${isDealer ? 'bg-mahjong-accent' : 'bg-mahjong-card'}
+                    ${nagashiManganPlayers[idx] ? 'bg-mahjong-gold text-mahjong-bg' : 'bg-mahjong-card'}
                     active:scale-[0.98] transition-transform`}
                 >
                   <span>
-                    <span className="text-mahjong-gold font-bold mr-2">
+                    <span className={`font-bold mr-2 ${nagashiManganPlayers[idx] ? 'text-mahjong-bg' : 'text-mahjong-gold'}`}>
                       {WIND_LABELS[seatWind(idx)]}
                     </span>
                     {p.name}
                   </span>
-                  <span className="text-sm text-mahjong-muted">+{formatPoints(total)}点</span>
+                  <span className={`text-sm ${nagashiManganPlayers[idx] ? '' : 'text-mahjong-muted'}`}>
+                    {nagashiManganPlayers[idx] ? `流局满贯 +${formatPoints(total)}点` : formatPoints(p.points)}
+                  </span>
                 </button>
               );
             })}
+
+            <button
+              onClick={() => setStep('riichi')}
+              disabled={!nagashiManganPlayers.some(Boolean)}
+              className={`w-full py-3 rounded-xl font-bold text-lg
+                active:scale-[0.98] transition-transform
+                ${nagashiManganPlayers.some(Boolean)
+                  ? 'bg-mahjong-green text-mahjong-bg'
+                  : 'bg-mahjong-card text-mahjong-muted'}`}
+            >
+              下一步 Next
+            </button>
           </div>
         )}
 
@@ -510,12 +521,14 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               ) : (
                 <>
                   <p className="font-medium">
-                    {nagashiManganIndex !== null ? '流局满贯 Nagashi Mangan' : '流局 Draw'}
+                    {nagashiManganPlayers.some(Boolean) ? '流局满贯 Nagashi Mangan' : '流局 Draw'}
                   </p>
-                  {nagashiManganIndex !== null && (
-                    <p className="text-sm text-mahjong-gold font-bold">
-                      {players[nagashiManganIndex]?.name} +{formatPoints(nagashiManganIndex === currentDealer ? 12000 : 8000)}点
-                    </p>
+                  {nagashiManganPlayers.some(Boolean) && (
+                    <div className="text-sm text-mahjong-gold font-bold">
+                      {nagashiManganPlayers.map((n, i) => n ? (
+                        <p key={i}>{players[i]?.name} +{formatPoints(i === currentDealer ? 12000 : 8000)}点</p>
+                      ) : null)}
+                    </div>
                   )}
                   <p className="text-sm text-mahjong-muted">
                     聴牌: {tenpaiStatus.map((t, i) => t ? players[i]?.name : null).filter(Boolean).join(', ') || '无 None'}

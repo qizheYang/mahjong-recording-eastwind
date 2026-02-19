@@ -95,22 +95,7 @@ function calculateRyuukyokuTransfers(
 ): TransferResult {
   const deltas = [0, 0, 0, 0];
 
-  // Nagashi mangan: winner receives mangan tsumo payment
-  if (result.nagashiManganIndex !== undefined && dealerIndex !== undefined) {
-    const winIdx = result.nagashiManganIndex;
-    const isDealer = winIdx === dealerIndex;
-    for (let i = 0; i < 4; i++) {
-      if (i === winIdx) continue;
-      const payment = isDealer ? 4000 : (i === dealerIndex ? 4000 : 2000);
-      deltas[i] -= payment;
-      deltas[winIdx] += payment;
-    }
-    return {
-      deltas,
-      description: `流局満貫 (nagashi mangan) → P${winIdx + 1}`,
-    };
-  }
-
+  // Step 1: Always apply normal tenpai/noten penalties first
   const tenpaiCount = result.tenpaiStatus.filter(Boolean).length;
   const notenCount = 4 - tenpaiCount;
 
@@ -122,7 +107,32 @@ function calculateRyuukyokuTransfers(
       deltas[i] = result.tenpaiStatus[i] ? tenpaiReceive : -notenPay;
     }
   }
-  // All tenpai or all noten: no point movement
+
+  // Step 2: Layer nagashi mangan payments on top (can be multiple players)
+  const hasNagashi = result.nagashiManganPlayers?.some(Boolean);
+  if (hasNagashi && dealerIndex !== undefined) {
+    for (let winIdx = 0; winIdx < 4; winIdx++) {
+      if (!result.nagashiManganPlayers![winIdx]) continue;
+      const isDealer = winIdx === dealerIndex;
+      for (let i = 0; i < 4; i++) {
+        if (i === winIdx) continue;
+        const payment = isDealer ? 4000 : (i === dealerIndex ? 4000 : 2000);
+        deltas[i] -= payment;
+        deltas[winIdx] += payment;
+      }
+    }
+  }
+
+  // Build description
+  if (hasNagashi) {
+    const nagashiNames = result.nagashiManganPlayers!
+      .map((n, i) => n ? `P${i + 1}` : null)
+      .filter(Boolean);
+    return {
+      deltas,
+      description: `流局満貫 (nagashi mangan) → ${nagashiNames.join(', ')}`,
+    };
+  }
 
   const tenpaiNames = result.tenpaiStatus
     .map((t, i) => t ? `P${i + 1}` : null)

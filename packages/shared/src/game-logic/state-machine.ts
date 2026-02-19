@@ -103,7 +103,7 @@ export function processHandResult(game: Game, input: HandResultInput): Hand {
     result = {
       type: 'ryuukyoku',
       tenpaiStatus: input.tenpaiStatus!,
-      ...(input.nagashiManganIndex !== undefined ? { nagashiManganIndex: input.nagashiManganIndex } : {}),
+      ...(input.nagashiManganPlayers?.some(Boolean) ? { nagashiManganPlayers: input.nagashiManganPlayers } : {}),
     };
   }
 
