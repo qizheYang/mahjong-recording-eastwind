@@ -51,6 +51,7 @@ export interface GameRecord {
     uma: number;
     gameScore: number;
   }[];
+  interrupted?: boolean;
   startedAt: string;
   endedAt: string;
   totalHands: number;
@@ -102,7 +103,7 @@ function sanitizeName(name: string): string {
  * Save a completed game as a detailed JSON file.
  * Filename: YYYYMMDDHHmmSS-CODE-player1-player2-player3-player4.json
  */
-export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
+export function saveGameRecord(game: Game, finalScores: FinalScore[], options?: { interrupted?: boolean }): string {
   const now = new Date();
   const timestamp = toLA_Timestamp(now);
   const playerNames = game.players.map(p => sanitizeName(p.name)).join('-');
@@ -176,6 +177,7 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
       uma: s.uma,
       gameScore: s.gameScore,
     })),
+    ...(options?.interrupted ? { interrupted: true } : {}),
     startedAt: toLA_ISO(new Date(game.hands[0]?.recordedAt || Date.now())),
     endedAt: toLA_ISO(now),
     totalHands: game.hands.length,
@@ -190,7 +192,7 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[]): string {
 /**
  * List all saved game records.
  */
-export function listGameRecords(): { filename: string; date: string; roomCode: string; players: string; tags: string[]; isOfficialGame: boolean; finalScores: { placement: number; name: string; rawPoints: number; gameScore: number }[] }[] {
+export function listGameRecords(): { filename: string; date: string; roomCode: string; players: string; tags: string[]; isOfficialGame: boolean; interrupted: boolean; finalScores: { placement: number; name: string; rawPoints: number; gameScore: number }[] }[] {
   if (!existsSync(GAMES_DIR)) return [];
 
   return readdirSync(GAMES_DIR)
@@ -209,11 +211,13 @@ export function listGameRecords(): { filename: string; date: string; roomCode: s
 
       let tags: string[] = [];
       let isOfficialGame = false;
+      let interrupted = false;
       let finalScores: { placement: number; name: string; rawPoints: number; gameScore: number }[] = [];
       try {
         const record = JSON.parse(readFileSync(join(GAMES_DIR, f), 'utf-8'));
         tags = record.tags ?? [];
         isOfficialGame = record.adminAnnotations?.isOfficialGame ?? false;
+        interrupted = record.interrupted ?? false;
         finalScores = (record.finalScores ?? []).map((s: any) => ({
           placement: s.placement,
           name: s.name,
@@ -222,7 +226,7 @@ export function listGameRecords(): { filename: string; date: string; roomCode: s
         }));
       } catch { /* ignore */ }
 
-      return { filename: f, date, roomCode, players, tags, isOfficialGame, finalScores };
+      return { filename: f, date, roomCode, players, tags, isOfficialGame, interrupted, finalScores };
     });
 }
 

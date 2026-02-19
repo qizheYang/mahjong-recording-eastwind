@@ -67,6 +67,7 @@ export interface GameListItem {
   players: string;
   tags: string[];
   isOfficialGame: boolean;
+  interrupted: boolean;
   finalScores: { placement: number; name: string; rawPoints: number; gameScore: number }[];
 }
 

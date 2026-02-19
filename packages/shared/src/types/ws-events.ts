@@ -11,7 +11,8 @@ export type ClientEvent =
   | { type: 'start_game'; seatOrder: string[]; ruleset?: Partial<Ruleset>; tags?: string[] }
   | { type: 'record_hand'; result: HandResultInput }
   | { type: 'undo_last_hand' }
-  | { type: 'end_game' };
+  | { type: 'end_game' }
+  | { type: 'force_quit_game'; keepRecord: boolean };
 
 export interface HandResultInput {
   resultType: 'agari' | 'ryuukyoku';

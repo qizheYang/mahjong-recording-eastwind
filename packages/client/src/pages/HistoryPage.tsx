@@ -447,6 +447,11 @@ export function HistoryPage() {
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm text-mahjong-muted">{g.date}</span>
                       <div className="flex items-center gap-2">
+                        {g.interrupted && (
+                          <span className="text-xs bg-mahjong-highlight/20 text-mahjong-highlight px-1.5 py-0.5 rounded">
+                            中断
+                          </span>
+                        )}
                         {(g.tags ?? []).length > 0 && (
                           <div className="flex gap-1">
                             {g.tags.map(tag => (

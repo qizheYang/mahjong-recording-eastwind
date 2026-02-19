@@ -150,6 +150,25 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
       break;
     }
 
+    case 'force_quit_game': {
+      const result = roomManager.endGame(roomCode);
+      if ('error' in result) {
+        sendError(ws, result.error, 'END_ERROR');
+        return;
+      }
+      let savedFilename: string | null = null;
+      if (event.keepRecord) {
+        savedFilename = saveGameToFile(result.game, result.finalScores, { interrupted: true });
+      }
+      roomManager.broadcast(roomCode, {
+        type: 'game_ended',
+        game: result.game,
+        finalScores: result.finalScores,
+        ...(savedFilename ? { savedFilename } : {}),
+      });
+      break;
+    }
+
     case 'leave_room': {
       roomManager.removePlayer(roomCode, ctx.playerId);
       connectionCtx.delete(ws);
@@ -169,9 +188,9 @@ export function handleWSClose(ws: WSContext): void {
   connectionCtx.delete(ws);
 }
 
-function saveGameToFile(game: Game, finalScores: FinalScore[]): string | null {
+function saveGameToFile(game: Game, finalScores: FinalScore[], options?: { interrupted?: boolean }): string | null {
   try {
-    const filename = saveGameRecord(game, finalScores);
+    const filename = saveGameRecord(game, finalScores, options);
     // Update player database
     const record = getGameRecord(filename);
     if (record) {

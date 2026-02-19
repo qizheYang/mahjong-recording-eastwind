@@ -15,12 +15,13 @@ export function GamePage() {
   const {
     room, game, finalScores, playerId, connected,
     connect, setSession,
-    recordHand, undoLastHand, endGame, error, clearError,
+    recordHand, undoLastHand, endGame, forceQuitGame, error, clearError,
   } = useGameStore();
 
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [confirmUndo, setConfirmUndo] = useState(false);
+  const [showForceQuit, setShowForceQuit] = useState(false);
 
   // Restore session
   useEffect(() => {
@@ -161,6 +162,14 @@ export function GamePage() {
             {showHistory ? '隐藏记录 Hide' : `记录 History (${game.hands.length})`}
           </button>
         </div>
+
+        <button
+          onClick={() => setShowForceQuit(true)}
+          className="w-full py-2 rounded-lg text-mahjong-highlight/60 text-xs
+            active:scale-[0.98] transition-transform"
+        >
+          强制结束 Force Quit Game
+        </button>
       </div>
 
       {/* Hand history */}
@@ -180,6 +189,41 @@ export function GamePage() {
           onSubmit={handleRecordHand}
           onClose={() => setShowRecordModal(false)}
         />
+      )}
+
+      {/* Force quit modal */}
+      {showForceQuit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowForceQuit(false)} />
+          <div className="relative w-full max-w-xs bg-mahjong-bg rounded-2xl p-5 space-y-4">
+            <h3 className="text-lg font-bold text-center text-mahjong-highlight">
+              强制结束 Force Quit
+            </h3>
+            <p className="text-sm text-mahjong-muted text-center">
+              对局尚未结束，确定要强制结束吗？
+            </p>
+            <button
+              onClick={() => { forceQuitGame(true); setShowForceQuit(false); }}
+              className="w-full py-3 rounded-xl bg-mahjong-accent text-white font-bold
+                active:scale-[0.98] transition-transform"
+            >
+              保留记录 Keep Record (中断)
+            </button>
+            <button
+              onClick={() => { forceQuitGame(false); setShowForceQuit(false); }}
+              className="w-full py-3 rounded-xl bg-mahjong-highlight text-white font-bold
+                active:scale-[0.98] transition-transform"
+            >
+              不保留 Discard
+            </button>
+            <button
+              onClick={() => setShowForceQuit(false)}
+              className="w-full py-2 text-mahjong-muted text-sm"
+            >
+              取消 Cancel
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

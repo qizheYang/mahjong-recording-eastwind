@@ -37,6 +37,7 @@ interface GameStore {
   recordHand: (result: HandResultInput) => void;
   undoLastHand: () => void;
   endGame: () => void;
+  forceQuitGame: (keepRecord: boolean) => void;
   clearError: () => void;
   resetForNewGame: () => void;
 }
@@ -233,6 +234,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   endGame() {
     wsClient?.send({ type: 'end_game' });
+  },
+
+  forceQuitGame(keepRecord: boolean) {
+    wsClient?.send({ type: 'force_quit_game', keepRecord });
   },
 
   clearError() {
