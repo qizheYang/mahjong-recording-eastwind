@@ -501,15 +501,33 @@ export function LobbyPage() {
                         : 'bg-mahjong-card'}
                     ${canSwap ? 'cursor-pointer active:scale-[0.98]' : ''}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 text-center text-sm font-bold text-mahjong-gold">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <span className="w-6 text-center text-sm font-bold text-mahjong-gold shrink-0">
                       {t(`mahjong.wind.${WINDS[idx]}`)}
                     </span>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <span className="font-medium">{player.name}</span>
+                      <input
+                        type="text"
+                        value={teamAssignments[player.id] ?? ''}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          if (e.target.value) {
+                            setTeamAssignment(player.id, e.target.value);
+                          } else {
+                            // Clear assignment when empty
+                            setTeamAssignment(player.id, '');
+                          }
+                        }}
+                        maxLength={12}
+                        placeholder={t('lobby.teamOptional')}
+                        className="block w-full mt-0.5 px-0 py-0 text-xs bg-transparent border-none outline-none
+                          text-mahjong-muted placeholder:text-mahjong-muted/30"
+                      />
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     {player.id === playerId && (
                       <span className="text-xs text-mahjong-muted">{t('lobby.you')}</span>
                     )}

@@ -347,6 +347,7 @@ export const ja: Record<TranslationKey, string> = {
   'lobby.assignTeam': 'チーム',
   'lobby.teamValidation': '各チーム2人必要',
   'lobby.windConflict': '風位が重複しています',
+  'lobby.teamOptional': 'チーム（任意）',
   'results.teamResults': 'チーム成績',
   'results.teamScore': 'チームスコア',
 

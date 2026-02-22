@@ -278,8 +278,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const tags = get().gameTags;
     const hasCustom = Object.keys(r).length > 0;
     const teamAssignments = get().teamAssignments;
-    const teams = Object.keys(teamAssignments).length > 0
-      ? Object.entries(teamAssignments).map(([playerId, team]) => ({ playerId, team }))
+    const nonEmptyTeams = Object.entries(teamAssignments).filter(([, team]) => team.trim() !== '');
+    const teams = nonEmptyTeams.length > 0
+      ? nonEmptyTeams.map(([playerId, team]) => ({ playerId, team }))
       : undefined;
     wsClient?.send({
       type: 'start_game',

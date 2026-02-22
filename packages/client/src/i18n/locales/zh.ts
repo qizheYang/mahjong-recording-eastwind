@@ -345,6 +345,7 @@ export const zh = {
   'lobby.assignTeam': '分组',
   'lobby.teamValidation': '每队需要2人',
   'lobby.windConflict': '风位不能重复',
+  'lobby.teamOptional': '队伍（选填）',
   'results.teamResults': '团队成绩',
   'results.teamScore': '团队得分',
 

@@ -347,6 +347,7 @@ export const en: Record<TranslationKey, string> = {
   'lobby.assignTeam': 'Team',
   'lobby.teamValidation': 'Need 2 per team',
   'lobby.windConflict': 'Wind positions must be unique',
+  'lobby.teamOptional': 'Team (optional)',
   'results.teamResults': 'Team Results',
   'results.teamScore': 'Team Score',
 
