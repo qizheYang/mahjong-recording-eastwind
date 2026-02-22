@@ -233,6 +233,8 @@ export const ja: Record<TranslationKey, string> = {
   'record.selectYakuman': '役満を選択',
   'record.yakumanMultiplier': '{count}倍役満',
   'record.skipYakuman': 'スキップ（数え役満）',
+  'record.yakumanDirect': '役満',
+  'record.kazoeYakuman': '数え役満',
   'yakuman.kokushi': '国士無双',
   'yakuman.suuankou': '四暗刻',
   'yakuman.daisangen': '大三元',

@@ -12,35 +12,96 @@ interface Props {
   preview: PointCalcResult | null;
   /** Extra info lines below the main points display */
   extraInfo?: React.ReactNode;
+  /** Callback when user clicks "Yakuman" button (go to yakuman selection) */
+  onYakuman?: () => void;
+  /** Whether counted yakuman (kazoe) is enabled in the ruleset */
+  countedYakumanEnabled?: boolean;
+  /** Whether currently in kazoe yakuman mode */
+  isKazoeMode?: boolean;
+  /** Toggle kazoe yakuman mode */
+  onKazoeToggle?: () => void;
 }
 
-export function HanFuSelector({ han, fu, onHanChange, onFuChange, preview, extraInfo }: Props) {
+export function HanFuSelector({ han, fu, onHanChange, onFuChange, preview, extraInfo, onYakuman, countedYakumanEnabled, isKazoeMode, onKazoeToggle }: Props) {
   const { t } = useLocale();
 
   return (
     <div className="space-y-4">
-      {/* Han selector */}
-      <div>
-        <label className="block text-sm text-mahjong-muted mb-2">{t('record.hanLabel')}</label>
-        <div className="flex flex-wrap gap-2">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(h => (
+      {isKazoeMode ? (
+        /* Kazoe yakuman mode: number input for han */
+        <div>
+          <label className="block text-sm text-mahjong-muted mb-2">{t('record.kazoeYakuman')}</label>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min={13}
+              value={han}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v) && v >= 13) onHanChange(v);
+              }}
+              className="w-20 h-10 rounded-lg bg-mahjong-card text-center text-white font-bold
+                border border-mahjong-gold/30 focus:border-mahjong-gold outline-none"
+            />
+            <span className="text-mahjong-muted">{t('mahjong.han')}</span>
+          </div>
+          {onKazoeToggle && (
             <button
-              key={h}
-              onClick={() => onHanChange(h)}
-              className={`w-10 h-10 rounded-lg font-bold text-sm
-                ${han === h
-                  ? 'bg-mahjong-highlight text-white'
-                  : 'bg-mahjong-card text-mahjong-muted'
-                } active:scale-95 transition-transform`}
+              onClick={onKazoeToggle}
+              className="text-sm text-mahjong-muted mt-2 underline"
             >
-              {h}
+              {t('record.back')}
             </button>
-          ))}
+          )}
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Han selector */}
+          <div>
+            <label className="block text-sm text-mahjong-muted mb-2">{t('record.hanLabel')}</label>
+            <div className="flex flex-wrap gap-2">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => (
+                <button
+                  key={h}
+                  onClick={() => onHanChange(h)}
+                  className={`w-10 h-10 rounded-lg font-bold text-sm
+                    ${han === h
+                      ? 'bg-mahjong-highlight text-white'
+                      : 'bg-mahjong-card text-mahjong-muted'
+                    } active:scale-95 transition-transform`}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Fu selector (only for < 5 han) */}
-      {han < 5 && (
+          {/* Yakuman & Kazoe buttons */}
+          <div className="flex gap-2">
+            {onYakuman && (
+              <button
+                onClick={onYakuman}
+                className="flex-1 py-2.5 rounded-xl bg-mahjong-gold text-mahjong-bg font-bold
+                  active:scale-[0.98] transition-transform"
+              >
+                {t('record.yakumanDirect')}
+              </button>
+            )}
+            {countedYakumanEnabled && onKazoeToggle && (
+              <button
+                onClick={() => { onHanChange(13); onKazoeToggle(); }}
+                className="flex-1 py-2.5 rounded-xl bg-mahjong-card text-mahjong-gold font-bold
+                  border border-mahjong-gold/30 active:scale-[0.98] transition-transform"
+              >
+                {t('record.kazoeYakuman')}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Fu selector (only for < 5 han, not in kazoe mode) */}
+      {han < 5 && !isKazoeMode && (
         <div>
           <label className="block text-sm text-mahjong-muted mb-2">{t('record.fuLabel')}</label>
           <div className="flex flex-wrap gap-2">

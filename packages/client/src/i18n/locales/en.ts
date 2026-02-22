@@ -233,6 +233,8 @@ export const en: Record<TranslationKey, string> = {
   'record.selectYakuman': 'Select Yakuman',
   'record.yakumanMultiplier': '{count}x Yakuman',
   'record.skipYakuman': 'Skip (Counted Yakuman)',
+  'record.yakumanDirect': 'Yakuman',
+  'record.kazoeYakuman': 'Counted Yakuman',
   'yakuman.kokushi': 'Kokushi Musou',
   'yakuman.suuankou': 'Suu Ankou',
   'yakuman.daisangen': 'Daisangen',

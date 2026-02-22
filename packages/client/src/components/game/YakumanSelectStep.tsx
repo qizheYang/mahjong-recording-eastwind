@@ -73,10 +73,14 @@ export function YakumanSelectStep({ t, selectedYakuman, setSelectedYakuman, doub
 
       <button
         onClick={onConfirm}
-        className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
-          active:scale-[0.98] transition-transform"
+        disabled={selectedYakuman.length === 0}
+        className={`w-full py-3 rounded-xl font-bold text-lg
+          active:scale-[0.98] transition-transform
+          ${selectedYakuman.length > 0
+            ? 'bg-mahjong-green text-mahjong-bg'
+            : 'bg-mahjong-card text-mahjong-muted'}`}
       >
-        {selectedYakuman.length > 0 ? t('common.next') : t('record.skipYakuman')}
+        {t('common.next')}
       </button>
     </div>
   );

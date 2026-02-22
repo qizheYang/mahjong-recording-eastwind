@@ -16,6 +16,7 @@ interface Props {
   doubleRonEnabled?: boolean;
   doubleYakumanEnabled?: boolean;
   multipleYakumanEnabled?: boolean;
+  countedYakumanEnabled?: boolean;
   nagashiManganEnabled?: boolean;
   editingHand?: Hand;
   onSubmit: (result: HandResultInput) => void;
@@ -41,16 +42,18 @@ function getInitialState(editingHand?: Hand) {
       multiRonWinners: [] as MultiRonWinnerInput[],
       multiRonLoser: null as number | null,
       selectedYakuman: [] as string[],
+      isKazoeYakuman: false,
     };
   }
   const inp = editingHand.input;
+  const hanVal = inp.han ?? 1;
   return {
     step: 'confirm' as Step,
     resultType: inp.resultType,
     winnerIndex: inp.winnerIndex ?? null,
     isTsumo: inp.isTsumo ?? null,
     loserIndex: inp.loserIndex ?? null,
-    han: inp.han ?? 1,
+    han: hanVal,
     fu: inp.fu ?? 30,
     tenpaiStatus: inp.tenpaiStatus ?? [false, false, false, false],
     nagashiManganPlayers: inp.nagashiManganPlayers ?? [false, false, false, false],
@@ -58,10 +61,11 @@ function getInitialState(editingHand?: Hand) {
     multiRonWinners: inp.multiRon?.winners ?? [],
     multiRonLoser: inp.multiRon?.loserIndex ?? null,
     selectedYakuman: inp.yakumanList ?? [],
+    isKazoeYakuman: hanVal >= 13 && (!inp.yakumanList || inp.yakumanList.length === 0),
   };
 }
 
-export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, kiriageMangan, doubleRonEnabled, doubleYakumanEnabled, multipleYakumanEnabled, nagashiManganEnabled, editingHand, onSubmit, onClose }: Props) {
+export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, kiriageMangan, doubleRonEnabled, doubleYakumanEnabled, multipleYakumanEnabled, countedYakumanEnabled, nagashiManganEnabled, editingHand, onSubmit, onClose }: Props) {
   const { t } = useLocale();
   const init = getInitialState(editingHand);
   const [step, setStep] = useState<Step>(init.step);
@@ -85,6 +89,12 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
 
   // Yakuman state
   const [selectedYakuman, setSelectedYakuman] = useState<string[]>(init.selectedYakuman);
+  const [isKazoeYakuman, setIsKazoeYakuman] = useState(init.isKazoeYakuman);
+
+  // Multi-ron kazoe flags (parallel to multiRonWinners)
+  const [multiKazoeFlags, setMultiKazoeFlags] = useState<boolean[]>(
+    init.multiRonWinners.map(w => w.han >= 13 && (!w.yakumanList || w.yakumanList.length === 0))
+  );
 
   // Calculate points preview
   const yakumanCount = selectedYakuman.length > 0
@@ -162,14 +172,15 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
       winnerIndex: idx, han: 1, fu: 30,
     }));
     setMultiRonWinners(winners);
+    setMultiKazoeFlags(winners.map(() => false));
     setEditingWinnerIdx(0);
     setStep('multiHanFu');
   }
 
   function handleMultiHanFuNext() {
     const w = multiRonWinners[editingWinnerIdx];
-    if (w && w.han >= 13) {
-      // Show yakuman selection for this multi-ron winner
+    if (w && w.han >= 13 && !multiKazoeFlags[editingWinnerIdx]) {
+      // Show yakuman selection for this multi-ron winner (not kazoe)
       setSelectedYakuman(w.yakumanList ?? []);
       setStep('multiYakumanSelect');
     } else if (editingWinnerIdx < multiRonWinners.length - 1) {
@@ -238,7 +249,11 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         else setStep('multiWinnerSelect');
         break;
       case 'multiYakumanSelect': setStep('multiHanFu'); break;
-      case 'hanfu': setStep(isTsumo ? 'method' : (doubleRonEnabled ? 'multiLoser' : 'loser')); break;
+      case 'hanfu':
+        // Reset kazoe when going back from hanfu
+        if (isKazoeYakuman) { setIsKazoeYakuman(false); setHan(1); }
+        setStep(isTsumo ? 'method' : (doubleRonEnabled ? 'multiLoser' : 'loser'));
+        break;
       case 'yakumanSelect': setStep('hanfu'); break;
       case 'tenpai': setStep('outcome'); break;
       case 'nagashiSelect': setStep('tenpai'); break;
@@ -246,16 +261,17 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
       case 'riichi':
         if (isMultiRon) {
           // Go back to last multi-ron winner's yakuman or hanfu
-          const lastW = multiRonWinners[multiRonWinners.length - 1];
-          if (lastW?.han >= 13) {
-            setEditingWinnerIdx(multiRonWinners.length - 1);
+          const lastIdx = multiRonWinners.length - 1;
+          const lastW = multiRonWinners[lastIdx];
+          if (lastW?.han >= 13 && !multiKazoeFlags[lastIdx]) {
+            setEditingWinnerIdx(lastIdx);
             setStep('multiYakumanSelect');
           } else {
-            setEditingWinnerIdx(multiRonWinners.length - 1);
+            setEditingWinnerIdx(lastIdx);
             setStep('multiHanFu');
           }
         }
-        else if (resultType === 'agari' && han >= 13) setStep('yakumanSelect');
+        else if (resultType === 'agari' && han >= 13 && !isKazoeYakuman) setStep('yakumanSelect');
         else if (resultType === 'agari') setStep('hanfu');
         else if (nagashiManganPlayers.some(Boolean)) {
           setStep(nagashiManganPlayers[currentDealer] ? 'oyaTenpai' : 'nagashiSelect');
@@ -429,9 +445,29 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               <HanFuSelector
                 han={w.han}
                 fu={w.fu}
-                onHanChange={(h) => updateMultiWinnerHanFu(h, w.fu)}
+                onHanChange={(h) => {
+                  updateMultiWinnerHanFu(h, w.fu);
+                  if (h < 13) setMultiKazoeFlags(prev => { const n = [...prev]; n[editingWinnerIdx] = false; return n; });
+                }}
                 onFuChange={(f) => updateMultiWinnerHanFu(w.han, f)}
                 preview={preview}
+                onYakuman={() => {
+                  updateMultiWinnerHanFu(13, w.fu);
+                  setMultiKazoeFlags(prev => { const n = [...prev]; n[editingWinnerIdx] = false; return n; });
+                  setSelectedYakuman([]);
+                  setStep('multiYakumanSelect');
+                }}
+                countedYakumanEnabled={countedYakumanEnabled}
+                isKazoeMode={multiKazoeFlags[editingWinnerIdx] ?? false}
+                onKazoeToggle={() => {
+                  const wasKazoe = multiKazoeFlags[editingWinnerIdx];
+                  setMultiKazoeFlags(prev => { const n = [...prev]; n[editingWinnerIdx] = !wasKazoe; return n; });
+                  if (!wasKazoe) {
+                    updateMultiWinnerHanFu(13, w.fu);
+                  } else {
+                    updateMultiWinnerHanFu(1, w.fu);
+                  }
+                }}
                 extraInfo={
                   <p className="text-sm text-mahjong-muted mt-1">
                     {formatPoints(preview.ronPayment)}{t('mahjong.points')}
@@ -465,9 +501,26 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             <HanFuSelector
               han={han}
               fu={fu}
-              onHanChange={setHan}
+              onHanChange={(h) => { setHan(h); if (h < 13) setIsKazoeYakuman(false); }}
               onFuChange={setFu}
               preview={pointsPreview}
+              onYakuman={() => {
+                setHan(13);
+                setIsKazoeYakuman(false);
+                setSelectedYakuman([]);
+                setStep('yakumanSelect');
+              }}
+              countedYakumanEnabled={countedYakumanEnabled}
+              isKazoeMode={isKazoeYakuman}
+              onKazoeToggle={() => {
+                if (isKazoeYakuman) {
+                  setIsKazoeYakuman(false);
+                  setHan(1);
+                } else {
+                  setIsKazoeYakuman(true);
+                  setHan(13);
+                }
+              }}
               extraInfo={pointsPreview && (
                 <>
                   {isTsumo ? (
@@ -500,14 +553,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             />
 
             <button
-              onClick={() => {
-                if (han >= 13) {
-                  setSelectedYakuman([]);
-                  setStep('yakumanSelect');
-                } else {
-                  setStep('riichi');
-                }
-              }}
+              onClick={() => setStep('riichi')}
               className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
@@ -754,6 +800,8 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                             <span className="text-mahjong-gold ml-1">
                               ({w.yakumanList.map(id => t(`yakuman.${id}` as any)).join(', ')})
                             </span>
+                          ) : w.han >= 13 ? (
+                            <span className="text-mahjong-gold ml-1">({t('record.kazoeYakuman')})</span>
                           ) : null}
                           {preview.limitName && (
                             <span className="text-mahjong-gold ml-1">{t(`mahjong.limit.${preview.limitName}`)}</span>
@@ -778,10 +826,12 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                   )}
                   <p className="text-sm">
                     {han}han {han < 5 ? `${fu}fu` : ''}
-                    {selectedYakuman.length > 0 && (
+                    {selectedYakuman.length > 0 ? (
                       <span className="text-mahjong-gold ml-1">
                         ({selectedYakuman.map(id => t(`yakuman.${id}` as any)).join(', ')})
                       </span>
+                    ) : isKazoeYakuman && (
+                      <span className="text-mahjong-gold ml-1">({t('record.kazoeYakuman')})</span>
                     )}
                   </p>
                   {pointsPreview?.limitName && (

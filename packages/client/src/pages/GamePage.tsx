@@ -227,6 +227,7 @@ export function GamePage() {
           doubleRonEnabled={game.ruleset?.doubleRonEnabled}
           doubleYakumanEnabled={game.ruleset?.doubleYakumanEnabled}
           multipleYakumanEnabled={game.ruleset?.multipleYakumanEnabled}
+          countedYakumanEnabled={game.ruleset?.countedYakumanEnabled}
           nagashiManganEnabled={game.ruleset?.nagashiManganEnabled}
           editingHand={editingHandNumber !== null
             ? game.hands.find(h => h.handNumber === editingHandNumber)

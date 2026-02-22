@@ -231,6 +231,8 @@ export const zh = {
   'record.selectYakuman': '选择役满',
   'record.yakumanMultiplier': '{count}倍役满',
   'record.skipYakuman': '跳过（数え役满）',
+  'record.yakumanDirect': '役满',
+  'record.kazoeYakuman': '数え役满',
   'yakuman.kokushi': '国士无双',
   'yakuman.suuankou': '四暗刻',
   'yakuman.daisangen': '大三元',
