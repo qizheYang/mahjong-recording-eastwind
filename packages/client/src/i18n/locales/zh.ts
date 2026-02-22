@@ -116,6 +116,7 @@ export const zh = {
   'game.undo': '撤销',
   'game.hideHistory': '隐藏记录',
   'game.historyCount': '记录 ({count})',
+  'game.recordPenalty': '罚则',
   'game.forceQuit': '强制结束',
   'game.forceQuitTitle': '强制结束',
   'game.forceQuitConfirm': '对局尚未结束，确定要强制结束吗？',
@@ -301,6 +302,20 @@ export const zh = {
   'player.gameListCount': '对局列表 ({count})',
   'player.notFound': '玩家不存在',
   'player.backToHistory': '返回记录',
+
+  // Penalty
+  'penalty.title': '记录罚则',
+  'penalty.immediate': '即时罚分',
+  'penalty.immediateDesc': '立即扣分并分配给其他三位玩家',
+  'penalty.finalScore': '最终得分罚分',
+  'penalty.finalScoreDesc': '对局中不扣分，仅在最终得分中扣除',
+  'penalty.selectPlayer': '选择被罚玩家',
+  'penalty.amount': '罚分金额',
+  'penalty.amountPlaceholder': '输入罚分点数...',
+  'penalty.reason': '原因',
+  'penalty.reasonPlaceholder': '输入罚则原因 (可选)...',
+  'penalty.confirm': '确认罚则',
+  'penalty.finalScoreNote': '仅在最终得分中扣除',
 
   // Error codes (from server)
   'error.INVALID_ROOM': '无法加入房间',

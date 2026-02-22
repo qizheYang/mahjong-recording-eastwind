@@ -28,6 +28,7 @@ export interface Game {
   status: GameStatus;
   ruleset: Ruleset;
   tags: string[];
+  penalties?: Penalty[];
 }
 
 export interface Hand {
@@ -83,6 +84,15 @@ export interface RyuukyokuResult {
   type: 'ryuukyoku';
   tenpaiStatus: boolean[]; // [p0, p1, p2, p3]
   nagashiManganPlayers?: boolean[]; // [p0, p1, p2, p3] - who achieved nagashi mangan (流局満貫)
+}
+
+export interface Penalty {
+  id: string;
+  type: 'final_score' | 'immediate';
+  playerIndex: number;
+  amount: number; // positive value (points to deduct)
+  reason?: string;
+  recordedAt: number;
 }
 
 export interface FinalScore {

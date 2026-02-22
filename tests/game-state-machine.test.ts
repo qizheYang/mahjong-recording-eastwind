@@ -3,6 +3,7 @@ import {
   processHandResult, undoLastHand, editHand, determineNextState, isAllLastHand,
   M_LEAGUE_RULES, PRESET_RULESETS, OFFICIAL_MATCH_RULES, WRC_RULES, SAIKOUISEN_RULES,
   calculateFinalScores, evaluateScoreFormula,
+  recordPenalty, undoLastPenalty,
 } from '@mahjong/shared';
 import type { Game, GamePlayer, HandResultInput, HandResult } from '@mahjong/shared';
 
@@ -1457,5 +1458,163 @@ describe('Multi-ron tobi', () => {
 
     expect(game.players[0].points).toBeLessThan(0);
     expect(game.status).toBe('completed');
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Penalty system
+// ──────────────────────────────────────────────────
+describe('Penalty system', () => {
+  it('immediate penalty: deducts from offender, distributes to others', () => {
+    const game = createTestGame();
+    const penalty = recordPenalty(game, {
+      type: 'immediate',
+      playerIndex: 0,
+      amount: 12000,
+      reason: 'chombo',
+    });
+
+    expect(penalty.id).toBeDefined();
+    expect(penalty.type).toBe('immediate');
+    expect(penalty.amount).toBe(12000);
+    expect(penalty.reason).toBe('chombo');
+    expect(game.penalties).toHaveLength(1);
+
+    // Offender loses 12000
+    expect(game.players[0].points).toBe(25000 - 12000);
+    // Others gain 4000 each (12000 / 3)
+    expect(game.players[1].points).toBe(25000 + 4000);
+    expect(game.players[2].points).toBe(25000 + 4000);
+    expect(game.players[3].points).toBe(25000 + 4000);
+
+    // Point conservation
+    const total = game.players.reduce((s, p) => s + p.points, 0);
+    expect(total).toBe(100000);
+  });
+
+  it('final_score penalty: no in-game point changes', () => {
+    const game = createTestGame();
+    recordPenalty(game, {
+      type: 'final_score',
+      playerIndex: 2,
+      amount: 20000,
+    });
+
+    // Points unchanged
+    expect(game.players[0].points).toBe(25000);
+    expect(game.players[1].points).toBe(25000);
+    expect(game.players[2].points).toBe(25000);
+    expect(game.players[3].points).toBe(25000);
+    expect(game.penalties).toHaveLength(1);
+  });
+
+  it('undo immediate penalty: reverses point changes', () => {
+    const game = createTestGame();
+    recordPenalty(game, {
+      type: 'immediate',
+      playerIndex: 1,
+      amount: 9000,
+    });
+
+    // After penalty: p1 = 25000-9000=16000, others = 25000+3000=28000
+    expect(game.players[1].points).toBe(16000);
+
+    const removed = undoLastPenalty(game);
+    expect(removed).not.toBeNull();
+    expect(removed!.playerIndex).toBe(1);
+
+    // Points restored
+    for (const p of game.players) {
+      expect(p.points).toBe(25000);
+    }
+    expect(game.penalties).toHaveLength(0);
+  });
+
+  it('undo final_score penalty: removes from list', () => {
+    const game = createTestGame();
+    recordPenalty(game, { type: 'final_score', playerIndex: 0, amount: 5000 });
+    recordPenalty(game, { type: 'final_score', playerIndex: 1, amount: 10000 });
+
+    expect(game.penalties).toHaveLength(2);
+
+    const removed = undoLastPenalty(game);
+    expect(removed!.playerIndex).toBe(1);
+    expect(game.penalties).toHaveLength(1);
+    expect(game.penalties![0].playerIndex).toBe(0);
+  });
+
+  it('undo penalty on empty list returns null', () => {
+    const game = createTestGame();
+    const result = undoLastPenalty(game);
+    expect(result).toBeNull();
+  });
+
+  it('multiple penalties accumulate correctly', () => {
+    const game = createTestGame();
+    recordPenalty(game, { type: 'immediate', playerIndex: 0, amount: 3000 });
+    recordPenalty(game, { type: 'immediate', playerIndex: 0, amount: 6000 });
+
+    // p0: 25000 - 3000 - 6000 = 16000
+    expect(game.players[0].points).toBe(16000);
+    // p1: 25000 + 1000 + 2000 = 28000
+    expect(game.players[1].points).toBe(28000);
+    expect(game.penalties).toHaveLength(2);
+
+    // Point conservation
+    const total = game.players.reduce((s, p) => s + p.points, 0);
+    expect(total).toBe(100000);
+  });
+
+  it('final_score penalty applied in calculateFinalScores', () => {
+    const game = createTestGame();
+    // Simulate some point differences
+    game.players[0].points = 35000;
+    game.players[1].points = 30000;
+    game.players[2].points = 20000;
+    game.players[3].points = 15000;
+
+    // Add a 20000-point final score penalty to player 0
+    game.penalties = [{
+      id: 'pen1', type: 'final_score', playerIndex: 0,
+      amount: 20000, recordedAt: Date.now(),
+    }];
+
+    const scores = calculateFinalScores(game.players, 0, game.ruleset, game.penalties);
+
+    // Player 0's game score should be reduced by 20 (20000/1000)
+    const p0Score = scores.find(s => s.playerIndex === 0)!;
+    const p1Score = scores.find(s => s.playerIndex === 1)!;
+
+    // Without penalty: p0 gameScore = (35000-30000)/1000 + 30 + oka = 5 + 30 + 20 = 55
+    // With penalty: 55 - 20 = 35
+    expect(p0Score.gameScore).toBe(35);
+
+    // Player 1 unaffected by penalty
+    // p1 gameScore = (30000-30000)/1000 + 10 = 10
+    expect(p1Score.gameScore).toBe(10);
+  });
+
+  it('penalty interacts with hands correctly', () => {
+    const game = createTestGame();
+
+    // Record a hand
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 0, loserIndex: 1,
+      isTsumo: false, han: 3, fu: 30,
+    });
+
+    const pointsAfterHand = game.players.map(p => p.points);
+
+    // Add immediate penalty to the winner
+    recordPenalty(game, {
+      type: 'immediate',
+      playerIndex: 0,
+      amount: 6000,
+    });
+
+    expect(game.players[0].points).toBe(pointsAfterHand[0] - 6000);
+    expect(game.players[1].points).toBe(pointsAfterHand[1] + 2000);
+    expect(game.hands).toHaveLength(1);
+    expect(game.penalties).toHaveLength(1);
   });
 });

@@ -118,6 +118,7 @@ export const ja: Record<TranslationKey, string> = {
   'game.undo': '取り消し',
   'game.hideHistory': '記録を隠す',
   'game.historyCount': '記録 ({count})',
+  'game.recordPenalty': '罰則',
   'game.forceQuit': '強制終了',
   'game.forceQuitTitle': '強制終了',
   'game.forceQuitConfirm': '対局がまだ終わっていません。強制終了しますか？',
@@ -303,6 +304,20 @@ export const ja: Record<TranslationKey, string> = {
   'player.gameListCount': '対局一覧 ({count})',
   'player.notFound': 'プレイヤーが見つかりません',
   'player.backToHistory': '記録に戻る',
+
+  // Penalty
+  'penalty.title': '罰則を記録',
+  'penalty.immediate': '即時罰点',
+  'penalty.immediateDesc': '即座にポイントを差し引き、他の3人に分配',
+  'penalty.finalScore': '最終スコア罰点',
+  'penalty.finalScoreDesc': '対局中は変動なし、最終スコアにのみ反映',
+  'penalty.selectPlayer': 'プレイヤーを選択',
+  'penalty.amount': '金額',
+  'penalty.amountPlaceholder': '罰点を入力...',
+  'penalty.reason': '理由',
+  'penalty.reasonPlaceholder': '理由を入力 (任意)...',
+  'penalty.confirm': '罰則を確定',
+  'penalty.finalScoreNote': '最終スコアにのみ反映されます',
 
   // Error codes
   'error.INVALID_ROOM': '部屋に参加できません',

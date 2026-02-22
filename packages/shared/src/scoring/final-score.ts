@@ -1,4 +1,4 @@
-import type { GamePlayer, FinalScore } from '../types/game.js';
+import type { GamePlayer, FinalScore, Penalty } from '../types/game.js';
 import type { Ruleset } from '../constants.js';
 
 /**
@@ -26,6 +26,7 @@ export function calculateFinalScores(
   players: GamePlayer[],
   riichiSticksOnTable: number,
   ruleset: Ruleset,
+  penalties?: Penalty[],
 ): FinalScore[] {
   // Step 1: Award remaining riichi sticks to highest scorer
   const points = players.map(p => p.points);
@@ -61,6 +62,15 @@ export function calculateFinalScores(
     } else {
       const baseGameScore = (p.pts - ruleset.returnPoints) / 1000;
       gameScore = baseGameScore + uma + oka;
+    }
+
+    // Apply final_score penalties (deduct from game score)
+    if (penalties) {
+      for (const pen of penalties) {
+        if (pen.type === 'final_score' && pen.playerIndex === p.index) {
+          gameScore -= pen.amount / 1000;
+        }
+      }
     }
 
     return {

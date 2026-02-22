@@ -155,6 +155,26 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
       break;
     }
 
+    case 'record_penalty': {
+      const result = roomManager.recordGamePenalty(roomCode, event.penalty);
+      if ('error' in result) {
+        sendError(ws, result.error, 'RECORD_ERROR');
+        return;
+      }
+      roomManager.broadcast(roomCode, { type: 'penalty_recorded', penalty: result.penalty, game: result.game });
+      break;
+    }
+
+    case 'undo_penalty': {
+      const result = roomManager.undoGamePenalty(roomCode);
+      if ('error' in result) {
+        sendError(ws, result.error, 'UNDO_ERROR');
+        return;
+      }
+      roomManager.broadcast(roomCode, { type: 'penalty_undone', game: result });
+      break;
+    }
+
     case 'end_game': {
       const result = roomManager.endGame(roomCode);
       if ('error' in result) {

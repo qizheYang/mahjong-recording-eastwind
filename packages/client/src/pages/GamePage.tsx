@@ -4,9 +4,10 @@ import { useGameStore } from '../stores/game-store';
 import { ScoreBoard } from '../components/game/ScoreBoard';
 import { HandHistory } from '../components/game/HandHistory';
 import { RecordHandModal } from '../components/game/RecordHandModal';
+import { PenaltyModal } from '../components/game/PenaltyModal';
 import { formatRound } from '../lib/format';
 import { isAllLastHand, M_LEAGUE_RULES } from '@mahjong/shared';
-import type { HandResultInput } from '@mahjong/shared';
+import type { HandResultInput, PenaltyInput } from '@mahjong/shared';
 import { RulesIsland } from '../components/game/RulesIsland';
 import { useLocale } from '../i18n';
 
@@ -17,13 +18,15 @@ export function GamePage() {
   const {
     room, game, finalScores, playerId, connected,
     connect, setSession,
-    recordHand, editHand, undoLastHand, endGame, forceQuitGame, error, errorCode, clearError,
+    recordHand, editHand, undoLastHand, recordPenalty, undoPenalty,
+    endGame, forceQuitGame, error, errorCode, clearError,
   } = useGameStore();
 
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [confirmUndo, setConfirmUndo] = useState(false);
   const [showForceQuit, setShowForceQuit] = useState(false);
+  const [showPenaltyModal, setShowPenaltyModal] = useState(false);
   const [editingHandNumber, setEditingHandNumber] = useState<number | null>(null);
 
   // Restore session
@@ -174,6 +177,13 @@ export function GamePage() {
           >
             {showHistory ? t('game.hideHistory') : t('game.historyCount', { count: game.hands.length })}
           </button>
+          <button
+            onClick={() => setShowPenaltyModal(true)}
+            className="flex-1 py-2 rounded-lg bg-mahjong-card text-mahjong-highlight text-sm
+              active:scale-[0.98] transition-transform"
+          >
+            {t('game.recordPenalty')}
+          </button>
         </div>
 
         <button
@@ -221,6 +231,18 @@ export function GamePage() {
             : undefined}
           onSubmit={handleRecordHand}
           onClose={() => { setShowRecordModal(false); setEditingHandNumber(null); }}
+        />
+      )}
+
+      {/* Penalty modal */}
+      {showPenaltyModal && (
+        <PenaltyModal
+          players={game.players}
+          onSubmit={(penalty) => {
+            recordPenalty(penalty);
+            setShowPenaltyModal(false);
+          }}
+          onClose={() => setShowPenaltyModal(false)}
         />
       )}
 

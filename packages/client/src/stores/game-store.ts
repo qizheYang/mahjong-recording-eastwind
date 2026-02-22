@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Room, Game, Hand, FinalScore, ServerEvent, ClientEvent, HandResultInput, Ruleset } from '@mahjong/shared';
+import type { Room, Game, Hand, FinalScore, ServerEvent, ClientEvent, HandResultInput, PenaltyInput, Ruleset } from '@mahjong/shared';
 import { M_LEAGUE_RULES } from '@mahjong/shared';
 import { WsClient } from '../lib/ws-client';
 import { config } from '../config';
@@ -38,6 +38,8 @@ interface GameStore {
   recordHand: (result: HandResultInput) => void;
   editHand: (handNumber: number, result: HandResultInput) => void;
   undoLastHand: () => void;
+  recordPenalty: (penalty: PenaltyInput) => void;
+  undoPenalty: () => void;
   endGame: () => void;
   forceQuitGame: (keepRecord: boolean) => void;
   clearError: () => void;
@@ -166,6 +168,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
           set({ game: event.game });
           break;
 
+        case 'penalty_recorded':
+          set({ game: event.game });
+          break;
+
+        case 'penalty_undone':
+          set({ game: event.game });
+          break;
+
         case 'game_ended':
           set({ game: event.game, finalScores: event.finalScores, savedFilename: event.savedFilename ?? null });
           break;
@@ -241,6 +251,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   undoLastHand() {
     wsClient?.send({ type: 'undo_last_hand' });
+  },
+
+  recordPenalty(penalty: PenaltyInput) {
+    wsClient?.send({ type: 'record_penalty', penalty });
+  },
+
+  undoPenalty() {
+    wsClient?.send({ type: 'undo_penalty' });
   },
 
   endGame() {

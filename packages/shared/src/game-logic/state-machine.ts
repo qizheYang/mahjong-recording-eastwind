@@ -1,5 +1,5 @@
-import type { Game, Hand, HandResult, AgariResult, MultiAgariResult, MultiAgariWinner, RyuukyokuResult, Round } from '../types/game.js';
-import type { HandResultInput } from '../types/ws-events.js';
+import type { Game, Hand, HandResult, AgariResult, MultiAgariResult, MultiAgariWinner, RyuukyokuResult, Round, Penalty } from '../types/game.js';
+import type { HandResultInput, PenaltyInput } from '../types/ws-events.js';
 import { calculateTransfers } from '../scoring/transfers.js';
 import { calculatePoints, calculateYakumanMultiplier } from '../scoring/calculator.js';
 
@@ -338,4 +338,58 @@ export function undoLastHand(game: Game): Hand | null {
   game.status = 'in_progress';
 
   return hand;
+}
+
+/**
+ * Record a penalty during a game.
+ * - 'immediate': deducts from offender, splits equally among the other 3 players.
+ * - 'final_score': stored but not applied to in-game points (applied in calculateFinalScores).
+ */
+export function recordPenalty(game: Game, input: PenaltyInput): Penalty {
+  const penalty: Penalty = {
+    id: `${game.id}-pen${(game.penalties?.length ?? 0) + 1}`,
+    type: input.type,
+    playerIndex: input.playerIndex,
+    amount: input.amount,
+    reason: input.reason,
+    recordedAt: Date.now(),
+  };
+
+  if (!game.penalties) game.penalties = [];
+  game.penalties.push(penalty);
+
+  if (input.type === 'immediate') {
+    // Deduct from offender, distribute to other 3 players
+    const perPlayer = Math.floor(input.amount / 3);
+    game.players[input.playerIndex].points -= input.amount;
+    for (let i = 0; i < 4; i++) {
+      if (i !== input.playerIndex) {
+        game.players[i].points += perPlayer;
+      }
+    }
+  }
+
+  return penalty;
+}
+
+/**
+ * Undo the last penalty. Reverses immediate point changes if applicable.
+ */
+export function undoLastPenalty(game: Game): Penalty | null {
+  if (!game.penalties?.length) return null;
+
+  const penalty = game.penalties.pop()!;
+
+  if (penalty.type === 'immediate') {
+    // Reverse the point changes
+    const perPlayer = Math.floor(penalty.amount / 3);
+    game.players[penalty.playerIndex].points += penalty.amount;
+    for (let i = 0; i < 4; i++) {
+      if (i !== penalty.playerIndex) {
+        game.players[i].points -= perPlayer;
+      }
+    }
+  }
+
+  return penalty;
 }

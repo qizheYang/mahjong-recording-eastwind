@@ -1,11 +1,12 @@
 import type { WSContext } from 'hono/ws';
 import type {
-  Room, Player, Game, GamePlayer, Hand, FinalScore,
-  HandResultInput, ServerEvent, Ruleset,
+  Room, Player, Game, GamePlayer, Hand, FinalScore, Penalty,
+  HandResultInput, PenaltyInput, ServerEvent, Ruleset,
 } from '@mahjong/shared';
 import {
   M_LEAGUE_RULES, WINDS,
   processHandResult, undoLastHand, editHand, calculateFinalScores,
+  recordPenalty, undoLastPenalty,
 } from '@mahjong/shared';
 import { nanoid } from 'nanoid';
 
@@ -296,6 +297,33 @@ export class RoomManager {
     return game;
   }
 
+  recordGamePenalty(roomCode: string, input: PenaltyInput): { penalty: Penalty; game: Game } | { error: string } {
+    const state = this.rooms.get(roomCode);
+    if (!state) return { error: '房间不存在' };
+
+    const game = state.room.currentGame;
+    if (!game) return { error: '没有进行中的对局' };
+
+    const penalty = recordPenalty(game, input);
+    this.touch(roomCode);
+
+    return { penalty, game };
+  }
+
+  undoGamePenalty(roomCode: string): Game | { error: string } {
+    const state = this.rooms.get(roomCode);
+    if (!state) return { error: '房间不存在' };
+
+    const game = state.room.currentGame;
+    if (!game) return { error: '没有进行中的对局' };
+
+    const removed = undoLastPenalty(game);
+    if (!removed) return { error: '没有可撤销的罚则 (No penalties to undo)' };
+    this.touch(roomCode);
+
+    return game;
+  }
+
   endGame(roomCode: string): { game: Game; finalScores: FinalScore[] } | { error: string } {
     const state = this.rooms.get(roomCode);
     if (!state) return { error: '房间不存在' };
@@ -308,6 +336,7 @@ export class RoomManager {
       game.players,
       game.riichiSticks,
       game.ruleset,
+      game.penalties,
     );
 
     state.room.status = 'finished';
@@ -321,7 +350,7 @@ export class RoomManager {
     if (!state?.room.currentGame) return null;
 
     const game = state.room.currentGame;
-    return calculateFinalScores(game.players, game.riichiSticks, game.ruleset);
+    return calculateFinalScores(game.players, game.riichiSticks, game.ruleset, game.penalties);
   }
 
   resetRoom(roomCode: string): Room | null {

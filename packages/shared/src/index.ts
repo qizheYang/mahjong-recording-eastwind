@@ -2,9 +2,9 @@
 export type { Player, Room, RoomStatus } from './types/room.js';
 export type {
   Round, GameStatus, GamePlayer, Game, Hand, HandResult,
-  AgariResult, MultiAgariResult, MultiAgariWinner, RyuukyokuResult, FinalScore,
+  AgariResult, MultiAgariResult, MultiAgariWinner, RyuukyokuResult, FinalScore, Penalty,
 } from './types/game.js';
-export type { ClientEvent, ServerEvent, HandResultInput, MultiRonWinnerInput } from './types/ws-events.js';
+export type { ClientEvent, ServerEvent, HandResultInput, MultiRonWinnerInput, PenaltyInput } from './types/ws-events.js';
 
 // Constants
 export {
@@ -27,5 +27,6 @@ export {
 // Game logic
 export {
   determineNextState, isAllLastHand, processHandResult, undoLastHand, editHand,
+  recordPenalty, undoLastPenalty,
 } from './game-logic/state-machine.js';
 export type { GameStateAction } from './game-logic/state-machine.js';

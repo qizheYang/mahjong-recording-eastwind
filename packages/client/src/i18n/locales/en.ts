@@ -118,6 +118,7 @@ export const en: Record<TranslationKey, string> = {
   'game.undo': 'Undo',
   'game.hideHistory': 'Hide History',
   'game.historyCount': 'History ({count})',
+  'game.recordPenalty': 'Penalty',
   'game.forceQuit': 'Force Quit Game',
   'game.forceQuitTitle': 'Force Quit',
   'game.forceQuitConfirm': 'Game is not finished. Force quit?',
@@ -303,6 +304,20 @@ export const en: Record<TranslationKey, string> = {
   'player.gameListCount': 'Game List ({count})',
   'player.notFound': 'Player not found',
   'player.backToHistory': 'Back to History',
+
+  // Penalty
+  'penalty.title': 'Record Penalty',
+  'penalty.immediate': 'Immediate Penalty',
+  'penalty.immediateDesc': 'Deduct points now and redistribute to other 3 players',
+  'penalty.finalScore': 'Final Score Penalty',
+  'penalty.finalScoreDesc': 'No in-game point change; deducted from final game score only',
+  'penalty.selectPlayer': 'Select Player',
+  'penalty.amount': 'Amount',
+  'penalty.amountPlaceholder': 'Enter penalty points...',
+  'penalty.reason': 'Reason',
+  'penalty.reasonPlaceholder': 'Enter reason (optional)...',
+  'penalty.confirm': 'Confirm Penalty',
+  'penalty.finalScoreNote': 'Deducted from final game score only',
 
   // Error codes
   'error.INVALID_ROOM': 'Cannot join room',

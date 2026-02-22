@@ -1,5 +1,5 @@
 import type { Room, Player } from './room.js';
-import type { Game, Hand, FinalScore } from './game.js';
+import type { Game, Hand, FinalScore, Penalty } from './game.js';
 import type { Ruleset } from '../constants.js';
 
 // Client -> Server events
@@ -12,8 +12,17 @@ export type ClientEvent =
   | { type: 'record_hand'; result: HandResultInput }
   | { type: 'edit_hand'; handNumber: number; result: HandResultInput }
   | { type: 'undo_last_hand' }
+  | { type: 'record_penalty'; penalty: PenaltyInput }
+  | { type: 'undo_penalty' }
   | { type: 'end_game' }
   | { type: 'force_quit_game'; keepRecord: boolean };
+
+export interface PenaltyInput {
+  type: 'final_score' | 'immediate';
+  playerIndex: number;
+  amount: number;
+  reason?: string;
+}
 
 export interface MultiRonWinnerInput {
   winnerIndex: number;
@@ -54,5 +63,7 @@ export type ServerEvent =
   | { type: 'hand_recorded'; hand: Hand; game: Game }
   | { type: 'hand_undone'; game: Game }
   | { type: 'hand_edited'; game: Game }
+  | { type: 'penalty_recorded'; penalty: Penalty; game: Game }
+  | { type: 'penalty_undone'; game: Game }
   | { type: 'game_ended'; game: Game; finalScores: FinalScore[]; savedFilename?: string }
   | { type: 'error'; message: string; code: string };
