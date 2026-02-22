@@ -1058,7 +1058,7 @@ describe('Yakuman in game state', () => {
 
   it('stacked yakuman (tsuiisou + daisuushii) with doubleYakuman enabled = triple', () => {
     const game = createTestGame();
-    game.ruleset = { ...M_LEAGUE_RULES, doubleYakumanEnabled: true };
+    game.ruleset = { ...M_LEAGUE_RULES, doubleYakumanEnabled: true, multipleYakumanEnabled: true };
     processHandResult(game, {
       resultType: 'agari',
       winnerIndex: 1,

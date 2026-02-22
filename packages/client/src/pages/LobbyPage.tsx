@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
-import { addPlayer, removePlayer, listTags, createTag, searchRegisteredUsers, type RegisteredUser } from '../lib/api';
+import { addPlayer, removePlayer, killRoom, listTags, createTag, searchRegisteredUsers, type RegisteredUser } from '../lib/api';
 import { WINDS, M_LEAGUE_RULES, defaultScoreFormula } from '@mahjong/shared';
 import type { PresetName } from '@mahjong/shared';
 import { RulesIsland } from '../components/game/RulesIsland';
@@ -13,8 +13,9 @@ export function LobbyPage() {
   const { t } = useLocale();
   const {
     room, game, playerId, connected, customRuleset, gameTags, teamAssignments,
+    errorCode,
     connect, toggleReady, swapSeats, startGame, setSession, setRuleset, toggleTag,
-    setTeamAssignment, clearTeamAssignments,
+    setTeamAssignment, clearTeamAssignments, clearError,
   } = useGameStore();
 
   const [copied, setCopied] = useState(false);
@@ -95,6 +96,14 @@ export function LobbyPage() {
     }
   }, [game, roomCode, navigate]);
 
+  // Redirect on room killed
+  useEffect(() => {
+    if (errorCode === 'ROOM_KILLED') {
+      clearError();
+      navigate('/');
+    }
+  }, [errorCode, clearError, navigate]);
+
   function handleCopyCode() {
     navigator.clipboard.writeText(roomCode || '');
     setCopied(true);
@@ -145,6 +154,15 @@ export function LobbyPage() {
     } catch (e: any) {
       setSoloError(e.message);
     }
+  }
+
+  async function handleKillRoom() {
+    if (!roomCode || !playerId) return;
+    if (!window.confirm(t('lobby.killRoomConfirm'))) return;
+    try {
+      await killRoom(roomCode, playerId);
+      navigate('/');
+    } catch { /* room may already be gone */ navigate('/'); }
   }
 
   function handleSoloStart() {
@@ -257,6 +275,19 @@ export function LobbyPage() {
         <div className="text-center my-6">
           <h2 className="text-xl font-bold text-mahjong-gold">{t('lobby.soloMode')}</h2>
           <p className="text-mahjong-muted text-sm">{t('lobby.soloRecording')}</p>
+        </div>
+      )}
+
+      {/* Kill room button — only for creator */}
+      {playerId === room?.creatorId && (
+        <div className="text-center mb-2">
+          <button
+            onClick={handleKillRoom}
+            className="text-xs text-mahjong-highlight/60 hover:text-mahjong-highlight
+              px-3 py-1 rounded bg-mahjong-highlight/10 active:scale-95 transition-all"
+          >
+            {t('lobby.killRoom')}
+          </button>
         </div>
       )}
 

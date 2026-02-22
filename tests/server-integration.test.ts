@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { serve } from '@hono/node-server';
 import { createApp } from '../packages/server/src/app';
+import { createAdmin, signIn } from '../packages/server/src/services/admin-service';
 import WebSocket from 'ws';
 import type { ServerEvent, ClientEvent } from '@mahjong/shared';
 import type { Server } from 'http';
@@ -97,8 +98,14 @@ async function apiPost(path: string, body: object): Promise<{ status: number; da
   return { status: res.status, data };
 }
 
-async function apiGet(path: string): Promise<{ status: number; data: any }> {
-  const res = await fetch(`http://localhost:${port}${BASE_PATH}${path}`);
+async function apiGet(path: string, headers?: Record<string, string>): Promise<{ status: number; data: any }> {
+  const res = await fetch(`http://localhost:${port}${BASE_PATH}${path}`, { headers });
+  const data = await res.json();
+  return { status: res.status, data };
+}
+
+async function apiDelete(path: string, headers?: Record<string, string>): Promise<{ status: number; data: any }> {
+  const res = await fetch(`http://localhost:${port}${BASE_PATH}${path}`, { method: 'DELETE', headers });
   const data = await res.json();
   return { status: res.status, data };
 }
@@ -993,5 +1000,118 @@ describe('Edge Cases', () => {
     expect(room.data.room.players.map((p: any) => p.name)).toEqual([
       '田中太郎', '佐藤花子', '李明', '김철수',
     ]);
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Kill Room Tests
+// ──────────────────────────────────────────────────
+describe('Kill Room', () => {
+  let adminToken: string;
+
+  // Create test admin account once
+  beforeAll(() => {
+    try { createAdmin('testadmin', 'testpass123'); } catch { /* already exists */ }
+    const result = signIn('testadmin', 'testpass123');
+    adminToken = result!.token;
+  });
+
+  it('room has creatorId set', async () => {
+    const create = await apiPost('/api/rooms', { playerName: 'Creator' });
+    const code = create.data.roomCode;
+    const creatorId = create.data.playerId;
+
+    const room = await apiGet(`/api/rooms/${code}`);
+    expect(room.data.room.creatorId).toBe(creatorId);
+  });
+
+  it('creator can kill their own room', async () => {
+    const create = await apiPost('/api/rooms', { playerName: 'Creator' });
+    const code = create.data.roomCode;
+    const creatorId = create.data.playerId;
+
+    const res = await apiDelete(`/api/rooms/${code}?playerId=${creatorId}`);
+    expect(res.status).toBe(200);
+    expect(res.data.ok).toBe(true);
+
+    // Room should be gone
+    const check = await apiGet(`/api/rooms/${code}`);
+    expect(check.status).toBe(404);
+  });
+
+  it('non-creator cannot kill room', async () => {
+    const create = await apiPost('/api/rooms', { playerName: 'Creator' });
+    const code = create.data.roomCode;
+    const join = await apiPost(`/api/rooms/${code}/join`, { playerName: 'Guest' });
+    const guestId = join.data.playerId;
+
+    const res = await apiDelete(`/api/rooms/${code}?playerId=${guestId}`);
+    expect(res.status).toBe(403);
+
+    // Room should still exist
+    const check = await apiGet(`/api/rooms/${code}`);
+    expect(check.status).toBe(200);
+  });
+
+  it('admin can kill room with < 4 players', async () => {
+    const create = await apiPost('/api/rooms', { playerName: 'P1' });
+    const code = create.data.roomCode;
+    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P2' });
+
+    const res = await apiDelete(`/api/rooms/${code}`, { Authorization: `Bearer ${adminToken}` });
+    expect(res.status).toBe(200);
+    expect(res.data.ok).toBe(true);
+
+    // Room should be gone
+    const check = await apiGet(`/api/rooms/${code}`);
+    expect(check.status).toBe(404);
+  });
+
+  it('admin cannot kill full room', async () => {
+    const create = await apiPost('/api/rooms', { playerName: 'P1' });
+    const code = create.data.roomCode;
+    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P2' });
+    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P3' });
+    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P4' });
+
+    const res = await apiDelete(`/api/rooms/${code}`, { Authorization: `Bearer ${adminToken}` });
+    expect(res.status).toBe(400);
+
+    // Room should still exist
+    const check = await apiGet(`/api/rooms/${code}`);
+    expect(check.status).toBe(200);
+  });
+
+  it('connected players receive room_killed event', async () => {
+    const create = await apiPost('/api/rooms', { playerName: 'Host' });
+    const code = create.data.roomCode;
+    const hostId = create.data.playerId;
+    const join = await apiPost(`/api/rooms/${code}/join`, { playerName: 'Guest' });
+
+    // Connect both players via WS
+    const ws1 = track(await connectWs(code, hostId));
+    await ws1.waitForEvent('room_state');
+    const ws2 = track(await connectWs(code, join.data.playerId));
+    await ws2.waitForEvent('room_state');
+
+    // Kill the room as creator
+    const killedPromise1 = ws1.waitForEvent('room_killed');
+    const killedPromise2 = ws2.waitForEvent('room_killed');
+
+    await apiDelete(`/api/rooms/${code}?playerId=${hostId}`);
+
+    const killed1 = await killedPromise1;
+    const killed2 = await killedPromise2;
+
+    expect(killed1.type).toBe('room_killed');
+    expect(killed2.type).toBe('room_killed');
+    if (killed1.type === 'room_killed') {
+      expect(killed1.reason).toBeTruthy();
+    }
+  });
+
+  it('killing nonexistent room returns 404', async () => {
+    const res = await apiDelete('/api/rooms/ZZZZ?playerId=fake');
+    expect(res.status).toBe(404);
   });
 });

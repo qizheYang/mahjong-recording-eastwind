@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { roomManager } from '../ws/room-manager.js';
+import { getAdminFromHeader } from '../services/admin-service.js';
 
 const roomRoutes = new Hono();
 
@@ -88,6 +89,36 @@ roomRoutes.post('/:code/remove-player', async (c) => {
   }
 
   roomManager.removePlayer(code, body.playerId);
+  return c.json({ ok: true });
+});
+
+// Kill (disband) a room
+roomRoutes.delete('/:code', (c) => {
+  const code = c.req.param('code').toUpperCase();
+  const room = roomManager.getRoom(code);
+
+  if (!room) {
+    return c.json({ error: '房间不存在 (Room not found)' }, 404);
+  }
+
+  // Check admin auth
+  const adminUser = getAdminFromHeader(c.req.header('Authorization'));
+  if (adminUser) {
+    // Admin can kill rooms with < 4 players
+    if (room.players.length >= 4) {
+      return c.json({ error: '无法解散满员房间 (Cannot kill full room)' }, 400);
+    }
+    roomManager.killRoom(code, 'Admin disbanded room');
+    return c.json({ ok: true });
+  }
+
+  // Non-admin: check if creator
+  const playerId = c.req.query('playerId');
+  if (!playerId || playerId !== room.creatorId) {
+    return c.json({ error: '只有房主可以解散房间 (Only creator can disband)' }, 403);
+  }
+
+  roomManager.killRoom(code, 'Creator disbanded room');
   return c.json({ ok: true });
 });
 

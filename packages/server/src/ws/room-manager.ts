@@ -72,6 +72,7 @@ export class RoomManager {
       status: 'waiting',
       currentGame: null,
       createdAt: Date.now(),
+      creatorId: playerId,
     };
 
     this.rooms.set(code, { room, connections: new Map(), lastActivityAt: Date.now() });
@@ -125,6 +126,22 @@ export class RoomManager {
     }
 
     this.broadcast(roomCode, { type: 'player_left', playerId });
+  }
+
+  killRoom(roomCode: string, reason: string): boolean {
+    const state = this.rooms.get(roomCode);
+    if (!state) return false;
+
+    // Broadcast room_killed to all connected clients
+    this.broadcast(roomCode, { type: 'room_killed', reason });
+
+    // Close all WebSocket connections
+    for (const ws of state.connections.values()) {
+      try { ws.close(1000, reason); } catch { /* ignore */ }
+    }
+
+    this.rooms.delete(roomCode);
+    return true;
   }
 
   toggleReady(roomCode: string, playerId: string): { ready: boolean; allReady: boolean } | { error: string } {

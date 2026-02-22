@@ -426,10 +426,12 @@ describe('Yakuman', () => {
   });
 
   it('calculateYakumanMultiplier: multiple yakuman stack', () => {
-    // tsuiisou (1) + daisuushii (2 if enabled) = 3
-    expect(calculateYakumanMultiplier(['tsuiisou', 'daisuushii'], true)).toBe(3);
+    // tsuiisou (1) + daisuushii (2 if enabled) = 3, multipleYakumanEnabled must be true
+    expect(calculateYakumanMultiplier(['tsuiisou', 'daisuushii'], true, true)).toBe(3);
     // tsuiisou (1) + daisuushii (1 if disabled) = 2
-    expect(calculateYakumanMultiplier(['tsuiisou', 'daisuushii'], false)).toBe(2);
+    expect(calculateYakumanMultiplier(['tsuiisou', 'daisuushii'], false, true)).toBe(2);
+    // multiple yakuman disabled: caps at 1
+    expect(calculateYakumanMultiplier(['tsuiisou', 'daisuushii'], true, false)).toBe(1);
   });
 
   it('calculateYakumanMultiplier: empty list = 1', () => {

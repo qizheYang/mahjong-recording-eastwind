@@ -17,4 +17,5 @@ export interface Room {
   status: RoomStatus;
   currentGame: Game | null;
   createdAt: number;
+  creatorId?: string;
 }

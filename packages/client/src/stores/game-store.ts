@@ -188,6 +188,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
           set({ game: event.game, finalScores: event.finalScores, teamScores: event.teamScores ?? null, savedFilename: event.savedFilename ?? null });
           break;
 
+        case 'room_killed':
+          sessionStorage.removeItem('roomCode');
+          sessionStorage.removeItem('playerId');
+          if (wsClient) {
+            wsClient.disconnect();
+            wsClient = null;
+          }
+          set({ room: null, game: null, roomCode: null, playerId: null, connected: false, error: event.reason, errorCode: 'ROOM_KILLED' });
+          break;
+
         case 'error':
           set({ error: event.message, errorCode: event.code ?? null });
           // Invalid room/player — clear stale session so we don't retry on reload

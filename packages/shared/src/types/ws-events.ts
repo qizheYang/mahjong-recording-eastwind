@@ -66,4 +66,5 @@ export type ServerEvent =
   | { type: 'penalty_recorded'; penalty: Penalty; game: Game }
   | { type: 'penalty_undone'; game: Game }
   | { type: 'game_ended'; game: Game; finalScores: FinalScore[]; savedFilename?: string; teamScores?: TeamScore[] }
+  | { type: 'room_killed'; reason: string }
   | { type: 'error'; message: string; code: string };

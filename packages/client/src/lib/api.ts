@@ -46,6 +46,19 @@ export async function removePlayer(code: string, playerId: string): Promise<{ ok
   });
 }
 
+export async function killRoom(code: string, playerId: string): Promise<{ ok: boolean }> {
+  return request(`/rooms/${code.toUpperCase()}?playerId=${encodeURIComponent(playerId)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function adminKillRoom(token: string, code: string): Promise<{ ok: boolean }> {
+  return request(`/rooms/${code.toUpperCase()}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 export async function resetRoom(code: string): Promise<void> {
   return request(`/rooms/${code}/reset`, { method: 'POST' });
 }

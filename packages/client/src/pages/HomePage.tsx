@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createRoom, joinRoom, listLiveGames, searchRegisteredUsers, type LiveGameSummary, type RegisteredUser } from '../lib/api';
+import { createRoom, joinRoom, listLiveGames, adminKillRoom, searchRegisteredUsers, type LiveGameSummary, type RegisteredUser } from '../lib/api';
 import type { Wind } from '@mahjong/shared';
 import { useGameStore } from '../stores/game-store';
 import { useAdminStore } from '../stores/admin-store';
@@ -161,9 +161,25 @@ export function HomePage() {
                   <div key={g.roomCode} className="bg-mahjong-card rounded-lg p-3 border border-mahjong-accent">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-mono text-mahjong-gold font-bold">{g.roomCode}</span>
-                      <span className="text-xs text-mahjong-muted">
-                        {g.status === 'waiting' ? t('home.waitingCount', { n: g.playerNames.length }) : g.status === 'playing' ? t('home.playing') : t('home.finished')}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-mahjong-muted">
+                          {g.status === 'waiting' ? t('home.waitingCount', { n: g.playerNames.length }) : g.status === 'playing' ? t('home.playing') : t('home.finished')}
+                        </span>
+                        {adminToken && g.playerNames.length < 4 && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await adminKillRoom(adminToken, g.roomCode);
+                                setLiveGames(prev => prev.filter(r => r.roomCode !== g.roomCode));
+                              } catch { /* ignore */ }
+                            }}
+                            className="text-xs text-mahjong-highlight/60 hover:text-mahjong-highlight px-1.5 py-0.5
+                              rounded bg-mahjong-highlight/10 active:scale-95 transition-all"
+                          >
+                            {t('admin.killRoom')}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {g.status === 'playing' && g.gameInfo ? (
                       <div>
