@@ -72,8 +72,8 @@ export const tags = sqliteTable('tags', {
 export const registeredUsers = sqliteTable('registered_users', {
   id: text('id').primaryKey(),
   username: text('username').notNull().unique(),
-  phone: text('phone').notNull(),
-  phoneVerified: integer('phone_verified').notNull().default(0),
+  email: text('email').notNull().default(''),
+  emailVerified: integer('email_verified').notNull().default(0),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
 });

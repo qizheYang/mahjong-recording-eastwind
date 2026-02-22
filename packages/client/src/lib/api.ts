@@ -186,27 +186,27 @@ export async function adminUpdateGameTags(
 export interface RegisteredUser {
   id: string;
   username: string;
-  phone: string;
+  email: string;
 }
 
-export async function registerUser(username: string, phone: string): Promise<{ id: string; username: string; phone: string; needsVerification: boolean }> {
+export async function registerUser(username: string, email?: string): Promise<{ id: string; username: string; email: string; needsVerification: boolean }> {
   return request('/users/register', {
     method: 'POST',
-    body: JSON.stringify({ username, phone }),
+    body: JSON.stringify({ username, ...(email ? { email } : {}) }),
   });
 }
 
-export async function verifyPhone(phone: string, code: string): Promise<{ verified: boolean }> {
+export async function verifyEmail(email: string, code: string): Promise<{ verified: boolean }> {
   return request('/users/verify', {
     method: 'POST',
-    body: JSON.stringify({ phone, code }),
+    body: JSON.stringify({ email, code }),
   });
 }
 
-export async function resendOtp(phone: string): Promise<{ codeSent: boolean }> {
+export async function resendOtp(email: string): Promise<{ codeSent: boolean }> {
   return request('/users/resend-otp', {
     method: 'POST',
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify({ email }),
   });
 }
 

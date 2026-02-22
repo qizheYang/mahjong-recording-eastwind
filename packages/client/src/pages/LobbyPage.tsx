@@ -22,7 +22,6 @@ export function LobbyPage() {
   // Solo mode state
   const [soloMode, setSoloMode] = useState(false);
   const [soloNames, setSoloNames] = useState(['', '', '']);
-  const [soloPhones, setSoloPhones] = useState(['', '', '']);
   const [addingIdx, setAddingIdx] = useState<number | null>(null);
   const [soloError, setSoloError] = useState('');
 
@@ -122,15 +121,9 @@ export function LobbyPage() {
     setAddingIdx(slotIdx);
     setSoloError('');
     try {
-      const phone = soloPhones[slotIdx]?.trim() || undefined;
-      await addPlayer(roomCode, name, phone);
+      await addPlayer(roomCode, name);
       // Server broadcasts player_joined → room state updates via WS
       setSoloNames(prev => {
-        const next = [...prev];
-        next[slotIdx] = '';
-        return next;
-      });
-      setSoloPhones(prev => {
         const next = [...prev];
         next[slotIdx] = '';
         return next;
@@ -276,9 +269,6 @@ export function LobbyPage() {
                   </span>
                   <div>
                     <span className="font-medium">{player.name}</span>
-                    {player.phone && (
-                      <span className="text-xs text-mahjong-muted ml-2">{player.phone}</span>
-                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -351,19 +341,12 @@ export function LobbyPage() {
                                   next[slotIdx] = u.username;
                                   return next;
                                 });
-                                setSoloPhones(prev => {
-                                  const next = [...prev];
-                                  next[slotIdx] = u.phone;
-                                  return next;
-                                });
                                 setSuggestions([]);
                                 setActiveSlot(null);
                               }}
-                              className="w-full text-left px-2 py-1.5 text-sm hover:bg-mahjong-accent/40 transition-colors
-                                flex items-center justify-between"
+                              className="w-full text-left px-2 py-1.5 text-sm hover:bg-mahjong-accent/40 transition-colors"
                             >
                               <span className="text-white">{u.username}</span>
-                              <span className="text-xs text-mahjong-muted">{u.phone}</span>
                             </button>
                           ))}
                         </div>
@@ -377,21 +360,6 @@ export function LobbyPage() {
                     >
                       {addingIdx === slotIdx ? '...' : t('lobby.add')}
                     </button>
-                  </div>
-                  <div className="flex items-center gap-2 pl-8">
-                    <input
-                      type="tel"
-                      value={soloPhones[slotIdx]}
-                      onChange={e => setSoloPhones(prev => {
-                        const next = [...prev];
-                        next[slotIdx] = e.target.value;
-                        return next;
-                      })}
-                      maxLength={20}
-                      placeholder={t('lobby.phoneOptional')}
-                      className="flex-1 min-w-0 px-2 py-1 rounded bg-mahjong-bg border border-mahjong-accent/50
-                        text-white text-xs focus:outline-none focus:border-mahjong-highlight"
-                    />
                   </div>
                 </div>
               );

@@ -3,21 +3,21 @@ import { nanoid } from 'nanoid';
 import { getDb } from '../db/connection.js';
 import { registeredUsers } from '../db/schema.js';
 import { eq, like, and } from 'drizzle-orm';
-import { sendOtp, verifyOtp, isOtpEnabled } from '../services/sms-service.js';
+import { sendOtp, verifyOtp, isOtpEnabled } from '../services/email-service.js';
 
 const userRoutes = new Hono();
 
 // Register a new user
-// When Twilio is configured: creates unverified user + sends OTP
-// When Twilio is NOT configured: creates immediately verified user (no OTP needed)
+// When Resend is configured + email provided: creates unverified user + sends email OTP
+// Otherwise: creates immediately verified user (no OTP needed)
 userRoutes.post('/register', async (c) => {
-  const body = await c.req.json<{ username: string; phone: string }>();
-  if (!body.username?.trim() || !body.phone?.trim()) {
-    return c.json({ error: 'Username and phone are required' }, 400);
+  const body = await c.req.json<{ username: string; email?: string }>();
+  if (!body.username?.trim()) {
+    return c.json({ error: 'Username is required' }, 400);
   }
 
   const username = body.username.trim();
-  const phone = body.phone.trim();
+  const email = body.email?.trim() || '';
 
   const db = getDb();
 
@@ -27,65 +27,65 @@ userRoutes.post('/register', async (c) => {
     return c.json({ error: 'Username already taken' }, 409);
   }
 
-  const otpEnabled = isOtpEnabled();
+  const otpEnabled = isOtpEnabled() && !!email;
   const now = Date.now();
   const id = nanoid();
 
   db.insert(registeredUsers).values({
     id,
     username,
-    phone,
-    phoneVerified: otpEnabled ? 0 : 1, // Auto-verify when OTP not available
+    email,
+    emailVerified: otpEnabled ? 0 : 1, // Auto-verify when OTP not available or no email
     createdAt: now,
     updatedAt: now,
   }).run();
 
   if (otpEnabled) {
-    const result = await sendOtp(phone);
+    const result = await sendOtp(email);
     if (!result.sent) {
-      return c.json({ error: 'Failed to send verification code' }, 500);
+      return c.json({ error: 'Failed to send verification email' }, 500);
     }
-    return c.json({ id, username, phone, needsVerification: true });
+    return c.json({ id, username, email, needsVerification: true });
   }
 
   // No OTP — user is immediately verified
-  return c.json({ id, username, phone, needsVerification: false });
+  return c.json({ id, username, email, needsVerification: false });
 });
 
-// Verify phone with OTP code (only used when Twilio is configured)
+// Verify email with OTP code
 userRoutes.post('/verify', async (c) => {
-  const body = await c.req.json<{ phone: string; code: string }>();
-  if (!body.phone?.trim() || !body.code?.trim()) {
-    return c.json({ error: 'Phone and code are required' }, 400);
+  const body = await c.req.json<{ email: string; code: string }>();
+  if (!body.email?.trim() || !body.code?.trim()) {
+    return c.json({ error: 'Email and code are required' }, 400);
   }
 
-  const phone = body.phone.trim();
+  const email = body.email.trim();
   const code = body.code.trim();
 
-  const valid = verifyOtp(phone, code);
+  const valid = verifyOtp(email, code);
   if (!valid) {
     return c.json({ error: 'Invalid or expired verification code' }, 400);
   }
 
   const db = getDb();
   db.update(registeredUsers)
-    .set({ phoneVerified: 1, updatedAt: Date.now() })
-    .where(eq(registeredUsers.phone, phone))
+    .set({ emailVerified: 1, updatedAt: Date.now() })
+    .where(eq(registeredUsers.email, email))
     .run();
 
   return c.json({ verified: true });
 });
 
-// Resend OTP (only used when Twilio is configured)
+// Resend OTP
 userRoutes.post('/resend-otp', async (c) => {
-  const body = await c.req.json<{ phone: string }>();
-  if (!body.phone?.trim()) {
-    return c.json({ error: 'Phone is required' }, 400);
+  const body = await c.req.json<{ email: string }>();
+  if (!body.email?.trim()) {
+    return c.json({ error: 'Email is required' }, 400);
   }
 
-  const result = await sendOtp(body.phone.trim());
+  const result = await sendOtp(body.email.trim());
   if (!result.sent) {
-    return c.json({ error: 'Failed to send verification code' }, 500);
+    return c.json({ error: 'Failed to send verification email' }, 500);
   }
 
   return c.json({ codeSent: true });
@@ -97,10 +97,10 @@ userRoutes.get('/', (c) => {
   const users = db.select({
     id: registeredUsers.id,
     username: registeredUsers.username,
-    phone: registeredUsers.phone,
+    email: registeredUsers.email,
   })
     .from(registeredUsers)
-    .where(eq(registeredUsers.phoneVerified, 1))
+    .where(eq(registeredUsers.emailVerified, 1))
     .all();
 
   return c.json({ users });
@@ -117,10 +117,10 @@ userRoutes.get('/search', (c) => {
   const users = db.select({
     id: registeredUsers.id,
     username: registeredUsers.username,
-    phone: registeredUsers.phone,
+    email: registeredUsers.email,
   })
     .from(registeredUsers)
-    .where(and(like(registeredUsers.username, `%${q}%`), eq(registeredUsers.phoneVerified, 1)))
+    .where(and(like(registeredUsers.username, `%${q}%`), eq(registeredUsers.emailVerified, 1)))
     .all();
   return c.json({ users });
 });

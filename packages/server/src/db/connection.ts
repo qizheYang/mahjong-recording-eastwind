@@ -101,11 +101,15 @@ function initializeTables(db: ReturnType<typeof drizzle>) {
   db.run(sql`CREATE TABLE IF NOT EXISTS registered_users (
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
-    phone TEXT NOT NULL,
-    phone_verified INTEGER NOT NULL DEFAULT 0,
+    email TEXT NOT NULL DEFAULT '',
+    email_verified INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`);
+
+  // Migrate old schema: add email columns if they don't exist
+  try { db.run(sql`ALTER TABLE registered_users ADD COLUMN email TEXT NOT NULL DEFAULT ''`); } catch { /* already exists */ }
+  try { db.run(sql`ALTER TABLE registered_users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0`); } catch { /* already exists */ }
 
   // Seed predefined tags
   const now = Date.now();
