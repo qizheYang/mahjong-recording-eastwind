@@ -333,6 +333,10 @@ export const en: Record<TranslationKey, string> = {
   'user.codeSent': 'Code sent to {phone}',
   'user.resendCode': 'Resend Code',
   'user.searchUser': 'Search user...',
+  'user.countryCode': 'Country Code',
+  'user.phoneCN': 'China +86',
+  'user.phoneUS': 'US +1',
+  'user.phoneJP': 'Japan +81',
 
   // Error codes
   'error.INVALID_ROOM': 'Cannot join room',

@@ -331,6 +331,10 @@ export const zh = {
   'user.codeSent': '验证码已发送至 {phone}',
   'user.resendCode': '重新发送',
   'user.searchUser': '搜索用户...',
+  'user.countryCode': '区号',
+  'user.phoneCN': '中国 +86',
+  'user.phoneUS': '美国 +1',
+  'user.phoneJP': '日本 +81',
 
   // Error codes (from server)
   'error.INVALID_ROOM': '无法加入房间',

@@ -333,6 +333,10 @@ export const ja: Record<TranslationKey, string> = {
   'user.codeSent': '{phone} にコードを送信しました',
   'user.resendCode': '再送信',
   'user.searchUser': 'ユーザー検索...',
+  'user.countryCode': '国番号',
+  'user.phoneCN': '中国 +86',
+  'user.phoneUS': 'アメリカ +1',
+  'user.phoneJP': '日本 +81',
 
   // Error codes
   'error.INVALID_ROOM': '部屋に参加できません',
