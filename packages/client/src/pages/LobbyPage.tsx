@@ -27,6 +27,9 @@ export function LobbyPage() {
   const [addingIdx, setAddingIdx] = useState<number | null>(null);
   const [soloError, setSoloError] = useState('');
 
+  // Custom team names (editable in 2v2 mode)
+  const [teamNames, setTeamNames] = useState<[string, string]>(() => [t('lobby.teamA'), t('lobby.teamB')]);
+
   // Autocomplete state for solo mode
   const [suggestions, setSuggestions] = useState<RegisteredUser[]>([]);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
@@ -108,6 +111,21 @@ export function LobbyPage() {
     navigator.clipboard.writeText(roomCode || '');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleRenameTeam(teamIdx: 0 | 1, newName: string) {
+    const oldName = teamNames[teamIdx];
+    const updated: [string, string] = [...teamNames] as [string, string];
+    updated[teamIdx] = newName;
+    setTeamNames(updated);
+    // Update all player assignments that referenced the old name
+    if (oldName !== newName && room) {
+      for (const p of room.players) {
+        if (teamAssignments[p.id] === oldName) {
+          setTeamAssignment(p.id, newName);
+        }
+      }
+    }
   }
 
   function handlePlayerTap(tappedPlayerId: string) {
@@ -253,7 +271,7 @@ export function LobbyPage() {
   useEffect(() => {
     if (ruleTeamMode && room && room.players.length === 4 && Object.keys(teamAssignments).length === 0) {
       room.players.forEach((p, i) => {
-        setTeamAssignment(p.id, i < 2 ? t('lobby.teamA') : t('lobby.teamB'));
+        setTeamAssignment(p.id, i < 2 ? teamNames[0] : teamNames[1]);
         setWindAssignment(p.id, WINDS[i]);
       });
     }
@@ -354,17 +372,26 @@ export function LobbyPage() {
         {/* Team mode with 4 players: side-by-side 2x2 grid */}
         {ruleTeamMode && totalPlayers === 4 && room ? (
           <div className="space-y-3">
-            {[t('lobby.teamA'), t('lobby.teamB')].map((teamName, teamIdx) => {
+            {teamNames.map((teamName, teamIdx) => {
               const teamPlayers = room.players
                 .filter(p => teamAssignments[p.id] === teamName);
 
               return (
-                <div key={teamName} className={`rounded-xl border overflow-hidden
+                <div key={teamIdx} className={`rounded-xl border overflow-hidden
                   ${teamIdx === 0 ? 'border-mahjong-green/40' : 'border-mahjong-gold/40'}`}>
-                  {/* Team header */}
+                  {/* Team header — editable name */}
                   <div className={`px-3 py-1.5 flex items-center justify-between
                     ${teamIdx === 0 ? 'bg-mahjong-green/15' : 'bg-mahjong-gold/15'}`}>
-                    <span className={`text-sm font-bold ${teamIdx === 0 ? 'text-mahjong-green' : 'text-mahjong-gold'}`}>{teamName}</span>
+                    <input
+                      type="text"
+                      value={teamName}
+                      onChange={(e) => handleRenameTeam(teamIdx as 0 | 1, e.target.value)}
+                      maxLength={12}
+                      className={`text-sm font-bold bg-transparent border-none outline-none w-24
+                        ${teamIdx === 0 ? 'text-mahjong-green' : 'text-mahjong-gold'}
+                        placeholder:text-mahjong-muted/50`}
+                      placeholder={teamIdx === 0 ? t('lobby.teamA') : t('lobby.teamB')}
+                    />
                     <span className="text-xs text-mahjong-muted">{teamPlayers.length}/2</span>
                   </div>
                   {/* Team members — side by side */}
@@ -411,7 +438,7 @@ export function LobbyPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const otherTeam = teamIdx === 0 ? t('lobby.teamB') : t('lobby.teamA');
+                                const otherTeam = teamNames[teamIdx === 0 ? 1 : 0];
                                 setTeamAssignment(player.id, otherTeam);
                               }}
                               className="text-xs text-mahjong-muted hover:text-white px-1 py-0.5
@@ -640,6 +667,7 @@ export function LobbyPage() {
           if ('teamMode' in updates && !updates.teamMode) {
             clearTeamAssignments();
             clearWindAssignments();
+            setTeamNames([t('lobby.teamA'), t('lobby.teamB')]);
           }
         }}
       />
