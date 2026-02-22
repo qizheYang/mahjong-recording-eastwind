@@ -1,5 +1,6 @@
 import type { WSContext, WSMessageReceive } from 'hono/ws';
-import type { ClientEvent, ServerEvent, Game, FinalScore } from '@mahjong/shared';
+import type { ClientEvent, ServerEvent, Game, FinalScore, TeamScore } from '@mahjong/shared';
+import { calculateTeamScores } from '@mahjong/shared';
 import { roomManager } from './room-manager.js';
 import { saveGameRecord, getGameRecord } from '../services/game-file-service.js';
 import { updatePlayerDB } from '../services/player-db.js';
@@ -88,7 +89,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
     }
 
     case 'start_game': {
-      const result = roomManager.startGame(roomCode, event.seatOrder, event.ruleset, event.tags);
+      const result = roomManager.startGame(roomCode, event.seatOrder, event.ruleset, event.tags, event.teams);
       if ('error' in result) {
         sendError(ws, result.error, 'START_ERROR');
         return;
@@ -109,13 +110,15 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
       if (game.status === 'completed') {
         // Game ended naturally (All Last conditions met)
         const finalScores = roomManager.getGameFinalScores(roomCode);
+        const teamScores = getTeamScores(game, finalScores ?? []);
         // Save game record to JSON file
-        const savedFilename = saveGameToFile(game, finalScores ?? []);
+        const savedFilename = saveGameToFile(game, finalScores ?? [], undefined, teamScores);
         roomManager.broadcast(roomCode, {
           type: 'game_ended',
           game,
           finalScores: finalScores ?? [],
           ...(savedFilename ? { savedFilename } : {}),
+          ...(teamScores ? { teamScores } : {}),
         });
       } else {
         roomManager.broadcast(roomCode, { type: 'hand_recorded', hand, game });
@@ -132,12 +135,14 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
 
       if (result.status === 'completed') {
         const finalScores = roomManager.getGameFinalScores(roomCode);
-        const savedFilename = saveGameToFile(result, finalScores ?? []);
+        const teamScores = getTeamScores(result, finalScores ?? []);
+        const savedFilename = saveGameToFile(result, finalScores ?? [], undefined, teamScores);
         roomManager.broadcast(roomCode, {
           type: 'game_ended',
           game: result,
           finalScores: finalScores ?? [],
           ...(savedFilename ? { savedFilename } : {}),
+          ...(teamScores ? { teamScores } : {}),
         });
       } else {
         roomManager.broadcast(roomCode, { type: 'hand_edited', game: result });
@@ -181,13 +186,15 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         sendError(ws, result.error, 'END_ERROR');
         return;
       }
+      const teamScores = getTeamScores(result.game, result.finalScores);
       // Save game record to JSON file
-      const savedFilename = saveGameToFile(result.game, result.finalScores);
+      const savedFilename = saveGameToFile(result.game, result.finalScores, undefined, teamScores);
       roomManager.broadcast(roomCode, {
         type: 'game_ended',
         game: result.game,
         finalScores: result.finalScores,
         ...(savedFilename ? { savedFilename } : {}),
+        ...(teamScores ? { teamScores } : {}),
       });
       break;
     }
@@ -198,15 +205,17 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         sendError(ws, result.error, 'END_ERROR');
         return;
       }
+      const teamScores = getTeamScores(result.game, result.finalScores);
       let savedFilename: string | null = null;
       if (event.keepRecord) {
-        savedFilename = saveGameToFile(result.game, result.finalScores, { interrupted: true });
+        savedFilename = saveGameToFile(result.game, result.finalScores, { interrupted: true }, teamScores);
       }
       roomManager.broadcast(roomCode, {
         type: 'game_ended',
         game: result.game,
         finalScores: result.finalScores,
         ...(savedFilename ? { savedFilename } : {}),
+        ...(teamScores ? { teamScores } : {}),
       });
       break;
     }
@@ -230,9 +239,15 @@ export function handleWSClose(ws: WSContext): void {
   connectionCtx.delete(ws);
 }
 
-function saveGameToFile(game: Game, finalScores: FinalScore[], options?: { interrupted?: boolean }): string | null {
+function getTeamScores(game: Game, finalScores: FinalScore[]): TeamScore[] | null {
+  if (!game.ruleset.teamMode || !game.players.some(p => p.team)) return null;
+  const scores = calculateTeamScores(finalScores, game.players);
+  return scores.length > 0 ? scores : null;
+}
+
+function saveGameToFile(game: Game, finalScores: FinalScore[], options?: { interrupted?: boolean }, teamScores?: TeamScore[] | null): string | null {
   try {
-    const filename = saveGameRecord(game, finalScores, options);
+    const filename = saveGameRecord(game, finalScores, options, teamScores ?? undefined);
     // Update player database
     const record = getGameRecord(filename);
     if (record) {

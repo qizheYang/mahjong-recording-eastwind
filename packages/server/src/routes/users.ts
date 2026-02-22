@@ -29,6 +29,12 @@ userRoutes.post('/register', async (c) => {
     return c.json({ error: 'Username already taken' }, 409);
   }
 
+  // Check if email already registered
+  const existingEmail = db.select().from(registeredUsers).where(eq(registeredUsers.email, email)).get();
+  if (existingEmail) {
+    return c.json({ error: 'Email already registered' }, 409);
+  }
+
   const now = Date.now();
   const id = nanoid();
 

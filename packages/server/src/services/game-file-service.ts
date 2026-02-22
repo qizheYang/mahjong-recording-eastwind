@@ -13,12 +13,14 @@ export interface GameRecord {
   players: {
     name: string;
     phone?: string;
+    team?: string;
     initialSeat: string;
   }[];
   ruleset: {
     startingPoints: number;
     returnPoints: number;
     uma: number[];
+    teamMode?: boolean;
   };
   hands: {
     handNumber: number;
@@ -51,6 +53,12 @@ export interface GameRecord {
     uma: number;
     gameScore: number;
   }[];
+  teamScores?: {
+    teamName: string;
+    playerIndices: number[];
+    totalGameScore: number;
+    placement: number;
+  }[];
   interrupted?: boolean;
   startedAt: string;
   endedAt: string;
@@ -74,7 +82,7 @@ const LA_TZ = 'America/Los_Angeles';
 function toLA_ISO(date: Date): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: LA_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
   }).formatToParts(date);
   const get = (t: string) => parts.find(p => p.type === t)!.value;
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`;
@@ -103,7 +111,7 @@ function sanitizeName(name: string): string {
  * Save a completed game as a detailed JSON file.
  * Filename: YYYYMMDDHHmmSS-CODE-player1-player2-player3-player4.json
  */
-export function saveGameRecord(game: Game, finalScores: FinalScore[], options?: { interrupted?: boolean }): string {
+export function saveGameRecord(game: Game, finalScores: FinalScore[], options?: { interrupted?: boolean }, teamScores?: { teamName: string; playerIndices: number[]; totalGameScore: number; placement: number }[]): string {
   const now = new Date();
   const timestamp = toLA_Timestamp(now);
   const playerNames = game.players.map(p => sanitizeName(p.name)).join('-');
@@ -116,12 +124,14 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[], options?: 
     players: game.players.map(p => ({
       name: p.name,
       ...(p.phone ? { phone: p.phone } : {}),
+      ...(p.team ? { team: p.team } : {}),
       initialSeat: WIND_LABELS[p.initialSeat] || p.initialSeat,
     })),
     ruleset: {
       startingPoints: game.ruleset.startingPoints,
       returnPoints: game.ruleset.returnPoints,
       uma: [...game.ruleset.uma],
+      ...(game.ruleset.teamMode ? { teamMode: true } : {}),
     },
     hands: game.hands.map(hand => {
       const r = hand.result;
@@ -177,6 +187,7 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[], options?: 
       uma: s.uma,
       gameScore: s.gameScore,
     })),
+    ...(teamScores && teamScores.length > 0 ? { teamScores } : {}),
     ...(options?.interrupted ? { interrupted: true } : {}),
     startedAt: toLA_ISO(new Date(game.hands[0]?.recordedAt || Date.now())),
     endedAt: toLA_ISO(now),

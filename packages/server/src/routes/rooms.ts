@@ -70,6 +70,27 @@ roomRoutes.get('/:code', (c) => {
   return c.json({ room });
 });
 
+// Remove a player (solo mode — host removes other players)
+roomRoutes.post('/:code/remove-player', async (c) => {
+  const code = c.req.param('code').toUpperCase();
+  const body = await c.req.json<{ playerId: string }>();
+
+  if (!body.playerId) {
+    return c.json({ error: 'playerId is required' }, 400);
+  }
+
+  const room = roomManager.getRoom(code);
+  if (!room) {
+    return c.json({ error: '房间不存在 (Room not found)' }, 404);
+  }
+  if (room.status !== 'waiting') {
+    return c.json({ error: '对局中无法移除 (Cannot remove during game)' }, 400);
+  }
+
+  roomManager.removePlayer(code, body.playerId);
+  return c.json({ ok: true });
+});
+
 // Reset room for new game
 roomRoutes.post('/:code/reset', (c) => {
   const code = c.req.param('code').toUpperCase();

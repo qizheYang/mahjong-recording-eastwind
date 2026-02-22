@@ -331,6 +331,17 @@ export const ja: Record<TranslationKey, string> = {
   'user.resendCode': '再送信',
   'user.searchUser': 'ユーザー検索...',
 
+  // Team mode
+  'rules.teamMode': '2v2チームモード',
+  'rules.teamModeDesc': '4人を2チームに分ける',
+  'lobby.removePlayer': '削除',
+  'lobby.teamA': 'チームA',
+  'lobby.teamB': 'チームB',
+  'lobby.assignTeam': 'チーム',
+  'lobby.teamValidation': '各チーム2人必要',
+  'results.teamResults': 'チーム成績',
+  'results.teamScore': 'チームスコア',
+
   // Error codes
   'error.INVALID_ROOM': '部屋に参加できません',
   'error.PARSE_ERROR': '無効なメッセージ形式',

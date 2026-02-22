@@ -1,5 +1,5 @@
 import type { Room, Player } from './room.js';
-import type { Game, Hand, FinalScore, Penalty } from './game.js';
+import type { Game, Hand, FinalScore, Penalty, TeamScore } from './game.js';
 import type { Ruleset } from '../constants.js';
 
 // Client -> Server events
@@ -8,7 +8,7 @@ export type ClientEvent =
   | { type: 'leave_room' }
   | { type: 'ready_toggle' }
   | { type: 'swap_seats'; playerIdA: string; playerIdB: string }
-  | { type: 'start_game'; seatOrder: string[]; ruleset?: Partial<Ruleset>; tags?: string[] }
+  | { type: 'start_game'; seatOrder: string[]; ruleset?: Partial<Ruleset>; tags?: string[]; teams?: { playerId: string; team: string }[] }
   | { type: 'record_hand'; result: HandResultInput }
   | { type: 'edit_hand'; handNumber: number; result: HandResultInput }
   | { type: 'undo_last_hand' }
@@ -65,5 +65,5 @@ export type ServerEvent =
   | { type: 'hand_edited'; game: Game }
   | { type: 'penalty_recorded'; penalty: Penalty; game: Game }
   | { type: 'penalty_undone'; game: Game }
-  | { type: 'game_ended'; game: Game; finalScores: FinalScore[]; savedFilename?: string }
+  | { type: 'game_ended'; game: Game; finalScores: FinalScore[]; savedFilename?: string; teamScores?: TeamScore[] }
   | { type: 'error'; message: string; code: string };

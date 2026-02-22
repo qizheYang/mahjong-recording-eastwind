@@ -1,4 +1,4 @@
-import type { GamePlayer, FinalScore, Penalty } from '../types/game.js';
+import type { GamePlayer, FinalScore, Penalty, TeamScore } from '../types/game.js';
 import type { Ruleset } from '../constants.js';
 
 /**
@@ -82,6 +82,42 @@ export function calculateFinalScores(
       gameScore: Math.round(gameScore * 10) / 10,
     };
   });
+}
+
+/**
+ * Calculate team scores by aggregating individual final scores.
+ * Groups players by their team field and sums game scores.
+ */
+export function calculateTeamScores(
+  finalScores: FinalScore[],
+  players: GamePlayer[],
+): TeamScore[] {
+  const teamMap = new Map<string, { playerIndices: number[]; totalGameScore: number }>();
+
+  for (const score of finalScores) {
+    const teamName = players[score.playerIndex]?.team;
+    if (!teamName) continue;
+
+    if (!teamMap.has(teamName)) {
+      teamMap.set(teamName, { playerIndices: [], totalGameScore: 0 });
+    }
+    const team = teamMap.get(teamName)!;
+    team.playerIndices.push(score.playerIndex);
+    team.totalGameScore += score.gameScore;
+  }
+
+  const teams = [...teamMap.entries()]
+    .map(([teamName, data]) => ({
+      teamName,
+      playerIndices: data.playerIndices,
+      totalGameScore: Math.round(data.totalGameScore * 10) / 10,
+      placement: 0,
+    }))
+    .sort((a, b) => b.totalGameScore - a.totalGameScore);
+
+  teams.forEach((t, i) => { t.placement = i + 1; });
+
+  return teams;
 }
 
 function assignPlacements(sortedPoints: number[]): number[] {

@@ -14,6 +14,7 @@ export interface GamePlayer {
   phone?: string;
   points: number;
   initialSeat: Wind;
+  team?: string;
 }
 
 export interface Game {
@@ -102,4 +103,11 @@ export interface FinalScore {
   placement: number;
   uma: number;
   gameScore: number;
+}
+
+export interface TeamScore {
+  teamName: string;
+  playerIndices: number[];
+  totalGameScore: number;
+  placement: number;
 }

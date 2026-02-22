@@ -13,7 +13,7 @@ export function ResultsPage() {
   const navigate = useNavigate();
   const { t } = useLocale();
   const {
-    game, finalScores, savedFilename, playerId, connected,
+    game, finalScores, teamScores, savedFilename, playerId, connected,
     connect, setSession, resetForNewGame,
   } = useGameStore();
   const { token: adminToken } = useAdminStore();
@@ -74,11 +74,21 @@ export function ResultsPage() {
       t('results.shareTitle'),
       t('results.handsPlayed', { count: game.hands.length }),
       '',
-      ...finalScores.map((s, i) => {
+    ];
+    // Add team results if present
+    if (teamScores && teamScores.length > 0) {
+      lines.push(`[${t('results.teamResults')}]`);
+      for (const ts of teamScores) {
+        lines.push(`${ts.placement}. ${ts.teamName}: ${ts.totalGameScore > 0 ? '+' : ''}${ts.totalGameScore.toFixed(1)}`);
+      }
+      lines.push('');
+    }
+    lines.push(
+      ...finalScores.map((s) => {
         const rank = t(`results.placement.${s.placement}`);
         return `${rank} ${s.name}: ${formatPoints(s.rawPoints)}${t('mahjong.points')} (${formatGameScore(s.gameScore)})`;
       }),
-    ];
+    );
     navigator.clipboard.writeText(lines.join('\n'));
   }
 
@@ -106,6 +116,35 @@ export function ResultsPage() {
           <p className="text-mahjong-muted text-xs mt-1">{t('results.handsPlayed', { count: game.hands.length })}</p>
         )}
       </div>
+
+      {/* Team results */}
+      {teamScores && teamScores.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm text-mahjong-muted mb-2">{t('results.teamResults')}</h2>
+          <div className="space-y-2">
+            {teamScores.map((ts, i) => (
+              <div
+                key={ts.teamName}
+                className={`rounded-xl p-4 flex items-center justify-between ${
+                  i === 0 ? 'bg-mahjong-accent ring-2 ring-mahjong-gold' : 'bg-mahjong-card'
+                }`}
+              >
+                <div>
+                  <span className={`text-2xl font-bold ${i === 0 ? 'text-mahjong-gold' : 'text-white'}`}>
+                    {ts.placement}
+                  </span>
+                  <span className="text-lg font-medium ml-2">{ts.teamName}</span>
+                </div>
+                <p className={`text-2xl font-bold font-mono ${
+                  ts.totalGameScore >= 0 ? 'text-mahjong-green' : 'text-mahjong-highlight'
+                }`}>
+                  {ts.totalGameScore > 0 ? '+' : ''}{ts.totalGameScore.toFixed(1)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Results table */}
       <div className="space-y-3 mb-8">
@@ -137,7 +176,14 @@ export function ResultsPage() {
             </div>
 
             <div className="mt-2 flex items-center justify-between">
-              <p className="font-medium text-lg">{score.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-lg">{score.name}</p>
+                {game?.players[score.playerIndex]?.team && (
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-mahjong-green/20 text-mahjong-green font-medium">
+                    {game.players[score.playerIndex].team}
+                  </span>
+                )}
+              </div>
               <div className="text-right text-sm">
                 <span className="text-mahjong-muted">{formatPoints(score.rawPoints)}{t('mahjong.points')}</span>
                 <span className="text-mahjong-muted ml-2">uma {score.uma > 0 ? '+' : ''}{score.uma}</span>

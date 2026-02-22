@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
-import { addPlayer, listTags, createTag, searchRegisteredUsers, type RegisteredUser } from '../lib/api';
+import { addPlayer, removePlayer, listTags, createTag, searchRegisteredUsers, type RegisteredUser } from '../lib/api';
 import { WINDS, M_LEAGUE_RULES, defaultScoreFormula } from '@mahjong/shared';
 import type { PresetName } from '@mahjong/shared';
 import { RulesIsland } from '../components/game/RulesIsland';
@@ -12,8 +12,9 @@ export function LobbyPage() {
   const navigate = useNavigate();
   const { t } = useLocale();
   const {
-    room, game, playerId, connected, customRuleset, gameTags,
+    room, game, playerId, connected, customRuleset, gameTags, teamAssignments,
     connect, toggleReady, swapSeats, startGame, setSession, setRuleset, toggleTag,
+    setTeamAssignment, clearTeamAssignments,
   } = useGameStore();
 
   const [copied, setCopied] = useState(false);
@@ -135,6 +136,17 @@ export function LobbyPage() {
     }
   }
 
+  async function handleRemovePlayer(targetPlayerId: string) {
+    if (!roomCode) return;
+    setSoloError('');
+    try {
+      await removePlayer(roomCode, targetPlayerId);
+      // Server broadcasts player_left → room state updates via WS
+    } catch (e: any) {
+      setSoloError(e.message);
+    }
+  }
+
   function handleSoloStart() {
     if (!room || room.players.length !== 4) return;
     const seatOrder = room.players.map(p => p.id);
@@ -148,8 +160,15 @@ export function LobbyPage() {
   const anyReady = readyCount > 0;
   const emptySlots = 4 - totalPlayers;
 
-  // Solo mode is only available when creator is the only player
-  const canToggleSolo = totalPlayers === 1;
+  // Auto-enable solo mode when returning from a game (all 4 players already present)
+  useEffect(() => {
+    if (room && room.status === 'waiting' && room.players.length === 4 && !soloMode) {
+      setSoloMode(true);
+    }
+  }, [room?.status, room?.players.length]);
+
+  // Solo mode is only available when creator is the only player or returning for new game
+  const canToggleSolo = totalPlayers === 1 || totalPlayers === 4;
 
   // Disable solo toggle once other players have been added via solo mode
   // (but keep soloMode on so the UI stays consistent)
@@ -168,6 +187,26 @@ export function LobbyPage() {
   const ruleCountedYakuman = (customRuleset.countedYakumanEnabled ?? M_LEAGUE_RULES.countedYakumanEnabled);
   const ruleDoubleYakuman = (customRuleset.doubleYakumanEnabled ?? M_LEAGUE_RULES.doubleYakumanEnabled);
   const ruleFormula = (customRuleset.scoreFormula ?? M_LEAGUE_RULES.scoreFormula);
+  const ruleTeamMode = (customRuleset.teamMode ?? false);
+
+  // Team validation helper
+  const isTeamsValid = (() => {
+    if (!ruleTeamMode) return true;
+    const counts = new Map<string, number>();
+    for (const team of Object.values(teamAssignments)) {
+      counts.set(team, (counts.get(team) || 0) + 1);
+    }
+    return Object.keys(teamAssignments).length === 4 && counts.size === 2 && [...counts.values()].every(c => c === 2);
+  })();
+
+  // Auto-assign default teams when team mode is toggled on with 4 players
+  useEffect(() => {
+    if (ruleTeamMode && room && room.players.length === 4 && Object.keys(teamAssignments).length === 0) {
+      room.players.forEach((p, i) => {
+        setTeamAssignment(p.id, i < 2 ? t('lobby.teamA') : t('lobby.teamB'));
+      });
+    }
+  }, [ruleTeamMode, room?.players.length]);
 
   if (!connected && playerId) {
     return (
@@ -274,6 +313,15 @@ export function LobbyPage() {
                 <div className="flex items-center gap-2">
                   {player.id === playerId && (
                     <span className="text-xs text-mahjong-muted">{t('lobby.you')}</span>
+                  )}
+                  {soloMode && player.id !== playerId && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRemovePlayer(player.id); }}
+                      className="text-xs text-mahjong-highlight/60 hover:text-mahjong-highlight px-1.5 py-0.5
+                        rounded bg-mahjong-highlight/10 active:scale-95 transition-all"
+                    >
+                      {t('lobby.removePlayer')}
+                    </button>
                   )}
                   {!soloMode && (
                     player.ready ? (
@@ -393,6 +441,46 @@ export function LobbyPage() {
         </div>
       )}
 
+      {/* Team assignment — shown when team mode is on and 4 players present */}
+      {ruleTeamMode && totalPlayers === 4 && room && (
+        <div className="mb-3 p-4 rounded-xl bg-mahjong-card">
+          <p className="text-xs text-mahjong-muted mb-2">{t('lobby.assignTeam')}</p>
+          <div className="space-y-2">
+            {room.players.map(player => {
+              const currentTeam = teamAssignments[player.id] || '';
+              return (
+                <div key={player.id} className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{player.name}</span>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => setTeamAssignment(player.id, t('lobby.teamA'))}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors
+                        ${currentTeam === t('lobby.teamA')
+                          ? 'bg-mahjong-green text-mahjong-bg font-bold'
+                          : 'bg-mahjong-bg text-mahjong-muted border border-mahjong-accent'}`}
+                    >
+                      {t('lobby.teamA')}
+                    </button>
+                    <button
+                      onClick={() => setTeamAssignment(player.id, t('lobby.teamB'))}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors
+                        ${currentTeam === t('lobby.teamB')
+                          ? 'bg-mahjong-gold text-mahjong-bg font-bold'
+                          : 'bg-mahjong-bg text-mahjong-muted border border-mahjong-accent'}`}
+                    >
+                      {t('lobby.teamB')}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {Object.keys(teamAssignments).length === 4 && !isTeamsValid && (
+            <p className="text-xs text-mahjong-highlight mt-2">{t('lobby.teamValidation')}</p>
+          )}
+        </div>
+      )}
+
       {/* Rules Island */}
       <RulesIsland
         startingPoints={ruleStarting}
@@ -405,6 +493,7 @@ export function LobbyPage() {
         countedYakumanEnabled={ruleCountedYakuman}
         doubleYakumanEnabled={ruleDoubleYakuman}
         scoreFormula={ruleFormula}
+        teamMode={ruleTeamMode}
         presetName={presetName}
         editable={true}
         onChange={(updates) => {
@@ -412,6 +501,10 @@ export function LobbyPage() {
           if (newPreset !== undefined) setPresetName(newPreset);
           if (Object.keys(ruleUpdates).length > 0) {
             setRuleset(ruleUpdates as Partial<typeof M_LEAGUE_RULES>);
+          }
+          // Clear team assignments when team mode is toggled off
+          if ('teamMode' in updates && !updates.teamMode) {
+            clearTeamAssignments();
           }
         }}
       />
@@ -462,7 +555,7 @@ export function LobbyPage() {
           <>
             <button
               onClick={handleSoloStart}
-              disabled={totalPlayers < 4}
+              disabled={totalPlayers < 4 || !isTeamsValid}
               className="w-full py-4 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 transition-all active:scale-[0.98] disabled:opacity-30"
             >

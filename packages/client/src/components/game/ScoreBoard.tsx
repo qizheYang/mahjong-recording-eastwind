@@ -32,8 +32,15 @@ export function ScoreBoard({ players, currentDealer, currentRoundWind }: Props) 
               {t(`mahjong.wind.${seatWind}`)}
             </span>
 
-            {/* Player name */}
-            <p className="text-sm text-mahjong-muted truncate pr-6">{player.name}</p>
+            {/* Player name + team badge */}
+            <div className="flex items-center gap-1 pr-6">
+              <p className="text-sm text-mahjong-muted truncate">{player.name}</p>
+              {player.team && (
+                <span className="text-[10px] px-1 py-0.5 rounded bg-mahjong-green/20 text-mahjong-green font-medium shrink-0">
+                  {player.team}
+                </span>
+              )}
+            </div>
 
             {/* Points */}
             <p className={`text-2xl font-bold font-mono ${

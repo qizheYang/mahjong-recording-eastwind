@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Room, Game, Hand, FinalScore, ServerEvent, ClientEvent, HandResultInput, PenaltyInput, Ruleset } from '@mahjong/shared';
+import type { Room, Game, Hand, FinalScore, TeamScore, ServerEvent, ClientEvent, HandResultInput, PenaltyInput, Ruleset } from '@mahjong/shared';
 import { M_LEAGUE_RULES } from '@mahjong/shared';
 import { WsClient } from '../lib/ws-client';
 import { config } from '../config';
@@ -14,6 +14,7 @@ interface GameStore {
   room: Room | null;
   game: Game | null;
   finalScores: FinalScore[] | null;
+  teamScores: TeamScore[] | null;
   savedFilename: string | null;
 
   // Ruleset config (for lobby)
@@ -21,6 +22,9 @@ interface GameStore {
 
   // Game tags (for lobby)
   gameTags: string[];
+
+  // Team assignments (for lobby)
+  teamAssignments: Record<string, string>; // playerId -> teamName
 
   // UI state
   error: string | null;
@@ -34,6 +38,8 @@ interface GameStore {
   swapSeats: (playerIdA: string, playerIdB: string) => void;
   setRuleset: (updates: Partial<Ruleset>) => void;
   toggleTag: (tag: string) => void;
+  setTeamAssignment: (playerId: string, teamName: string) => void;
+  clearTeamAssignments: () => void;
   startGame: (seatOrder: string[], ruleset?: Partial<Ruleset>) => void;
   recordHand: (result: HandResultInput) => void;
   editHand: (handNumber: number, result: HandResultInput) => void;
@@ -55,9 +61,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   room: null,
   game: null,
   finalScores: null,
+  teamScores: null,
   savedFilename: null,
   customRuleset: {},
   gameTags: [],
+  teamAssignments: {},
   error: null,
   errorCode: null,
 
@@ -71,8 +79,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
       set({
         roomCode, playerId,
-        room: null, game: null, finalScores: null, savedFilename: null,
-        connected: false, customRuleset: {}, gameTags: [],
+        room: null, game: null, finalScores: null, teamScores: null, savedFilename: null,
+        connected: false, customRuleset: {}, gameTags: [], teamAssignments: {},
       });
     } else {
       set({ roomCode, playerId });
@@ -177,7 +185,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           break;
 
         case 'game_ended':
-          set({ game: event.game, finalScores: event.finalScores, savedFilename: event.savedFilename ?? null });
+          set({ game: event.game, finalScores: event.finalScores, teamScores: event.teamScores ?? null, savedFilename: event.savedFilename ?? null });
           break;
 
         case 'error':
@@ -229,15 +237,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }));
   },
 
+  setTeamAssignment(playerId: string, teamName: string) {
+    set((state) => ({
+      teamAssignments: { ...state.teamAssignments, [playerId]: teamName },
+    }));
+  },
+
+  clearTeamAssignments() {
+    set({ teamAssignments: {} });
+  },
+
   startGame(seatOrder: string[], ruleset?: Partial<Ruleset>) {
     const r = ruleset ?? get().customRuleset;
     const tags = get().gameTags;
     const hasCustom = Object.keys(r).length > 0;
+    const teamAssignments = get().teamAssignments;
+    const teams = Object.keys(teamAssignments).length > 0
+      ? Object.entries(teamAssignments).map(([playerId, team]) => ({ playerId, team }))
+      : undefined;
     wsClient?.send({
       type: 'start_game',
       seatOrder,
       ...(hasCustom ? { ruleset: r } : {}),
       ...(tags.length > 0 ? { tags } : {}),
+      ...(teams ? { teams } : {}),
     });
   },
 
@@ -274,6 +297,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resetForNewGame() {
-    set({ game: null, finalScores: null, savedFilename: null, customRuleset: {}, gameTags: [] });
+    set({ game: null, finalScores: null, teamScores: null, savedFilename: null, customRuleset: {}, gameTags: [], teamAssignments: {} });
   },
 }));

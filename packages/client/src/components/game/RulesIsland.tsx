@@ -14,6 +14,7 @@ interface RulesIslandProps {
   countedYakumanEnabled: boolean;
   doubleYakumanEnabled: boolean;
   scoreFormula: string;
+  teamMode?: boolean;
   presetName?: PresetName;
   editable: boolean;
   onChange?: (updates: Partial<Ruleset> & { presetName?: PresetName }) => void;
@@ -36,7 +37,7 @@ function formatUma(uma: [number, number, number, number]): string {
 export function RulesIsland({
   startingPoints, uma, tobiEnabled, okaEnabled, kiriageMangan, doubleRonEnabled,
   nagashiManganEnabled, countedYakumanEnabled, doubleYakumanEnabled,
-  scoreFormula, presetName, editable, onChange,
+  scoreFormula, teamMode, presetName, editable, onChange,
 }: RulesIslandProps) {
   const { t } = useLocale();
   const [expanded, setExpanded] = useState(false);
@@ -120,6 +121,9 @@ export function RulesIsland({
         <span className={tobiEnabled ? 'text-mahjong-highlight' : 'text-mahjong-muted'}>
           {tobiEnabled ? t('mahjong.tobi.enabled') : t('mahjong.tobi.disabled')}
         </span>
+        {teamMode && (
+          <span className="text-mahjong-green font-bold text-xs">2v2</span>
+        )}
         {editable && (
           <span className="text-mahjong-muted text-xs ml-1">{expanded ? '▲' : '▼'}</span>
         )}
@@ -267,6 +271,17 @@ export function RulesIsland({
                 })()}
               </div>
             )}
+          </div>
+
+          {/* Team mode toggle — always available regardless of preset */}
+          <div className="space-y-3">
+            <ToggleRow
+              label={t('rules.teamMode')}
+              desc={t('rules.teamModeDesc')}
+              enabled={!!teamMode}
+              color="green"
+              onToggle={() => onChange?.({ teamMode: !teamMode })}
+            />
           </div>
 
           {/* Toggle section */}

@@ -23,6 +23,7 @@ export interface Ruleset {
   kiriageMangan: boolean;
   nagashiManganEnabled: boolean;
   akadoraCount: number;
+  teamMode?: boolean;
 }
 
 export function defaultScoreFormula(returnPoints: number): string {

@@ -331,6 +331,17 @@ export const en: Record<TranslationKey, string> = {
   'user.resendCode': 'Resend Code',
   'user.searchUser': 'Search user...',
 
+  // Team mode
+  'rules.teamMode': '2v2 Team Mode',
+  'rules.teamModeDesc': 'Split into 2 teams',
+  'lobby.removePlayer': 'Remove',
+  'lobby.teamA': 'Team A',
+  'lobby.teamB': 'Team B',
+  'lobby.assignTeam': 'Team',
+  'lobby.teamValidation': 'Need 2 per team',
+  'results.teamResults': 'Team Results',
+  'results.teamScore': 'Team Score',
+
   // Error codes
   'error.INVALID_ROOM': 'Cannot join room',
   'error.PARSE_ERROR': 'Invalid message format',

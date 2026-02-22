@@ -329,6 +329,17 @@ export const zh = {
   'user.resendCode': '重新发送',
   'user.searchUser': '搜索用户...',
 
+  // Team mode
+  'rules.teamMode': '2v2组队模式',
+  'rules.teamModeDesc': '四位选手分为两组',
+  'lobby.removePlayer': '移除',
+  'lobby.teamA': 'A队',
+  'lobby.teamB': 'B队',
+  'lobby.assignTeam': '分组',
+  'lobby.teamValidation': '每队需要2人',
+  'results.teamResults': '团队成绩',
+  'results.teamScore': '团队得分',
+
   // Error codes (from server)
   'error.INVALID_ROOM': '无法加入房间',
   'error.PARSE_ERROR': '无效消息格式',

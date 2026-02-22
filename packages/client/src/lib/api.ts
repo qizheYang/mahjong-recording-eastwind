@@ -39,6 +39,13 @@ export async function addPlayer(code: string, playerName: string, phone?: string
   });
 }
 
+export async function removePlayer(code: string, playerId: string): Promise<{ ok: boolean }> {
+  return request(`/rooms/${code.toUpperCase()}/remove-player`, {
+    method: 'POST',
+    body: JSON.stringify({ playerId }),
+  });
+}
+
 export async function resetRoom(code: string): Promise<void> {
   return request(`/rooms/${code}/reset`, { method: 'POST' });
 }
