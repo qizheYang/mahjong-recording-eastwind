@@ -84,6 +84,7 @@ export const OFFICIAL_MATCH_RULES: Ruleset = {
   ...M_LEAGUE_RULES,
   tobiEnabled: true,
   doubleRonEnabled: true,
+  countedYakumanEnabled: true,
 };
 
 export const SAIKOUISEN_RULES: Ruleset = {

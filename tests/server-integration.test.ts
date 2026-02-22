@@ -10,6 +10,9 @@ import { serve } from '@hono/node-server';
 import { createApp } from '../packages/server/src/app';
 import { createAdmin, signIn } from '../packages/server/src/services/admin-service';
 import { roomManager } from '../packages/server/src/ws/room-manager';
+import { getDb } from '../packages/server/src/db/connection';
+import { registeredUsers } from '../packages/server/src/db/schema';
+import { eq } from 'drizzle-orm';
 import WebSocket from 'ws';
 import type { ServerEvent, ClientEvent } from '@mahjong/shared';
 import type { Server } from 'http';
@@ -1125,5 +1128,178 @@ describe('Kill Room', () => {
   it('killing nonexistent room returns 404', async () => {
     const res = await apiDelete('/api/rooms/ZZZZ?playerId=fake');
     expect(res.status).toBe(404);
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Player Registration & Game Record Matching
+// ──────────────────────────────────────────────────
+describe('Player Registration & Record Matching', () => {
+  // Helper: register a user directly in DB (bypass email verification)
+  function registerUserDirectly(username: string, email: string): void {
+    const db = getDb();
+    const now = Date.now();
+    // Delete if exists (for test idempotency)
+    db.delete(registeredUsers).where(eq(registeredUsers.username, username)).run();
+    db.insert(registeredUsers).values({
+      id: `test-${username}-${now}`,
+      username,
+      email,
+      emailVerified: 1,
+      createdAt: now,
+      updatedAt: now,
+    }).run();
+  }
+
+  // Helper: play a complete game with 4 named players and return player names
+  async function playGameWithPlayers(names: string[]): Promise<void> {
+    const pIds: string[] = [];
+    const cr = await apiPost('/api/rooms', { playerName: names[0] });
+    const code = cr.data.roomCode;
+    pIds.push(cr.data.playerId);
+
+    for (let i = 1; i < 4; i++) {
+      const j = await apiPost(`/api/rooms/${code}/add-player`, { playerName: names[i] });
+      pIds.push(j.data.playerId);
+    }
+
+    const ws = track(await connectWs(code, pIds[0]));
+    await ws.waitForEvent('room_state');
+
+    const startP = ws.waitForEvent('game_started');
+    ws.send({ type: 'start_game', seatOrder: pIds });
+    await startP;
+
+    // Record one hand so there's data
+    const recP = ws.waitForEvent('hand_recorded');
+    ws.send({
+      type: 'record_hand',
+      result: { resultType: 'agari', winnerIndex: 1, loserIndex: 0, isTsumo: false, han: 3, fu: 30 },
+    });
+    await recP;
+
+    // End game
+    const endP = ws.waitForEvent('game_ended');
+    ws.send({ type: 'end_game' });
+    await endP;
+    ws.close();
+  }
+
+  it('unregistered players appear in player list after a game', async () => {
+    const uniqueName = `UnregPlayer_${Date.now()}`;
+    await playGameWithPlayers([uniqueName, 'Buddy1', 'Buddy2', 'Buddy3']);
+
+    // Check player list
+    const res = await apiGet(`/api/players?q=${encodeURIComponent(uniqueName)}`);
+    expect(res.status).toBe(200);
+    const found = res.data.players.find((p: any) => p.name === uniqueName);
+    expect(found).toBeTruthy();
+    expect(found.totalGames).toBe(1);
+    expect(found.isRegistered).toBe(false);
+  });
+
+  it('player record shows isRegistered=false for unregistered player', async () => {
+    const uniqueName = `Solo_${Date.now()}`;
+    await playGameWithPlayers([uniqueName, 'Other1', 'Other2', 'Other3']);
+
+    const res = await apiGet(`/api/players/${encodeURIComponent(uniqueName)}`);
+    expect(res.status).toBe(200);
+    expect(res.data.name).toBe(uniqueName);
+    expect(res.data.isRegistered).toBe(false);
+    expect(res.data.totalGames).toBe(1);
+  });
+
+  it('after registration, player record combines with existing games', async () => {
+    const uniqueName = `RegTest_${Date.now()}`;
+
+    // Play a game before registration
+    await playGameWithPlayers([uniqueName, 'PartnerA', 'PartnerB', 'PartnerC']);
+
+    // Verify unregistered
+    const before = await apiGet(`/api/players/${encodeURIComponent(uniqueName)}`);
+    expect(before.data.isRegistered).toBe(false);
+    expect(before.data.totalGames).toBe(1);
+
+    // Register the user
+    registerUserDirectly(uniqueName, `${uniqueName}@test.com`);
+
+    // Verify combined: same games + isRegistered=true
+    const after = await apiGet(`/api/players/${encodeURIComponent(uniqueName)}`);
+    expect(after.data.isRegistered).toBe(true);
+    expect(after.data.totalGames).toBe(1);
+    expect(after.data.games).toHaveLength(1);
+    expect(after.data.name).toBe(uniqueName);
+  });
+
+  it('registered user with no games appears in player list', async () => {
+    const uniqueName = `NoGames_${Date.now()}`;
+    registerUserDirectly(uniqueName, `${uniqueName}@test.com`);
+
+    const res = await apiGet(`/api/players/${encodeURIComponent(uniqueName)}`);
+    expect(res.status).toBe(200);
+    expect(res.data.isRegistered).toBe(true);
+    expect(res.data.totalGames).toBe(0);
+    expect(res.data.games).toHaveLength(0);
+  });
+
+  it('registered user appears in player list even with 0 games', async () => {
+    const uniqueName = `ListTest_${Date.now()}`;
+    registerUserDirectly(uniqueName, `${uniqueName}@test.com`);
+
+    const res = await apiGet('/api/players');
+    expect(res.status).toBe(200);
+    const found = res.data.players.find((p: any) => p.name === uniqueName);
+    expect(found).toBeTruthy();
+    expect(found.isRegistered).toBe(true);
+    expect(found.totalGames).toBe(0);
+  });
+
+  it('case-insensitive name matching works for registration', async () => {
+    const baseName = `CaseTest_${Date.now()}`;
+    const lowerName = baseName.toLowerCase();
+
+    // Play game with lowercase name
+    await playGameWithPlayers([lowerName, 'CaseA', 'CaseB', 'CaseC']);
+
+    // Register with original casing
+    registerUserDirectly(baseName, `${baseName}@test.com`);
+
+    // Both names should resolve to the same player with games + registered
+    const res = await apiGet(`/api/players/${encodeURIComponent(lowerName)}`);
+    expect(res.status).toBe(200);
+    expect(res.data.isRegistered).toBe(true);
+    expect(res.data.totalGames).toBe(1);
+  });
+
+  it('multiple games before registration all combine correctly', async () => {
+    const uniqueName = `MultiGame_${Date.now()}`;
+
+    // Play two games
+    await playGameWithPlayers([uniqueName, 'MG_A', 'MG_B', 'MG_C']);
+    await playGameWithPlayers([uniqueName, 'MG_D', 'MG_E', 'MG_F']);
+
+    // Should have 2 games unregistered
+    const before = await apiGet(`/api/players/${encodeURIComponent(uniqueName)}`);
+    expect(before.data.totalGames).toBe(2);
+    expect(before.data.isRegistered).toBe(false);
+
+    // Register
+    registerUserDirectly(uniqueName, `${uniqueName}@test.com`);
+
+    // Should still have 2 games but now registered
+    const after = await apiGet(`/api/players/${encodeURIComponent(uniqueName)}`);
+    expect(after.data.totalGames).toBe(2);
+    expect(after.data.isRegistered).toBe(true);
+    expect(after.data.games).toHaveLength(2);
+  });
+
+  it('search endpoint finds registered users', async () => {
+    const uniqueName = `SearchReg_${Date.now()}`;
+    registerUserDirectly(uniqueName, `${uniqueName}@test.com`);
+
+    const res = await apiGet(`/api/users/search?q=${encodeURIComponent(uniqueName)}`);
+    expect(res.status).toBe(200);
+    expect(res.data.users.length).toBeGreaterThan(0);
+    expect(res.data.users[0].username).toBe(uniqueName);
   });
 });

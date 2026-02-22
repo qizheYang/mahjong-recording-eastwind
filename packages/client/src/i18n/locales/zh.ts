@@ -295,6 +295,13 @@ export const zh = {
   'history.noPlayerData': '暂无玩家数据',
   'history.games': '局',
   'history.drawResult': '流局',
+  'history.deleteGame': '删除记录',
+  'history.deleteConfirm': '确定要删除这条对局记录吗？此操作不可撤销。',
+  'history.deleting': '删除中...',
+  'history.sortByName': '按名称',
+  'history.sortByRank': '按顺位',
+  'history.sortByScore': '按得分',
+  'history.sortByGames': '按场次',
 
   // PlayerPage
   'player.gamesPlayed': '{count} 场对局',

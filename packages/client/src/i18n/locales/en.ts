@@ -297,6 +297,13 @@ export const en: Record<TranslationKey, string> = {
   'history.noPlayerData': 'No player data',
   'history.games': 'games',
   'history.drawResult': 'Draw',
+  'history.deleteGame': 'Delete Record',
+  'history.deleteConfirm': 'Delete this game record? This cannot be undone.',
+  'history.deleting': 'Deleting...',
+  'history.sortByName': 'Name',
+  'history.sortByRank': 'Rank',
+  'history.sortByScore': 'Score',
+  'history.sortByGames': 'Games',
 
   // PlayerPage
   'player.gamesPlayed': '{count} games played',

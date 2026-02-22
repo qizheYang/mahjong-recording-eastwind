@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, readdirSync, readFileSync, existsSync } from 'fs';
+import { mkdirSync, writeFileSync, readdirSync, readFileSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import type { Game, FinalScore } from '@mahjong/shared';
 
@@ -279,6 +279,24 @@ export function updateGameTags(
     return record;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Delete a game record file.
+ */
+export function deleteGameRecord(filename: string): boolean {
+  if (filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+    return false;
+  }
+  const filepath = join(GAMES_DIR, filename);
+  if (!existsSync(filepath)) return false;
+
+  try {
+    unlinkSync(filepath);
+    return true;
+  } catch {
+    return false;
   }
 }
 

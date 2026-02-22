@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { signIn, getAdminFromHeader } from '../services/admin-service.js';
-import { getGameRecord, updateGameAnnotations, updateGameTags } from '../services/game-file-service.js';
+import { getGameRecord, updateGameAnnotations, updateGameTags, deleteGameRecord } from '../services/game-file-service.js';
+import { rebuildPlayerDB } from '../services/player-db.js';
+import { listGameRecords } from '../services/game-file-service.js';
 
 const adminRoutes = new Hono();
 
@@ -87,6 +89,25 @@ adminRoutes.patch('/games/:filename/tags', async (c) => {
   }
 
   return c.json({ tags: record.tags });
+});
+
+// Delete a game record (admin only)
+adminRoutes.delete('/games/:filename', (c) => {
+  const username = getAdminFromHeader(c.req.header('Authorization'));
+  if (!username) {
+    return c.json({ error: '未授权 (Unauthorized)' }, 401);
+  }
+
+  const filename = c.req.param('filename');
+  const deleted = deleteGameRecord(filename);
+  if (!deleted) {
+    return c.json({ error: '记录不存在 (Record not found)' }, 404);
+  }
+
+  // Rebuild player DB to reflect the deletion
+  rebuildPlayerDB(listGameRecords, getGameRecord);
+
+  return c.json({ deleted: filename });
 });
 
 export { adminRoutes };

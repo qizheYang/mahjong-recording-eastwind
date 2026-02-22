@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { listGames, getGame, listPlayerRecords, rebuildPlayerDB, getGameAnnotations, updateGameAnnotations, listTags, adminUpdateGameTags, adminDeleteTag, type GameListItem, type PlayerRecord, type AdminAnnotations } from '../lib/api';
+import { listGames, getGame, listPlayerRecords, rebuildPlayerDB, getGameAnnotations, updateGameAnnotations, listTags, adminUpdateGameTags, adminDeleteTag, adminDeleteGame, type GameListItem, type PlayerRecord, type AdminAnnotations } from '../lib/api';
 import { useAdminStore } from '../stores/admin-store';
 import { useLocale } from '../i18n';
 
@@ -86,6 +86,14 @@ export function HistoryPage() {
   const [retagTags, setRetagTags] = useState<string[]>([]);
   const [retagSaving, setRetagSaving] = useState(false);
 
+  // Delete state
+  const [deleteConfirmFile, setDeleteConfirmFile] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Player sort
+  type PlayerSort = 'name' | 'rank' | 'score' | 'games';
+  const [playerSort, setPlayerSort] = useState<PlayerSort>('name');
+
   useEffect(() => {
     Promise.all([
       listGames().then(res => setGames(res.games)),
@@ -143,6 +151,26 @@ export function HistoryPage() {
       setError(e.message);
     } finally {
       setRebuilding(false);
+    }
+  }
+
+  async function handleDeleteGame(filename: string) {
+    if (!adminToken) return;
+    setDeleting(true);
+    try {
+      await adminDeleteGame(adminToken, filename);
+      setGames(prev => prev.filter(g => g.filename !== filename));
+      setDeleteConfirmFile(null);
+      if (expandedFile === filename) {
+        setExpandedFile(null);
+        setExpandedRecord(null);
+      }
+      // Reload players since player DB was rebuilt on server
+      await loadPlayers();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -265,21 +293,31 @@ export function HistoryPage() {
       ? allPlayers.filter(p => p.name.toLowerCase() === nameFilter.trim().toLowerCase())
       : allPlayers;
 
-    if (!tagFilter) return players;
+    if (tagFilter) {
+      // Filter to players who have games with this tag, and recalculate stats
+      players = players
+        .map(p => {
+          const tagGames = p.games.filter(g => (g.tags ?? []).includes(tagFilter));
+          if (tagGames.length === 0) return null;
+          return {
+            ...p,
+            totalGames: tagGames.length,
+            avgPlacement: tagGames.reduce((s, g) => s + g.placement, 0) / tagGames.length,
+            avgGameScore: tagGames.reduce((s, g) => s + g.gameScore, 0) / tagGames.length,
+          };
+        })
+        .filter((p): p is NonNullable<typeof p> => p !== null);
+    }
 
-    // Filter to players who have games with this tag, and recalculate stats
-    return players
-      .map(p => {
-        const tagGames = p.games.filter(g => (g.tags ?? []).includes(tagFilter));
-        if (tagGames.length === 0) return null;
-        return {
-          ...p,
-          totalGames: tagGames.length,
-          avgPlacement: tagGames.reduce((s, g) => s + g.placement, 0) / tagGames.length,
-          avgGameScore: tagGames.reduce((s, g) => s + g.gameScore, 0) / tagGames.length,
-        };
-      })
-      .filter((p): p is NonNullable<typeof p> => p !== null);
+    // Apply sorting
+    return [...players].sort((a, b) => {
+      switch (playerSort) {
+        case 'rank': return a.avgPlacement - b.avgPlacement;
+        case 'score': return b.avgGameScore - a.avgGameScore;
+        case 'games': return b.totalGames - a.totalGames;
+        default: return a.name.localeCompare(b.name);
+      }
+    });
   })();
 
   function formatHandResult(hand: GameRecord['hands'][0]): string {
@@ -542,6 +580,32 @@ export function HistoryPage() {
                           {t('history.retag')}
                         </button>
                       )}
+                      {/* Delete game */}
+                      {deleteConfirmFile === g.filename ? (
+                        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                          <span className="text-xs text-mahjong-highlight">{t('history.deleteConfirm')}</span>
+                          <button
+                            onClick={() => handleDeleteGame(g.filename)}
+                            disabled={deleting}
+                            className="px-2 py-1 rounded text-xs bg-mahjong-highlight text-white font-bold disabled:opacity-50"
+                          >
+                            {deleting ? t('history.deleting') : t('common.confirm')}
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmFile(null)}
+                            className="px-2 py-1 rounded text-xs bg-mahjong-card text-mahjong-muted"
+                          >
+                            {t('common.cancel')}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteConfirmFile(g.filename); }}
+                          className="text-xs text-mahjong-highlight/60 hover:text-mahjong-highlight underline"
+                        >
+                          {t('history.deleteGame')}
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -686,6 +750,20 @@ export function HistoryPage() {
             </button>
           </div>
 
+          {/* Sort controls */}
+          <div className="flex gap-1.5 mb-3">
+            {(['name', 'rank', 'score', 'games'] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => setPlayerSort(s)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors
+                  ${playerSort === s ? 'bg-mahjong-accent text-white' : 'bg-mahjong-card text-mahjong-muted'}`}
+              >
+                {t(`history.sortBy${s.charAt(0).toUpperCase() + s.slice(1)}` as any)}
+              </button>
+            ))}
+          </div>
+
           {filteredPlayers.length === 0 && (
             <p className="text-center text-mahjong-muted py-8">
               {t('history.noPlayerData')}
@@ -701,7 +779,18 @@ export function HistoryPage() {
                   active:bg-mahjong-accent/30 transition-colors text-left"
               >
                 <div>
-                  <span className="font-medium">{p.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{p.name}</span>
+                    {p.isRegistered ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-mahjong-green/20 text-mahjong-green font-bold">
+                        {t('player.registered')}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-mahjong-highlight/20 text-mahjong-highlight font-bold">
+                        {t('player.unregistered')}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-mahjong-muted mt-0.5">{p.totalGames} {t('history.games')}</p>
                 </div>
                 <div className="text-right">

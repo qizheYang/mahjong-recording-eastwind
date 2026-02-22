@@ -297,6 +297,13 @@ export const ja: Record<TranslationKey, string> = {
   'history.noPlayerData': 'プレイヤーデータなし',
   'history.games': '局',
   'history.drawResult': '流局',
+  'history.deleteGame': '記録を削除',
+  'history.deleteConfirm': 'この対局記録を削除しますか？元に戻せません。',
+  'history.deleting': '削除中...',
+  'history.sortByName': '名前順',
+  'history.sortByRank': '順位順',
+  'history.sortByScore': 'スコア順',
+  'history.sortByGames': '対局数順',
 
   // PlayerPage
   'player.gamesPlayed': '{count} 対局',

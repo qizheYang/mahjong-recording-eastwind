@@ -191,6 +191,13 @@ export async function adminDeleteTag(token: string, name: string): Promise<{ del
   });
 }
 
+export async function adminDeleteGame(token: string, filename: string): Promise<{ deleted: string }> {
+  return request(`/admin/games/${encodeURIComponent(filename)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 export async function adminUpdateGameTags(
   token: string,
   filename: string,
