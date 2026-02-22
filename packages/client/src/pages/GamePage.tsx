@@ -146,6 +146,7 @@ export function GamePage() {
           nagashiManganEnabled={game.ruleset?.nagashiManganEnabled ?? M_LEAGUE_RULES.nagashiManganEnabled}
           countedYakumanEnabled={game.ruleset?.countedYakumanEnabled ?? M_LEAGUE_RULES.countedYakumanEnabled}
           doubleYakumanEnabled={game.ruleset?.doubleYakumanEnabled ?? M_LEAGUE_RULES.doubleYakumanEnabled}
+          multipleYakumanEnabled={game.ruleset?.multipleYakumanEnabled ?? M_LEAGUE_RULES.multipleYakumanEnabled}
           scoreFormula={game.ruleset?.scoreFormula ?? M_LEAGUE_RULES.scoreFormula}
           editable={false}
         />
@@ -225,6 +226,7 @@ export function GamePage() {
           kiriageMangan={game.ruleset?.kiriageMangan}
           doubleRonEnabled={game.ruleset?.doubleRonEnabled}
           doubleYakumanEnabled={game.ruleset?.doubleYakumanEnabled}
+          multipleYakumanEnabled={game.ruleset?.multipleYakumanEnabled}
           nagashiManganEnabled={game.ruleset?.nagashiManganEnabled}
           editingHand={editingHandNumber !== null
             ? game.hands.find(h => h.handNumber === editingHandNumber)

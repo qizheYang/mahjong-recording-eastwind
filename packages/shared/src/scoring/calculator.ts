@@ -30,9 +30,10 @@ export interface PointCalcResult {
 
 /**
  * Calculate the yakuman multiplier from a list of selected yakuman.
- * Each normal yakuman = 1x, double yakuman variants = 2x (if enabled).
+ * Each normal yakuman = 1x, double yakuman variants = 2x (if doubleYakumanEnabled).
+ * multipleYakumanEnabled controls whether combining separate yakuman stacks (e.g. tsuiisou + shousuushii = 2x).
  */
-export function calculateYakumanMultiplier(yakumanList: string[], doubleYakumanEnabled: boolean): number {
+export function calculateYakumanMultiplier(yakumanList: string[], doubleYakumanEnabled: boolean, multipleYakumanEnabled?: boolean): number {
   if (yakumanList.length === 0) return 1;
   let multiplier = 0;
   for (const id of yakumanList) {
@@ -42,6 +43,10 @@ export function calculateYakumanMultiplier(yakumanList: string[], doubleYakumanE
     } else {
       multiplier += 1;
     }
+  }
+  // When multiple yakuman stacking is disabled, cap at the value of a single selected yakuman
+  if (!multipleYakumanEnabled && yakumanList.length > 1) {
+    return 1;
   }
   return Math.max(1, multiplier);
 }

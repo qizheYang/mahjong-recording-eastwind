@@ -107,7 +107,7 @@ export function processHandResult(game: Game, input: HandResultInput): Hand {
     const winners: MultiAgariWinner[] = winnerInputs.map(w => {
       const isDealer = w.winnerIndex === game.currentDealer;
       const yakumanCount = w.yakumanList?.length
-        ? calculateYakumanMultiplier(w.yakumanList, game.ruleset.doubleYakumanEnabled)
+        ? calculateYakumanMultiplier(w.yakumanList, game.ruleset.doubleYakumanEnabled, game.ruleset.multipleYakumanEnabled)
         : undefined;
       const calc = calculatePoints({
         han: w.han, fu: w.fu, isDealer, isTsumo: false,
@@ -133,7 +133,7 @@ export function processHandResult(game: Game, input: HandResultInput): Hand {
   } else if (input.resultType === 'agari') {
     const isDealer = input.winnerIndex === game.currentDealer;
     const yakumanCount = input.yakumanList?.length
-      ? calculateYakumanMultiplier(input.yakumanList, game.ruleset.doubleYakumanEnabled)
+      ? calculateYakumanMultiplier(input.yakumanList, game.ruleset.doubleYakumanEnabled, game.ruleset.multipleYakumanEnabled)
       : undefined;
     const calc = calculatePoints({
       han: input.han!,

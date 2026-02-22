@@ -5,13 +5,14 @@ interface Props {
   selectedYakuman: string[];
   setSelectedYakuman: (yakuman: string[]) => void;
   doubleYakumanEnabled: boolean;
+  multipleYakumanEnabled?: boolean;
   winnerName?: string;
   onConfirm: () => void;
 }
 
-export function YakumanSelectStep({ t, selectedYakuman, setSelectedYakuman, doubleYakumanEnabled, winnerName, onConfirm }: Props) {
+export function YakumanSelectStep({ t, selectedYakuman, setSelectedYakuman, doubleYakumanEnabled, multipleYakumanEnabled, winnerName, onConfirm }: Props) {
   const multiplier = selectedYakuman.length > 0
-    ? calculateYakumanMultiplier(selectedYakuman, doubleYakumanEnabled)
+    ? calculateYakumanMultiplier(selectedYakuman, doubleYakumanEnabled, multipleYakumanEnabled)
     : 1;
 
   function toggleYakuman(id: string) {

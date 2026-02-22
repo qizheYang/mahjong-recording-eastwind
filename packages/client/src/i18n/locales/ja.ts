@@ -217,6 +217,8 @@ export const ja: Record<TranslationKey, string> = {
   'rules.countedYakumanDesc': '13翻以上を役満とする',
   'rules.doubleYakuman': 'ダブル役満',
   'rules.doubleYakumanDesc': 'ダブル役満を許可',
+  'rules.multipleYakuman': '役満の複合',
+  'rules.multipleYakumanDesc': '複数の役満を重複可（例: 字一色+小四喜）',
 
   // Presets
   'preset.selectPreset': 'ルールプリセット',
@@ -224,6 +226,7 @@ export const ja: Record<TranslationKey, string> = {
   'preset.official': '公式戦',
   'preset.saikouisen': '最高位戦',
   'preset.wrc': 'WRC',
+  'preset.arule': 'Aルール',
   'preset.custom': 'カスタム',
 
   // Yakuman

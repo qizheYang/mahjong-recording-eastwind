@@ -22,6 +22,7 @@ export interface Ruleset {
   doubleYakumanEnabled: boolean;
   kiriageMangan: boolean;
   nagashiManganEnabled: boolean;
+  multipleYakumanEnabled: boolean;
   akadoraCount: number;
   teamMode?: boolean;
 }
@@ -71,12 +72,13 @@ export const M_LEAGUE_RULES: Ruleset = {
   doubleRonEnabled: false,
   countedYakumanEnabled: false,
   doubleYakumanEnabled: false,
+  multipleYakumanEnabled: false,
   kiriageMangan: true,
   nagashiManganEnabled: true,
   akadoraCount: 3,
 };
 
-export type PresetName = 'mleague' | 'official' | 'saikouisen' | 'wrc' | 'custom';
+export type PresetName = 'mleague' | 'official' | 'saikouisen' | 'wrc' | 'arule' | 'custom';
 
 export const OFFICIAL_MATCH_RULES: Ruleset = {
   ...M_LEAGUE_RULES,
@@ -95,6 +97,7 @@ export const SAIKOUISEN_RULES: Ruleset = {
   doubleRonEnabled: false,
   countedYakumanEnabled: false,
   doubleYakumanEnabled: false,
+  multipleYakumanEnabled: false,
   kiriageMangan: true,
   nagashiManganEnabled: false,
   akadoraCount: 0,
@@ -111,8 +114,26 @@ export const WRC_RULES: Ruleset = {
   doubleRonEnabled: true,
   countedYakumanEnabled: true,
   doubleYakumanEnabled: false,
+  multipleYakumanEnabled: true,
   kiriageMangan: true,
   nagashiManganEnabled: true,
+  akadoraCount: 0,
+};
+
+export const A_RULE: Ruleset = {
+  startingPoints: 30000,
+  returnPoints: 30000,
+  uma: [15, 5, -5, -15],
+  tobiEnabled: false,
+  scoreFormula: '(X - 30000) / 1000 + Y',
+  okaEnabled: false,
+  enchousenEnabled: false,
+  doubleRonEnabled: false,
+  countedYakumanEnabled: false,
+  doubleYakumanEnabled: false,
+  multipleYakumanEnabled: false,
+  kiriageMangan: true,
+  nagashiManganEnabled: false,
   akadoraCount: 0,
 };
 
@@ -121,4 +142,5 @@ export const PRESET_RULESETS: Record<Exclude<PresetName, 'custom'>, Ruleset> = {
   official: OFFICIAL_MATCH_RULES,
   saikouisen: SAIKOUISEN_RULES,
   wrc: WRC_RULES,
+  arule: A_RULE,
 };

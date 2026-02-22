@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createRoom, joinRoom, listLiveGames, type LiveGameSummary } from '../lib/api';
+import { createRoom, joinRoom, listLiveGames, searchRegisteredUsers, type LiveGameSummary, type RegisteredUser } from '../lib/api';
 import type { Wind } from '@mahjong/shared';
 import { useGameStore } from '../stores/game-store';
 import { useAdminStore } from '../stores/admin-store';
@@ -24,6 +24,22 @@ export function HomePage() {
   const { t } = useLocale();
 
   const [liveGames, setLiveGames] = useState<LiveGameSummary[]>([]);
+
+  // Autocomplete state
+  const [nameSuggestions, setNameSuggestions] = useState<RegisteredUser[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    const query = name.trim();
+    if (!query || query.length < 1) { setNameSuggestions([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await searchRegisteredUsers(query);
+        setNameSuggestions(res.users);
+      } catch { setNameSuggestions([]); }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [name]);
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
 
@@ -246,16 +262,36 @@ export function HomePage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm text-mahjong-muted mb-1">{t('home.yourName')}</label>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                maxLength={12}
-                autoFocus
-                className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
-                  text-white text-lg focus:outline-none focus:border-mahjong-highlight"
-                placeholder={t('home.enterName')}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => { setName(e.target.value); setShowSuggestions(true); }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  maxLength={12}
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
+                    text-white text-lg focus:outline-none focus:border-mahjong-highlight"
+                  placeholder={t('home.enterName')}
+                />
+                {showSuggestions && nameSuggestions.length > 0 && (
+                  <div className="absolute z-10 left-0 right-0 top-full mt-0.5 bg-mahjong-bg border border-mahjong-accent
+                    rounded shadow-lg max-h-40 overflow-y-auto">
+                    {nameSuggestions.map(u => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => { setName(u.username); setShowSuggestions(false); }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-mahjong-accent/40 transition-colors"
+                      >
+                        <span className="text-white">{u.username}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-sm text-mahjong-muted mb-1">{t('home.phone')} ({t('home.phoneOptional')})</label>
@@ -305,15 +341,35 @@ export function HomePage() {
             </div>
             <div>
               <label className="block text-sm text-mahjong-muted mb-1">{t('home.yourName')}</label>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                maxLength={12}
-                className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
-                  text-white text-lg focus:outline-none focus:border-mahjong-highlight"
-                placeholder={t('home.enterName')}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => { setName(e.target.value); setShowSuggestions(true); }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  maxLength={12}
+                  className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
+                    text-white text-lg focus:outline-none focus:border-mahjong-highlight"
+                  placeholder={t('home.enterName')}
+                />
+                {showSuggestions && nameSuggestions.length > 0 && (
+                  <div className="absolute z-10 left-0 right-0 top-full mt-0.5 bg-mahjong-bg border border-mahjong-accent
+                    rounded shadow-lg max-h-40 overflow-y-auto">
+                    {nameSuggestions.map(u => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => { setName(u.username); setShowSuggestions(false); }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-mahjong-accent/40 transition-colors"
+                      >
+                        <span className="text-white">{u.username}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-sm text-mahjong-muted mb-1">{t('home.phone')} ({t('home.phoneOptional')})</label>

@@ -15,6 +15,7 @@ interface Props {
   kiriageMangan?: boolean;
   doubleRonEnabled?: boolean;
   doubleYakumanEnabled?: boolean;
+  multipleYakumanEnabled?: boolean;
   nagashiManganEnabled?: boolean;
   editingHand?: Hand;
   onSubmit: (result: HandResultInput) => void;
@@ -60,7 +61,7 @@ function getInitialState(editingHand?: Hand) {
   };
 }
 
-export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, kiriageMangan, doubleRonEnabled, doubleYakumanEnabled, nagashiManganEnabled, editingHand, onSubmit, onClose }: Props) {
+export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, kiriageMangan, doubleRonEnabled, doubleYakumanEnabled, multipleYakumanEnabled, nagashiManganEnabled, editingHand, onSubmit, onClose }: Props) {
   const { t } = useLocale();
   const init = getInitialState(editingHand);
   const [step, setStep] = useState<Step>(init.step);
@@ -87,7 +88,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
 
   // Calculate points preview
   const yakumanCount = selectedYakuman.length > 0
-    ? calculateYakumanMultiplier(selectedYakuman, doubleYakumanEnabled ?? false)
+    ? calculateYakumanMultiplier(selectedYakuman, doubleYakumanEnabled ?? false, multipleYakumanEnabled ?? false)
     : undefined;
 
   const pointsPreview = useMemo(() => {
@@ -522,6 +523,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             selectedYakuman={selectedYakuman}
             setSelectedYakuman={setSelectedYakuman}
             doubleYakumanEnabled={doubleYakumanEnabled ?? false}
+            multipleYakumanEnabled={multipleYakumanEnabled ?? false}
             onConfirm={() => setStep('riichi')}
           />
         )}
@@ -533,6 +535,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             selectedYakuman={selectedYakuman}
             setSelectedYakuman={setSelectedYakuman}
             doubleYakumanEnabled={doubleYakumanEnabled ?? false}
+            multipleYakumanEnabled={multipleYakumanEnabled ?? false}
             winnerName={players[multiRonWinners[editingWinnerIdx].winnerIndex]?.name}
             onConfirm={() => handleMultiYakumanConfirm(selectedYakuman)}
           />

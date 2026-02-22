@@ -13,6 +13,7 @@ interface RulesIslandProps {
   nagashiManganEnabled: boolean;
   countedYakumanEnabled: boolean;
   doubleYakumanEnabled: boolean;
+  multipleYakumanEnabled: boolean;
   scoreFormula: string;
   teamMode?: boolean;
   presetName?: PresetName;
@@ -28,7 +29,7 @@ const UMA_PRESETS: { label: string; value: [number, number, number, number] }[] 
   { label: '+10/+5/-5/-10', value: [10, 5, -5, -10] },
 ];
 
-const PRESET_ORDER: PresetName[] = ['mleague', 'official', 'saikouisen', 'wrc', 'custom'];
+const PRESET_ORDER: PresetName[] = ['mleague', 'official', 'saikouisen', 'wrc', 'arule', 'custom'];
 
 function formatUma(uma: [number, number, number, number]): string {
   return uma.map(v => (v > 0 ? `+${v}` : `${v}`)).join('/');
@@ -36,7 +37,7 @@ function formatUma(uma: [number, number, number, number]): string {
 
 export function RulesIsland({
   startingPoints, uma, tobiEnabled, okaEnabled, kiriageMangan, doubleRonEnabled,
-  nagashiManganEnabled, countedYakumanEnabled, doubleYakumanEnabled,
+  nagashiManganEnabled, countedYakumanEnabled, doubleYakumanEnabled, multipleYakumanEnabled,
   scoreFormula, teamMode, presetName, editable, onChange,
 }: RulesIslandProps) {
   const { t } = useLocale();
@@ -347,6 +348,15 @@ export function RulesIsland({
               enabled={doubleYakumanEnabled}
               color="gold"
               onToggle={() => handleToggle('doubleYakumanEnabled', !doubleYakumanEnabled)}
+            />
+
+            {/* Multiple Yakuman */}
+            <ToggleRow
+              label={t('rules.multipleYakuman')}
+              desc={t('rules.multipleYakumanDesc')}
+              enabled={multipleYakumanEnabled}
+              color="gold"
+              onToggle={() => handleToggle('multipleYakumanEnabled', !multipleYakumanEnabled)}
             />
           </div>
 

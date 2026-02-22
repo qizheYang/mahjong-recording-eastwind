@@ -217,6 +217,8 @@ export const en: Record<TranslationKey, string> = {
   'rules.countedYakumanDesc': '13+ han counts as yakuman',
   'rules.doubleYakuman': 'Double Yakuman',
   'rules.doubleYakumanDesc': 'Allow double yakuman',
+  'rules.multipleYakuman': 'Multiple Yakuman',
+  'rules.multipleYakumanDesc': 'Allow stacking yakuman (e.g. Tsuiisou + Shousuushii)',
 
   // Presets
   'preset.selectPreset': 'Rule Preset',
@@ -224,6 +226,7 @@ export const en: Record<TranslationKey, string> = {
   'preset.official': 'Official',
   'preset.saikouisen': 'Saikouisen',
   'preset.wrc': 'WRC',
+  'preset.arule': 'A-Rule',
   'preset.custom': 'Custom',
 
   // Yakuman
