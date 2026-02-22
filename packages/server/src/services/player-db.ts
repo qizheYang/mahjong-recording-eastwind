@@ -111,7 +111,7 @@ export function getPlayer(name: string): PlayerRecord | null {
  */
 export function listPlayers(): PlayerRecord[] {
   const db = loadDB();
-  return Object.values(db.players).sort((a, b) => b.totalGames - a.totalGames);
+  return Object.values(db.players).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
