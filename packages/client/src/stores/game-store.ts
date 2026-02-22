@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Room, Game, Hand, FinalScore, TeamScore, ServerEvent, ClientEvent, HandResultInput, PenaltyInput, Ruleset } from '@mahjong/shared';
+import type { Room, Game, Hand, FinalScore, TeamScore, ServerEvent, ClientEvent, HandResultInput, PenaltyInput, Ruleset, Wind } from '@mahjong/shared';
 import { M_LEAGUE_RULES } from '@mahjong/shared';
 import { WsClient } from '../lib/ws-client';
 import { config } from '../config';
@@ -26,6 +26,9 @@ interface GameStore {
   // Team assignments (for lobby)
   teamAssignments: Record<string, string>; // playerId -> teamName
 
+  // Wind assignments (for lobby, team mode)
+  windAssignments: Record<string, Wind>; // playerId -> wind
+
   // UI state
   error: string | null;
   errorCode: string | null;
@@ -40,6 +43,8 @@ interface GameStore {
   toggleTag: (tag: string) => void;
   setTeamAssignment: (playerId: string, teamName: string) => void;
   clearTeamAssignments: () => void;
+  setWindAssignment: (playerId: string, wind: Wind) => void;
+  clearWindAssignments: () => void;
   startGame: (seatOrder: string[], ruleset?: Partial<Ruleset>) => void;
   recordHand: (result: HandResultInput) => void;
   editHand: (handNumber: number, result: HandResultInput) => void;
@@ -66,6 +71,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   customRuleset: {},
   gameTags: [],
   teamAssignments: {},
+  windAssignments: {},
   error: null,
   errorCode: null,
 
@@ -80,7 +86,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({
         roomCode, playerId,
         room: null, game: null, finalScores: null, teamScores: null, savedFilename: null,
-        connected: false, customRuleset: {}, gameTags: [], teamAssignments: {},
+        connected: false, customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {},
       });
     } else {
       set({ roomCode, playerId });
@@ -257,6 +263,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ teamAssignments: {} });
   },
 
+  setWindAssignment(playerId: string, wind: Wind) {
+    set((state) => ({
+      windAssignments: { ...state.windAssignments, [playerId]: wind },
+    }));
+  },
+
+  clearWindAssignments() {
+    set({ windAssignments: {} });
+  },
+
   startGame(seatOrder: string[], ruleset?: Partial<Ruleset>) {
     const r = ruleset ?? get().customRuleset;
     const tags = get().gameTags;
@@ -307,6 +323,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resetForNewGame() {
-    set({ game: null, finalScores: null, teamScores: null, savedFilename: null, customRuleset: {}, gameTags: [], teamAssignments: {} });
+    set({ game: null, finalScores: null, teamScores: null, savedFilename: null, customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {} });
   },
 }));

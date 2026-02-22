@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
 import { addPlayer, removePlayer, killRoom, listTags, createTag, searchRegisteredUsers, type RegisteredUser } from '../lib/api';
 import { WINDS, M_LEAGUE_RULES, defaultScoreFormula } from '@mahjong/shared';
-import type { PresetName } from '@mahjong/shared';
+import type { PresetName, Wind } from '@mahjong/shared';
 import { RulesIsland } from '../components/game/RulesIsland';
 import { useLocale } from '../i18n';
 
@@ -12,10 +12,10 @@ export function LobbyPage() {
   const navigate = useNavigate();
   const { t } = useLocale();
   const {
-    room, game, playerId, connected, customRuleset, gameTags, teamAssignments,
+    room, game, playerId, connected, customRuleset, gameTags, teamAssignments, windAssignments,
     errorCode,
     connect, toggleReady, swapSeats, startGame, setSession, setRuleset, toggleTag,
-    setTeamAssignment, clearTeamAssignments, clearError,
+    setTeamAssignment, clearTeamAssignments, setWindAssignment, clearWindAssignments, clearError,
   } = useGameStore();
 
   const [copied, setCopied] = useState(false);
@@ -167,8 +167,16 @@ export function LobbyPage() {
 
   function handleSoloStart() {
     if (!room || room.players.length !== 4) return;
-    const seatOrder = room.players.map(p => p.id);
-    startGame(seatOrder);
+    // In team mode with wind assignments, use wind-based seat order
+    if (ruleTeamMode && Object.keys(windAssignments).length === 4) {
+      const seatOrder = WINDS.map(w =>
+        room.players.find(p => windAssignments[p.id] === w)!.id
+      );
+      startGame(seatOrder);
+    } else {
+      const seatOrder = room.players.map(p => p.id);
+      startGame(seatOrder);
+    }
   }
 
   const myPlayer = room?.players.find(p => p.id === playerId);
@@ -218,11 +226,19 @@ export function LobbyPage() {
     return Object.keys(teamAssignments).length === 4 && counts.size === 2 && [...counts.values()].every(c => c === 2);
   })();
 
-  // Auto-assign default teams when team mode is toggled on with 4 players
+  // Wind assignment validation (no duplicates)
+  const isWindsValid = (() => {
+    if (!ruleTeamMode) return true;
+    const winds = Object.values(windAssignments);
+    return winds.length === 4 && new Set(winds).size === 4;
+  })();
+
+  // Auto-assign default teams and winds when team mode is toggled on with 4 players
   useEffect(() => {
     if (ruleTeamMode && room && room.players.length === 4 && Object.keys(teamAssignments).length === 0) {
       room.players.forEach((p, i) => {
         setTeamAssignment(p.id, i < 2 ? t('lobby.teamA') : t('lobby.teamB'));
+        setWindAssignment(p.id, WINDS[i]);
       });
     }
   }, [ruleTeamMode, room?.players.length]);
@@ -319,33 +335,33 @@ export function LobbyPage() {
           </p>
         )}
 
-        {/* Team mode with 4 players: divide into 2 team blocks */}
+        {/* Team mode with 4 players: side-by-side 2x2 grid */}
         {ruleTeamMode && totalPlayers === 4 && room ? (
           <div className="space-y-3">
             {[t('lobby.teamA'), t('lobby.teamB')].map((teamName, teamIdx) => {
               const teamPlayers = room.players
-                .map((p, idx) => ({ player: p, seatIdx: idx }))
-                .filter(({ player }) => teamAssignments[player.id] === teamName);
+                .filter(p => teamAssignments[p.id] === teamName);
 
               return (
                 <div key={teamName} className={`rounded-xl border overflow-hidden
                   ${teamIdx === 0 ? 'border-mahjong-green/40' : 'border-mahjong-gold/40'}`}>
                   {/* Team header */}
-                  <div className={`px-4 py-2 flex items-center justify-between
+                  <div className={`px-3 py-1.5 flex items-center justify-between
                     ${teamIdx === 0 ? 'bg-mahjong-green/15' : 'bg-mahjong-gold/15'}`}>
                     <span className={`text-sm font-bold ${teamIdx === 0 ? 'text-mahjong-green' : 'text-mahjong-gold'}`}>{teamName}</span>
                     <span className="text-xs text-mahjong-muted">{teamPlayers.length}/2</span>
                   </div>
-                  {/* Team members */}
-                  <div className="p-2 space-y-1.5">
-                    {teamPlayers.map(({ player, seatIdx }) => {
+                  {/* Team members — side by side */}
+                  <div className="p-2 grid grid-cols-2 gap-2">
+                    {teamPlayers.map((player) => {
                       const isSelected = selectedSwap === player.id;
+                      const currentWind = windAssignments[player.id] ?? 'east';
                       return (
                         <div
                           key={player.id}
                           onClick={() => canSwap ? handlePlayerTap(player.id) : undefined}
-                          className={`flex items-center justify-between px-3 py-2.5 rounded-lg
-                            transition-all
+                          className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg
+                            transition-all text-center
                             ${isSelected
                               ? 'bg-mahjong-gold/30 ring-2 ring-mahjong-gold'
                               : player.id === playerId
@@ -353,24 +369,36 @@ export function LobbyPage() {
                                 : 'bg-mahjong-card'}
                             ${canSwap ? 'cursor-pointer active:scale-[0.98]' : ''}`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="w-6 text-center text-sm font-bold text-mahjong-gold">
-                              {t(`mahjong.wind.${WINDS[seatIdx]}`)}
-                            </span>
-                            <span className="font-medium">{player.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
+                          {/* Wind selector */}
+                          <select
+                            value={currentWind}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              setWindAssignment(player.id, e.target.value as Wind);
+                            }}
+                            className="bg-mahjong-bg border border-mahjong-accent rounded px-1.5 py-0.5
+                              text-mahjong-gold text-sm font-bold text-center cursor-pointer
+                              focus:outline-none focus:border-mahjong-gold"
+                          >
+                            {WINDS.map(w => (
+                              <option key={w} value={w}>{t(`mahjong.wind.${w}`)}</option>
+                            ))}
+                          </select>
+                          {/* Player name */}
+                          <span className="font-medium text-sm truncate w-full">{player.name}</span>
+                          {/* Actions row */}
+                          <div className="flex items-center gap-1">
                             {player.id === playerId && (
-                              <span className="text-xs text-mahjong-muted">{t('lobby.you')}</span>
+                              <span className="text-[10px] text-mahjong-muted">{t('lobby.you')}</span>
                             )}
-                            {/* Switch team button */}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const otherTeam = teamIdx === 0 ? t('lobby.teamB') : t('lobby.teamA');
                                 setTeamAssignment(player.id, otherTeam);
                               }}
-                              className="text-xs text-mahjong-muted hover:text-white px-1.5 py-0.5
+                              className="text-xs text-mahjong-muted hover:text-white px-1 py-0.5
                                 rounded bg-mahjong-bg/50 active:scale-95 transition-all"
                               title={t('lobby.assignTeam')}
                             >
@@ -379,27 +407,35 @@ export function LobbyPage() {
                             {soloMode && player.id !== playerId && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleRemovePlayer(player.id); }}
-                                className="text-xs text-mahjong-highlight/60 hover:text-mahjong-highlight px-1.5 py-0.5
+                                className="text-[10px] text-mahjong-highlight/60 hover:text-mahjong-highlight px-1 py-0.5
                                   rounded bg-mahjong-highlight/10 active:scale-95 transition-all"
                               >
-                                {t('lobby.removePlayer')}
+                                ✕
                               </button>
                             )}
                           </div>
                         </div>
                       );
                     })}
-                    {/* Show placeholder if team has < 2 members */}
+                    {/* Placeholder if team has < 2 members */}
                     {teamPlayers.length < 2 && (
-                      <div className="flex items-center justify-center px-3 py-2.5 rounded-lg
+                      <div className="flex items-center justify-center px-2 py-2 rounded-lg
                         bg-mahjong-card/50 border border-dashed border-mahjong-accent/30 text-mahjong-muted text-sm">
-                        {t('lobby.assignTeam')} ⇄
+                        ⇄
                       </div>
                     )}
                   </div>
                 </div>
               );
             })}
+            {/* Wind conflict warning */}
+            {(() => {
+              const winds = Object.values(windAssignments);
+              const hasDuplicateWinds = winds.length === 4 && new Set(winds).size < 4;
+              return hasDuplicateWinds ? (
+                <p className="text-xs text-mahjong-highlight text-center">{t('lobby.windConflict')}</p>
+              ) : null;
+            })()}
             {Object.keys(teamAssignments).length === 4 && !isTeamsValid && (
               <p className="text-xs text-mahjong-highlight text-center">{t('lobby.teamValidation')}</p>
             )}
@@ -584,9 +620,10 @@ export function LobbyPage() {
           if (Object.keys(ruleUpdates).length > 0) {
             setRuleset(ruleUpdates as Partial<typeof M_LEAGUE_RULES>);
           }
-          // Clear team assignments when team mode is toggled off
+          // Clear team/wind assignments when team mode is toggled off
           if ('teamMode' in updates && !updates.teamMode) {
             clearTeamAssignments();
+            clearWindAssignments();
           }
         }}
       />
@@ -637,7 +674,7 @@ export function LobbyPage() {
           <>
             <button
               onClick={handleSoloStart}
-              disabled={totalPlayers < 4 || !isTeamsValid}
+              disabled={totalPlayers < 4 || !isTeamsValid || !isWindsValid}
               className="w-full py-4 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 transition-all active:scale-[0.98] disabled:opacity-30"
             >
