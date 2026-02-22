@@ -322,7 +322,6 @@ export const zh = {
   'user.registerTitle': '用户注册',
   'user.gongshizhanId': '公式战 ID',
   'user.email': '邮箱',
-  'user.emailOptional': '可选',
   'user.verifyCode': '验证',
   'user.verifying': '验证中...',
   'user.registerSuccess': '注册成功！',

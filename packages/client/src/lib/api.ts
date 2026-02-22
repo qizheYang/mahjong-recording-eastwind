@@ -189,10 +189,10 @@ export interface RegisteredUser {
   email: string;
 }
 
-export async function registerUser(username: string, email?: string): Promise<{ id: string; username: string; email: string; needsVerification: boolean }> {
+export async function registerUser(username: string, email: string): Promise<{ id: string; username: string; email: string; needsVerification: boolean }> {
   return request('/users/register', {
     method: 'POST',
-    body: JSON.stringify({ username, ...(email ? { email } : {}) }),
+    body: JSON.stringify({ username, email }),
   });
 }
 

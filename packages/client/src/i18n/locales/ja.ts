@@ -324,7 +324,6 @@ export const ja: Record<TranslationKey, string> = {
   'user.registerTitle': 'ユーザー登録',
   'user.gongshizhanId': '公式战 ID',
   'user.email': 'メール',
-  'user.emailOptional': '任意',
   'user.verifyCode': '認証',
   'user.verifying': '認証中...',
   'user.registerSuccess': '登録完了！',

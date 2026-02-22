@@ -8,16 +8,18 @@ import { sendOtp, verifyOtp, isOtpEnabled } from '../services/email-service.js';
 const userRoutes = new Hono();
 
 // Register a new user
-// When Resend is configured + email provided: creates unverified user + sends email OTP
-// Otherwise: creates immediately verified user (no OTP needed)
+// Email is required. Sends email OTP via Resend for verification.
 userRoutes.post('/register', async (c) => {
-  const body = await c.req.json<{ username: string; email?: string }>();
+  const body = await c.req.json<{ username: string; email: string }>();
   if (!body.username?.trim()) {
     return c.json({ error: 'Username is required' }, 400);
   }
+  if (!body.email?.trim()) {
+    return c.json({ error: 'Email is required' }, 400);
+  }
 
   const username = body.username.trim();
-  const email = body.email?.trim() || '';
+  const email = body.email.trim();
 
   const db = getDb();
 
@@ -27,7 +29,6 @@ userRoutes.post('/register', async (c) => {
     return c.json({ error: 'Username already taken' }, 409);
   }
 
-  const otpEnabled = isOtpEnabled() && !!email;
   const now = Date.now();
   const id = nanoid();
 
@@ -35,21 +36,21 @@ userRoutes.post('/register', async (c) => {
     id,
     username,
     email,
-    emailVerified: otpEnabled ? 0 : 1, // Auto-verify when OTP not available or no email
+    emailVerified: 0,
     createdAt: now,
     updatedAt: now,
   }).run();
 
-  if (otpEnabled) {
+  if (isOtpEnabled()) {
     const result = await sendOtp(email);
     if (!result.sent) {
+      // Clean up the unverified user record
+      db.delete(registeredUsers).where(eq(registeredUsers.id, id)).run();
       return c.json({ error: 'Failed to send verification email' }, 500);
     }
-    return c.json({ id, username, email, needsVerification: true });
   }
 
-  // No OTP — user is immediately verified
-  return c.json({ id, username, email, needsVerification: false });
+  return c.json({ id, username, email, needsVerification: true });
 });
 
 // Verify email with OTP code

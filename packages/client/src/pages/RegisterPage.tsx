@@ -20,12 +20,8 @@ export function RegisterPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await registerUser(username.trim(), email.trim() || undefined);
-      if (res.needsVerification) {
-        setStep('verify');
-      } else {
-        setStep('success');
-      }
+      await registerUser(username.trim(), email.trim());
+      setStep('verify');
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -81,7 +77,7 @@ export function RegisterPage() {
             </div>
             <div>
               <label className="block text-sm text-mahjong-muted mb-1">
-                {t('user.email')} <span className="text-xs">({t('user.emailOptional')})</span>
+                {t('user.email')}
               </label>
               <input
                 type="email"
@@ -96,7 +92,7 @@ export function RegisterPage() {
             {error && <p className="text-mahjong-highlight text-sm">{error}</p>}
             <button
               onClick={handleRegister}
-              disabled={loading || !username.trim()}
+              disabled={loading || !username.trim() || !email.trim()}
               className="w-full py-3 rounded-xl bg-mahjong-highlight text-white font-bold text-lg
                 disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
