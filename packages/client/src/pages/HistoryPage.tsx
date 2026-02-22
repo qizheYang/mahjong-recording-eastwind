@@ -702,7 +702,6 @@ export function HistoryPage() {
               >
                 <div>
                   <span className="font-medium">{p.name}</span>
-                  {p.phone && <span className="text-xs text-mahjong-muted ml-2">{p.phone}</span>}
                   <p className="text-xs text-mahjong-muted mt-0.5">{p.totalGames} {t('history.games')}</p>
                 </div>
                 <div className="text-right">

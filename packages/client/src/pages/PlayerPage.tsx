@@ -170,9 +170,6 @@ export function PlayerPage() {
       {/* Header */}
       <div className="text-center my-6">
         <h1 className="text-2xl font-bold">{player.name}</h1>
-        {player.phone && (
-          <p className="text-mahjong-muted text-sm mt-1">{player.phone}</p>
-        )}
         <p className="text-mahjong-muted text-xs mt-1">
           {t('player.gamesPlayed', { count: player.totalGames })}
         </p>
