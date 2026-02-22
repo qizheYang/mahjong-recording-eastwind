@@ -1,14 +1,17 @@
 import {
   NON_DEALER_RON, DEALER_RON,
   NON_DEALER_TSUMO, DEALER_TSUMO,
-  getLimitHand,
+  LIMIT_HANDS, getLimitHand,
 } from './tables.js';
+import { YAKUMAN_LIST } from '../constants.js';
 
 export interface PointCalcInput {
   han: number;
   fu: number;
   isDealer: boolean;
   isTsumo: boolean;
+  kiriageMangan?: boolean;
+  yakumanCount?: number; // multiplier for yakuman (1=single, 2=double, etc.)
 }
 
 export interface PointCalcResult {
@@ -25,8 +28,68 @@ export interface PointCalcResult {
   limitNameCn: string | null;
 }
 
+/**
+ * Calculate the yakuman multiplier from a list of selected yakuman.
+ * Each normal yakuman = 1x, double yakuman variants = 2x (if enabled).
+ */
+export function calculateYakumanMultiplier(yakumanList: string[], doubleYakumanEnabled: boolean): number {
+  if (yakumanList.length === 0) return 1;
+  let multiplier = 0;
+  for (const id of yakumanList) {
+    const def = YAKUMAN_LIST.find(y => y.id === id);
+    if (def && def.isDouble && doubleYakumanEnabled) {
+      multiplier += 2;
+    } else {
+      multiplier += 1;
+    }
+  }
+  return Math.max(1, multiplier);
+}
+
+/**
+ * Calculate points for yakuman with a given multiplier.
+ */
+function calculateYakumanPoints(isDealer: boolean, isTsumo: boolean, yakumanCount: number): PointCalcResult {
+  const base = LIMIT_HANDS[4]; // yakuman base values
+  const limitName = yakumanCount >= 3 ? 'tripleYakuman'
+    : yakumanCount >= 2 ? 'doubleYakuman'
+    : 'yakuman';
+  const limitNameCn = yakumanCount >= 3 ? '三倍役満'
+    : yakumanCount >= 2 ? '二倍役満'
+    : '役満';
+
+  if (isTsumo) {
+    if (isDealer) {
+      const each = base.dealerTsumo * yakumanCount;
+      return { total: each * 3, ronPayment: 0, tsumoNonDealerPayment: each, tsumoDealerPayment: 0, limitName, limitNameCn };
+    } else {
+      const [ndPay, dPay] = base.nonDealerTsumo;
+      return {
+        total: (ndPay * yakumanCount * 2) + (dPay * yakumanCount),
+        ronPayment: 0,
+        tsumoNonDealerPayment: ndPay * yakumanCount,
+        tsumoDealerPayment: dPay * yakumanCount,
+        limitName, limitNameCn,
+      };
+    }
+  } else {
+    const payment = (isDealer ? base.dealerRon : base.nonDealerRon) * yakumanCount;
+    return { total: payment, ronPayment: payment, tsumoNonDealerPayment: 0, tsumoDealerPayment: 0, limitName, limitNameCn };
+  }
+}
+
 export function calculatePoints(input: PointCalcInput): PointCalcResult {
   const { han, fu, isDealer, isTsumo } = input;
+
+  // Kiriage mangan: 4han/30fu and 3han/60fu round up to mangan
+  if (input.kiriageMangan && ((han === 4 && fu === 30) || (han === 3 && fu === 60))) {
+    return calculatePoints({ han: 5, fu: 30, isDealer, isTsumo });
+  }
+
+  // Yakuman with multiplier > 1 (double/triple yakuman)
+  if (han >= 13 && input.yakumanCount && input.yakumanCount > 1) {
+    return calculateYakumanPoints(isDealer, isTsumo, input.yakumanCount);
+  }
 
   // Check for limit hands (5+ han)
   const limit = getLimitHand(han);

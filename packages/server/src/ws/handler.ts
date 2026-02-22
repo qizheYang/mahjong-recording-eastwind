@@ -123,6 +123,28 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
       break;
     }
 
+    case 'edit_hand': {
+      const result = roomManager.editHand(roomCode, event.handNumber, event.result);
+      if ('error' in result) {
+        sendError(ws, result.error, 'RECORD_ERROR');
+        return;
+      }
+
+      if (result.status === 'completed') {
+        const finalScores = roomManager.getGameFinalScores(roomCode);
+        const savedFilename = saveGameToFile(result, finalScores ?? []);
+        roomManager.broadcast(roomCode, {
+          type: 'game_ended',
+          game: result,
+          finalScores: finalScores ?? [],
+          ...(savedFilename ? { savedFilename } : {}),
+        });
+      } else {
+        roomManager.broadcast(roomCode, { type: 'hand_edited', game: result });
+      }
+      break;
+    }
+
     case 'undo_last_hand': {
       const result = roomManager.undoHand(roomCode);
       if ('error' in result) {

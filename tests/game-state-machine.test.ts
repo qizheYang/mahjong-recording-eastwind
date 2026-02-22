@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  processHandResult, undoLastHand, determineNextState, isAllLastHand,
-  M_LEAGUE_RULES, calculateFinalScores, evaluateScoreFormula,
+  processHandResult, undoLastHand, editHand, determineNextState, isAllLastHand,
+  M_LEAGUE_RULES, PRESET_RULESETS, OFFICIAL_MATCH_RULES, WRC_RULES, SAIKOUISEN_RULES,
+  calculateFinalScores, evaluateScoreFormula,
 } from '@mahjong/shared';
 import type { Game, GamePlayer, HandResultInput, HandResult } from '@mahjong/shared';
 
@@ -742,5 +743,719 @@ describe('Riichi Deposits', () => {
     // Winner collects all 4 sticks (+4000)
     const total = game.players.reduce((s, p) => s + p.points, 0);
     expect(total).toBe(100000);
+  });
+});
+
+// ──────────────────────────────────────────────────
+// editHand
+// ──────────────────────────────────────────────────
+describe('editHand', () => {
+  it('edits a hand and recalculates subsequent hands', () => {
+    const game = createTestGame();
+
+    // Record 2 hands
+    // Hand 1: p1 rons p0 (dealer), 3han/30fu = 4000 pts
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 3, fu: 30,
+    });
+    // Hand 2: p2 rons p1, 2han/30fu = 2000 pts (dealer is now p1)
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 2, loserIndex: 1,
+      isTsumo: false, han: 2, fu: 30,
+    });
+
+    expect(game.hands.length).toBe(2);
+
+    // Edit hand 1: change to 4han/30fu (kiriage mangan → 8000)
+    const success = editHand(game, 1, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 4, fu: 30,
+    });
+
+    expect(success).toBe(true);
+    expect(game.hands.length).toBe(2);
+    // With kiriage mangan (M_LEAGUE): 4han/30fu → mangan 8000
+    // Hand 1: p0 loses 8000, p1 gains 8000
+    // Hand 2: p2 rons p1, 2han/30fu = 2000
+    // p0: 25000 - 8000 = 17000
+    // p1: 25000 + 8000 - 2000 = 31000
+    // p2: 25000 + 2000 = 27000
+    // p3: 25000
+    expect(game.players[0].points).toBe(17000);
+    expect(game.players[1].points).toBe(31000);
+    expect(game.players[2].points).toBe(27000);
+    expect(game.players[3].points).toBe(25000);
+  });
+
+  it('returns false for invalid hand number', () => {
+    const game = createTestGame();
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 3, fu: 30,
+    });
+
+    expect(editHand(game, 99, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 2, fu: 30,
+    })).toBe(false);
+  });
+
+  it('preserves game state consistency after editing middle hand', () => {
+    const game = createTestGame();
+
+    // Record 3 hands
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 1, fu: 30,
+    });
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 2, loserIndex: 1,
+      isTsumo: false, han: 1, fu: 30,
+    });
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 3, loserIndex: 2,
+      isTsumo: false, han: 1, fu: 30,
+    });
+
+    expect(game.hands.length).toBe(3);
+
+    // Edit hand 2: change to tsumo
+    editHand(game, 2, {
+      resultType: 'agari', winnerIndex: 0,
+      isTsumo: true, han: 2, fu: 30,
+    });
+
+    expect(game.hands.length).toBe(3);
+    // All hands should have inputs stored
+    game.hands.forEach(h => expect(h.input).toBeDefined());
+    // Total points should still sum to 100000
+    const total = game.players.reduce((s, p) => s + p.points, 0);
+    expect(total).toBe(100000);
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Multi-Ron (Double/Triple Ron)
+// ──────────────────────────────────────────────────
+describe('Multi-Ron', () => {
+  function createDoubleRonGame(): Game {
+    return {
+      ...createTestGame(),
+      ruleset: { ...M_LEAGUE_RULES, doubleRonEnabled: true },
+    };
+  }
+
+  it('double ron: both winners get paid from loser', () => {
+    const game = createDoubleRonGame();
+    // p1 and p2 ron p0 (dealer), both 3han/30fu
+    // p1: non-dealer ron from dealer = 4000, p2: non-dealer ron from dealer = 4000
+    // Each gets +300 honba bonus (0 honba → 0)
+    processHandResult(game, {
+      resultType: 'agari',
+      multiRon: {
+        loserIndex: 0,
+        winners: [
+          { winnerIndex: 1, han: 3, fu: 30 },
+          { winnerIndex: 2, han: 3, fu: 30 },
+        ],
+      },
+    });
+
+    expect(game.hands.length).toBe(1);
+    const hand = game.hands[0];
+    expect(hand.result.type).toBe('multi_agari');
+    // 3han/30fu non-dealer ron = 3900
+    // p0 pays 3900 to p1 and 3900 to p2 = -7800
+    expect(game.players[0].points).toBe(25000 - 7800); // 17200
+    expect(game.players[1].points).toBe(25000 + 3900); // 28900
+    expect(game.players[2].points).toBe(25000 + 3900); // 28900
+    expect(game.players[3].points).toBe(25000);
+    // Total conserved
+    expect(game.players.reduce((s, p) => s + p.points, 0)).toBe(100000);
+  });
+
+  it('riichi sticks go to closest winner in turn order', () => {
+    const game = createDoubleRonGame();
+    // Manually set riichi sticks
+    game.riichiSticks = 2;
+
+    // p3 and p1 ron p0 (dealer)
+    // Closest to p0 in turn order: p1 (shimocha), then p2, then p3
+    // So p1 gets the riichi sticks
+    processHandResult(game, {
+      resultType: 'agari',
+      multiRon: {
+        loserIndex: 0,
+        winners: [
+          { winnerIndex: 3, han: 1, fu: 30 },
+          { winnerIndex: 1, han: 1, fu: 30 },
+        ],
+      },
+    });
+
+    // p1 should get the 2 riichi sticks (2000 pts)
+    // 1han/30fu non-dealer ron from dealer = 1000
+    // p0: -1000 -1000 = -2000
+    // p1: +1000 + 2000 riichi = +3000
+    // p3: +1000
+    expect(game.players[1].points).toBe(25000 + 1000 + 2000); // 28000
+    expect(game.players[3].points).toBe(25000 + 1000); // 26000
+  });
+
+  it('dealer in multi-ron → renchan', () => {
+    const game = createDoubleRonGame();
+    // p0 (dealer) and p2 ron p1
+    processHandResult(game, {
+      resultType: 'agari',
+      multiRon: {
+        loserIndex: 1,
+        winners: [
+          { winnerIndex: 0, han: 1, fu: 30 },
+          { winnerIndex: 2, han: 1, fu: 30 },
+        ],
+      },
+    });
+
+    // Dealer won → renchan, still East 1
+    expect(game.currentRound).toEqual({ wind: 'east', number: 1 });
+    expect(game.currentDealer).toBe(0);
+    expect(game.honbaCount).toBe(1);
+  });
+
+  it('non-dealer multi-ron (no dealer) → rotate', () => {
+    const game = createDoubleRonGame();
+    // p1 and p2 ron p3 (no dealer involved as winner)
+    processHandResult(game, {
+      resultType: 'agari',
+      multiRon: {
+        loserIndex: 3,
+        winners: [
+          { winnerIndex: 1, han: 1, fu: 30 },
+          { winnerIndex: 2, han: 1, fu: 30 },
+        ],
+      },
+    });
+
+    // No dealer win → rotate
+    expect(game.currentRound).toEqual({ wind: 'east', number: 2 });
+    expect(game.currentDealer).toBe(1);
+  });
+
+  it('multi-ron with honba bonus', () => {
+    const game = createDoubleRonGame();
+    game.honbaCount = 2;
+
+    processHandResult(game, {
+      resultType: 'agari',
+      multiRon: {
+        loserIndex: 0,
+        winners: [
+          { winnerIndex: 1, han: 1, fu: 30 },
+          { winnerIndex: 2, han: 1, fu: 30 },
+        ],
+      },
+    });
+
+    // Each winner gets 1000 (base) + 600 (2 honba * 300) = 1600 from loser
+    // Loser pays 1600 * 2 = 3200
+    expect(game.players[0].points).toBe(25000 - 3200);
+    expect(game.players[1].points).toBe(25000 + 1600);
+    expect(game.players[2].points).toBe(25000 + 1600);
+  });
+
+  it('undo reverses multi-ron correctly', () => {
+    const game = createDoubleRonGame();
+    processHandResult(game, {
+      resultType: 'agari',
+      multiRon: {
+        loserIndex: 0,
+        winners: [
+          { winnerIndex: 1, han: 3, fu: 30 },
+          { winnerIndex: 2, han: 2, fu: 30 },
+        ],
+      },
+    });
+
+    undoLastHand(game);
+
+    expect(game.hands.length).toBe(0);
+    expect(game.players.every(p => p.points === 25000)).toBe(true);
+    expect(game.currentRound).toEqual({ wind: 'east', number: 1 });
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Yakuman through state machine
+// ──────────────────────────────────────────────────
+describe('Yakuman in game state', () => {
+  it('single yakuman with yakumanList stores data on result', () => {
+    const game = createTestGame();
+    game.ruleset = { ...M_LEAGUE_RULES, doubleYakumanEnabled: true };
+    processHandResult(game, {
+      resultType: 'agari',
+      winnerIndex: 0,
+      isTsumo: true,
+      han: 13,
+      fu: 30,
+      yakumanList: ['suuankou'],
+    });
+
+    const result = game.hands[0].result;
+    expect(result.type).toBe('agari');
+    if (result.type === 'agari') {
+      expect(result.yakumanList).toEqual(['suuankou']);
+      expect(result.yakumanCount).toBe(1);
+      // Single yakuman dealer tsumo: each pays 16000
+      expect(result.pointsWon).toBe(48000);
+    }
+  });
+
+  it('double yakuman with doubleYakumanEnabled scores 2x', () => {
+    const game = createTestGame();
+    game.ruleset = { ...M_LEAGUE_RULES, doubleYakumanEnabled: true };
+    // Non-dealer (player 1) ron from player 0
+    processHandResult(game, {
+      resultType: 'agari',
+      winnerIndex: 1,
+      loserIndex: 0,
+      isTsumo: false,
+      han: 13,
+      fu: 30,
+      yakumanList: ['suuankou_tanki'], // double yakuman
+    });
+
+    const result = game.hands[0].result;
+    if (result.type === 'agari') {
+      expect(result.yakumanCount).toBe(2);
+      expect(result.pointsWon).toBe(64000); // double yakuman non-dealer ron
+      // Check loser lost 64000
+      expect(game.players[0].points).toBe(25000 - 64000);
+      expect(game.players[1].points).toBe(25000 + 64000);
+    }
+  });
+
+  it('double yakuman with doubleYakumanEnabled=false scores 1x', () => {
+    const game = createTestGame();
+    game.ruleset = { ...M_LEAGUE_RULES, doubleYakumanEnabled: false };
+    processHandResult(game, {
+      resultType: 'agari',
+      winnerIndex: 1,
+      loserIndex: 0,
+      isTsumo: false,
+      han: 13,
+      fu: 30,
+      yakumanList: ['suuankou_tanki'],
+    });
+
+    const result = game.hands[0].result;
+    if (result.type === 'agari') {
+      expect(result.yakumanCount).toBe(1);
+      expect(result.pointsWon).toBe(32000); // single yakuman
+    }
+  });
+
+  it('stacked yakuman (tsuiisou + daisuushii) with doubleYakuman enabled = triple', () => {
+    const game = createTestGame();
+    game.ruleset = { ...M_LEAGUE_RULES, doubleYakumanEnabled: true };
+    processHandResult(game, {
+      resultType: 'agari',
+      winnerIndex: 1,
+      loserIndex: 0,
+      isTsumo: false,
+      han: 13,
+      fu: 30,
+      yakumanList: ['tsuiisou', 'daisuushii'], // 1 + 2 = 3x
+    });
+
+    const result = game.hands[0].result;
+    if (result.type === 'agari') {
+      expect(result.yakumanCount).toBe(3);
+      expect(result.pointsWon).toBe(96000); // triple yakuman non-dealer ron
+    }
+  });
+
+  it('yakuman in multi-ron: each winner has independent yakumanList', () => {
+    const game = createTestGame();
+    game.ruleset = { ...M_LEAGUE_RULES, doubleRonEnabled: true, doubleYakumanEnabled: true };
+    processHandResult(game, {
+      resultType: 'agari',
+      multiRon: {
+        loserIndex: 0,
+        winners: [
+          { winnerIndex: 1, han: 13, fu: 30, yakumanList: ['kokushi'] },
+          { winnerIndex: 2, han: 13, fu: 30, yakumanList: ['suuankou_tanki'] },
+        ],
+      },
+    });
+
+    const result = game.hands[0].result;
+    expect(result.type).toBe('multi_agari');
+    if (result.type === 'multi_agari') {
+      expect(result.winners[0].yakumanList).toEqual(['kokushi']);
+      expect(result.winners[0].yakumanCount).toBe(1);
+      expect(result.winners[0].pointsWon).toBe(32000);
+      expect(result.winners[1].yakumanList).toEqual(['suuankou_tanki']);
+      expect(result.winners[1].yakumanCount).toBe(2); // double yakuman
+      expect(result.winners[1].pointsWon).toBe(64000);
+    }
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Preset Rulesets
+// ──────────────────────────────────────────────────
+describe('Preset Rulesets', () => {
+  it('M-League rules have correct defaults', () => {
+    expect(M_LEAGUE_RULES.startingPoints).toBe(25000);
+    expect(M_LEAGUE_RULES.returnPoints).toBe(30000);
+    expect(M_LEAGUE_RULES.uma).toEqual([30, 10, -10, -30]);
+    expect(M_LEAGUE_RULES.tobiEnabled).toBe(false);
+    expect(M_LEAGUE_RULES.okaEnabled).toBe(true);
+    expect(M_LEAGUE_RULES.kiriageMangan).toBe(true);
+    expect(M_LEAGUE_RULES.doubleRonEnabled).toBe(false);
+    expect(M_LEAGUE_RULES.countedYakumanEnabled).toBe(false);
+    expect(M_LEAGUE_RULES.doubleYakumanEnabled).toBe(false);
+    expect(M_LEAGUE_RULES.nagashiManganEnabled).toBe(true);
+  });
+
+  it('preset rulesets are all valid complete rulesets', () => {
+    const requiredKeys = [
+      'startingPoints', 'returnPoints', 'uma', 'tobiEnabled',
+      'scoreFormula', 'okaEnabled', 'enchousenEnabled', 'doubleRonEnabled',
+      'countedYakumanEnabled', 'doubleYakumanEnabled', 'kiriageMangan',
+      'nagashiManganEnabled', 'akadoraCount',
+    ];
+    for (const [, ruleset] of Object.entries(PRESET_RULESETS)) {
+      for (const key of requiredKeys) {
+        expect((ruleset as any)[key]).toBeDefined();
+      }
+    }
+  });
+
+  it('Official rules differ from M-League: tobi and double ron enabled', () => {
+    expect(OFFICIAL_MATCH_RULES.tobiEnabled).toBe(true);
+    expect(OFFICIAL_MATCH_RULES.doubleRonEnabled).toBe(true);
+    expect(OFFICIAL_MATCH_RULES.startingPoints).toBe(25000); // inherited
+  });
+
+  it('WRC rules have correct settings', () => {
+    expect(WRC_RULES.startingPoints).toBe(30000);
+    expect(WRC_RULES.returnPoints).toBe(30000);
+    expect(WRC_RULES.uma).toEqual([15, 5, -5, -15]);
+    expect(WRC_RULES.tobiEnabled).toBe(true);
+    expect(WRC_RULES.doubleRonEnabled).toBe(true);
+    expect(WRC_RULES.countedYakumanEnabled).toBe(true);
+    expect(WRC_RULES.akadoraCount).toBe(0);
+  });
+
+  it('Saikouisen rules: no tobi, no nagashi, no double ron', () => {
+    expect(SAIKOUISEN_RULES.startingPoints).toBe(30000);
+    expect(SAIKOUISEN_RULES.tobiEnabled).toBe(false);
+    expect(SAIKOUISEN_RULES.nagashiManganEnabled).toBe(false);
+    expect(SAIKOUISEN_RULES.doubleRonEnabled).toBe(false);
+    expect(SAIKOUISEN_RULES.okaEnabled).toBe(false);
+  });
+
+  it('game with WRC preset starts at 30000 points', () => {
+    const game: Game = {
+      ...createTestGame(),
+      ruleset: { ...WRC_RULES },
+    };
+    for (const p of game.players) p.points = 30000;
+
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 3, fu: 30,
+    });
+
+    const total = game.players.reduce((s, p) => s + p.points, 0);
+    expect(total).toBe(120000); // 4 * 30000
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Honba accumulation edge cases
+// ──────────────────────────────────────────────────
+describe('Honba accumulation', () => {
+  it('consecutive draws accumulate honba', () => {
+    const game = createTestGame();
+    // 3 consecutive draws with dealer tenpai
+    for (let i = 0; i < 3; i++) {
+      processHandResult(game, {
+        resultType: 'ryuukyoku',
+        tenpaiStatus: [true, false, false, false],
+      });
+    }
+    expect(game.honbaCount).toBe(3);
+    expect(game.currentRound).toEqual({ wind: 'east', number: 1 });
+    expect(game.currentDealer).toBe(0);
+  });
+
+  it('draw with dealer noten: honba carries to next dealer', () => {
+    const game = createTestGame();
+    // Draw, dealer noten → rotate, honba carries
+    processHandResult(game, {
+      resultType: 'ryuukyoku',
+      tenpaiStatus: [false, true, false, false],
+    });
+    expect(game.honbaCount).toBe(1);
+    expect(game.currentDealer).toBe(1);
+
+    // Another draw, new dealer (p1) tenpai → renchan, honba++
+    processHandResult(game, {
+      resultType: 'ryuukyoku',
+      tenpaiStatus: [false, true, false, false],
+    });
+    expect(game.honbaCount).toBe(2);
+    expect(game.currentDealer).toBe(1);
+  });
+
+  it('non-dealer win resets honba to 0', () => {
+    const game = createTestGame();
+    game.honbaCount = 5;
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 2,
+      isTsumo: false, han: 1, fu: 30,
+    });
+    expect(game.honbaCount).toBe(0);
+  });
+
+  it('honba bonus applied correctly in ron after multiple draws', () => {
+    const game = createTestGame();
+    game.honbaCount = 3;
+
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 2, loserIndex: 3,
+      isTsumo: false, han: 1, fu: 30,
+    });
+
+    // 1han 30fu non-dealer ron = 1000 + 3*300 honba = 1900
+    expect(game.players[2].points).toBe(25000 + 1900);
+    expect(game.players[3].points).toBe(25000 - 1900);
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Edit hand edge cases
+// ──────────────────────────────────────────────────
+describe('Edit hand edge cases', () => {
+  it('edit hand with riichi: riichi deposits recalculated', () => {
+    const game = createTestGame();
+
+    // Record hand 1 with riichi
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 1, fu: 30,
+      riichiPlayers: [true, false, false, false],
+    });
+
+    // Record hand 2
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 0, loserIndex: 1,
+      isTsumo: false, han: 2, fu: 30,
+    });
+
+    // Edit hand 1: remove riichi, change to 2han
+    editHand(game, 1, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 2, fu: 30,
+    });
+
+    // Points should still be conserved
+    const total = game.players.reduce((s, p) => s + p.points, 0);
+    expect(total).toBe(100000);
+    expect(game.hands.length).toBe(2);
+  });
+
+  it('edit hand that changes game outcome (agari to ryuukyoku)', () => {
+    const game = createTestGame();
+
+    // Record 2 hands
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 3, fu: 30,
+    });
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 2, loserIndex: 1,
+      isTsumo: false, han: 1, fu: 30,
+    });
+
+    // Edit hand 1: change to ryuukyoku
+    editHand(game, 1, {
+      resultType: 'ryuukyoku',
+      tenpaiStatus: [true, false, false, false],
+    });
+
+    // Hand 1 is now ryuukyoku, dealer tenpai → renchan
+    // Hand 2 replayed with different state
+    expect(game.hands.length).toBe(2);
+    const total = game.players.reduce((s, p) => s + p.points, 0);
+    expect(total).toBe(100000);
+  });
+
+  it('edit causes game to end early (tobi scenario)', () => {
+    const game = createTestGame();
+    game.ruleset = { ...M_LEAGUE_RULES, tobiEnabled: true };
+    game.players[0].points = 5000;
+    game.players[1].points = 45000;
+
+    // Record 2 hands
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 2,
+      isTsumo: false, han: 1, fu: 30,
+    });
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 2, loserIndex: 3,
+      isTsumo: false, han: 1, fu: 30,
+    });
+
+    expect(game.hands.length).toBe(2);
+
+    // Edit hand 1: make p1 ron from p0 for mangan → p0 goes negative
+    editHand(game, 1, {
+      resultType: 'agari', winnerIndex: 1, loserIndex: 0,
+      isTsumo: false, han: 5, fu: 30,
+    });
+
+    // p0 had 5000, loses 8000 → -3000 → tobi → game ends
+    expect(game.status).toBe('completed');
+    // Hand 2 should not have been replayed because game ended
+    expect(game.hands.length).toBe(1);
+  });
+});
+
+// ──────────────────────────────────────────────────
+// All Last edge cases
+// ──────────────────────────────────────────────────
+describe('All Last edge cases', () => {
+  function createAllLastGame(): Game {
+    const game = createTestGame();
+    game.currentRound = { wind: 'south', number: 4 };
+    game.currentDealer = 3;
+    return game;
+  }
+
+  it('all last: ryuukyoku all noten → end game, riichi sticks distributed', () => {
+    const game = createAllLastGame();
+    game.riichiSticks = 2;
+
+    processHandResult(game, {
+      resultType: 'ryuukyoku',
+      tenpaiStatus: [false, false, false, false],
+    });
+
+    expect(game.status).toBe('completed');
+  });
+
+  it('all last: dealer renchan continues indefinitely', () => {
+    const game = createAllLastGame();
+
+    // Dealer wins 3 times in all last
+    for (let i = 0; i < 3; i++) {
+      processHandResult(game, {
+        resultType: 'agari', winnerIndex: 3, loserIndex: 0,
+        isTsumo: false, han: 1, fu: 30,
+      });
+      expect(game.status).toBe('in_progress');
+      expect(game.honbaCount).toBe(i + 1);
+    }
+
+    // Non-dealer finally wins → game ends
+    processHandResult(game, {
+      resultType: 'agari', winnerIndex: 0, loserIndex: 1,
+      isTsumo: false, han: 1, fu: 30,
+    });
+    expect(game.status).toBe('completed');
+  });
+
+  it('all last: nagashi mangan with dealer tenpai → renchan', () => {
+    const game = createAllLastGame();
+
+    processHandResult(game, {
+      resultType: 'ryuukyoku',
+      tenpaiStatus: [false, false, false, true], // dealer tenpai
+      nagashiManganPlayers: [true, false, false, false], // p0 has nagashi
+    });
+
+    // Dealer is tenpai → renchan (game continues)
+    expect(game.status).toBe('in_progress');
+    expect(game.honbaCount).toBe(1);
+  });
+
+  it('all last: nagashi mangan with dealer noten → game ends', () => {
+    const game = createAllLastGame();
+
+    processHandResult(game, {
+      resultType: 'ryuukyoku',
+      tenpaiStatus: [true, false, false, false], // dealer not tenpai
+      nagashiManganPlayers: [true, false, false, false],
+    });
+
+    expect(game.status).toBe('completed');
+  });
+
+  it('all last multi-ron: dealer among winners → renchan', () => {
+    const game = createAllLastGame();
+    game.ruleset = { ...M_LEAGUE_RULES, doubleRonEnabled: true };
+
+    processHandResult(game, {
+      resultType: 'agari',
+      multiRon: {
+        loserIndex: 1,
+        winners: [
+          { winnerIndex: 3, han: 1, fu: 30 }, // dealer
+          { winnerIndex: 0, han: 1, fu: 30 },
+        ],
+      },
+    });
+
+    expect(game.status).toBe('in_progress');
+    expect(game.honbaCount).toBe(1);
+  });
+
+  it('all last multi-ron: dealer not winner → game ends', () => {
+    const game = createAllLastGame();
+    game.ruleset = { ...M_LEAGUE_RULES, doubleRonEnabled: true };
+
+    processHandResult(game, {
+      resultType: 'agari',
+      multiRon: {
+        loserIndex: 3, // dealer is loser
+        winners: [
+          { winnerIndex: 0, han: 1, fu: 30 },
+          { winnerIndex: 1, han: 1, fu: 30 },
+        ],
+      },
+    });
+
+    expect(game.status).toBe('completed');
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Multi-ron tobi edge case
+// ──────────────────────────────────────────────────
+describe('Multi-ron tobi', () => {
+  it('tobi during multi-ron: loser goes negative, game ends', () => {
+    const game = createTestGame();
+    game.ruleset = { ...M_LEAGUE_RULES, doubleRonEnabled: true, tobiEnabled: true };
+    game.players[0].points = 5000;
+    game.players[1].points = 40000;
+
+    // p1 and p2 ron p0 for mangan each → p0 goes deeply negative
+    processHandResult(game, {
+      resultType: 'agari',
+      multiRon: {
+        loserIndex: 0,
+        winners: [
+          { winnerIndex: 1, han: 5, fu: 30 },
+          { winnerIndex: 2, han: 5, fu: 30 },
+        ],
+      },
+    });
+
+    expect(game.players[0].points).toBeLessThan(0);
+    expect(game.status).toBe('completed');
   });
 });

@@ -1,4 +1,5 @@
 import type { Wind, Ruleset } from '../constants.js';
+import type { HandResultInput } from './ws-events.js';
 
 export interface Round {
   wind: 'east' | 'south';
@@ -42,9 +43,10 @@ export interface Hand {
   pointsBefore: number[];
   pointsAfter: number[];
   recordedAt: number;
+  input?: HandResultInput; // original input for replay/edit
 }
 
-export type HandResult = AgariResult | RyuukyokuResult;
+export type HandResult = AgariResult | MultiAgariResult | RyuukyokuResult;
 
 export interface AgariResult {
   type: 'agari';
@@ -56,6 +58,25 @@ export interface AgariResult {
   pointsWon: number;
   honbaBonus: number;
   riichiSticksCollected: number;
+  yakumanList?: string[];
+  yakumanCount?: number; // multiplier: 1=single, 2=double, 3=triple
+}
+
+export interface MultiAgariWinner {
+  winnerIndex: number;
+  han: number;
+  fu: number;
+  pointsWon: number;
+  riichiSticksCollected: number;
+  yakumanList?: string[];
+  yakumanCount?: number;
+}
+
+export interface MultiAgariResult {
+  type: 'multi_agari';
+  loserIndex: number;
+  winners: MultiAgariWinner[];
+  honbaBonus: number; // per-winner honba bonus (300 * honba)
 }
 
 export interface RyuukyokuResult {

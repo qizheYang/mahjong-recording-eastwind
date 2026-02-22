@@ -3,10 +3,13 @@ import {
   calculatePoints,
   calculateTransfers,
   calculateFinalScores,
+  calculateYakumanMultiplier,
   NON_DEALER_RON, DEALER_RON,
   NON_DEALER_TSUMO, DEALER_TSUMO,
   LIMIT_HANDS, getLimitHand,
   M_LEAGUE_RULES,
+  WRC_RULES,
+  SAIKOUISEN_RULES,
 } from '@mahjong/shared';
 import type { PointCalcInput, AgariResult, RyuukyokuResult, GamePlayer } from '@mahjong/shared';
 
@@ -69,9 +72,27 @@ describe('Point Calculator', () => {
       expect(r.ronPayment).toBe(7700);
     });
 
-    it('non-dealer ron 4han 30fu = mangan (8000, kiriage)', () => {
+    it('non-dealer ron 4han 30fu = 7700 (no kiriage)', () => {
       const r = calculatePoints({ han: 4, fu: 30, isDealer: false, isTsumo: false });
+      expect(r.total).toBe(7700);
+      expect(r.limitName).toBeNull();
+    });
+
+    it('non-dealer ron 4han 30fu = mangan with kiriage', () => {
+      const r = calculatePoints({ han: 4, fu: 30, isDealer: false, isTsumo: false, kiriageMangan: true });
       expect(r.total).toBe(8000);
+      expect(r.limitName).toBe('mangan');
+    });
+
+    it('non-dealer ron 3han 60fu = 7700 (no kiriage)', () => {
+      const r = calculatePoints({ han: 3, fu: 60, isDealer: false, isTsumo: false });
+      expect(r.total).toBe(7700);
+      expect(r.limitName).toBeNull();
+    });
+
+    it('dealer ron 3han 60fu = mangan with kiriage', () => {
+      const r = calculatePoints({ han: 3, fu: 60, isDealer: true, isTsumo: false, kiriageMangan: true });
+      expect(r.total).toBe(12000);
       expect(r.limitName).toBe('mangan');
     });
 
@@ -380,5 +401,249 @@ describe('Final Score Calculator', () => {
       const total = scores.reduce((sum, s) => sum + s.gameScore, 0);
       expect(Math.abs(total)).toBeLessThan(0.1);
     }
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Yakuman Multiplier & Scoring
+// ──────────────────────────────────────────────────
+describe('Yakuman', () => {
+  it('calculateYakumanMultiplier: single yakuman = 1', () => {
+    expect(calculateYakumanMultiplier(['kokushi'], false)).toBe(1);
+    expect(calculateYakumanMultiplier(['suuankou'], true)).toBe(1);
+  });
+
+  it('calculateYakumanMultiplier: double yakuman variant with flag enabled = 2', () => {
+    expect(calculateYakumanMultiplier(['daisuushii'], true)).toBe(2);
+    expect(calculateYakumanMultiplier(['suuankou_tanki'], true)).toBe(2);
+    expect(calculateYakumanMultiplier(['kokushi_13'], true)).toBe(2);
+    expect(calculateYakumanMultiplier(['junsei_chuuren'], true)).toBe(2);
+  });
+
+  it('calculateYakumanMultiplier: double yakuman variant with flag disabled = 1', () => {
+    expect(calculateYakumanMultiplier(['daisuushii'], false)).toBe(1);
+    expect(calculateYakumanMultiplier(['suuankou_tanki'], false)).toBe(1);
+  });
+
+  it('calculateYakumanMultiplier: multiple yakuman stack', () => {
+    // tsuiisou (1) + daisuushii (2 if enabled) = 3
+    expect(calculateYakumanMultiplier(['tsuiisou', 'daisuushii'], true)).toBe(3);
+    // tsuiisou (1) + daisuushii (1 if disabled) = 2
+    expect(calculateYakumanMultiplier(['tsuiisou', 'daisuushii'], false)).toBe(2);
+  });
+
+  it('calculateYakumanMultiplier: empty list = 1', () => {
+    expect(calculateYakumanMultiplier([], false)).toBe(1);
+    expect(calculateYakumanMultiplier([], true)).toBe(1);
+  });
+
+  it('calculatePoints: single yakuman (count=1) same as normal', () => {
+    const normal = calculatePoints({ han: 13, fu: 30, isDealer: false, isTsumo: false });
+    const withCount = calculatePoints({ han: 13, fu: 30, isDealer: false, isTsumo: false, yakumanCount: 1 });
+    // yakumanCount=1 goes through normal path (only >1 triggers special)
+    expect(normal.total).toBe(32000);
+    expect(withCount.total).toBe(32000);
+  });
+
+  it('calculatePoints: double yakuman non-dealer ron', () => {
+    const result = calculatePoints({ han: 13, fu: 30, isDealer: false, isTsumo: false, yakumanCount: 2 });
+    expect(result.total).toBe(64000);
+    expect(result.ronPayment).toBe(64000);
+    expect(result.limitName).toBe('doubleYakuman');
+  });
+
+  it('calculatePoints: double yakuman dealer ron', () => {
+    const result = calculatePoints({ han: 13, fu: 30, isDealer: true, isTsumo: false, yakumanCount: 2 });
+    expect(result.total).toBe(96000);
+    expect(result.ronPayment).toBe(96000);
+    expect(result.limitName).toBe('doubleYakuman');
+  });
+
+  it('calculatePoints: double yakuman non-dealer tsumo', () => {
+    const result = calculatePoints({ han: 13, fu: 30, isDealer: false, isTsumo: true, yakumanCount: 2 });
+    expect(result.tsumoNonDealerPayment).toBe(16000); // 8000 * 2
+    expect(result.tsumoDealerPayment).toBe(32000);     // 16000 * 2
+    expect(result.total).toBe(64000);
+    expect(result.limitName).toBe('doubleYakuman');
+  });
+
+  it('calculatePoints: triple yakuman non-dealer ron', () => {
+    const result = calculatePoints({ han: 13, fu: 30, isDealer: false, isTsumo: false, yakumanCount: 3 });
+    expect(result.total).toBe(96000);
+    expect(result.limitName).toBe('tripleYakuman');
+  });
+
+  it('calculatePoints: triple yakuman dealer tsumo', () => {
+    const result = calculatePoints({ han: 13, fu: 30, isDealer: true, isTsumo: true, yakumanCount: 3 });
+    expect(result.tsumoNonDealerPayment).toBe(48000); // 16000 * 3
+    expect(result.total).toBe(144000);
+    expect(result.limitName).toBe('tripleYakuman');
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Kiriage Mangan edge cases
+// ──────────────────────────────────────────────────
+describe('Kiriage Mangan edge cases', () => {
+  it('dealer ron 4han 30fu = 11600 without kiriage', () => {
+    const r = calculatePoints({ han: 4, fu: 30, isDealer: true, isTsumo: false });
+    expect(r.total).toBe(11600);
+    expect(r.limitName).toBeNull();
+  });
+
+  it('dealer ron 4han 30fu = mangan with kiriage', () => {
+    const r = calculatePoints({ han: 4, fu: 30, isDealer: true, isTsumo: false, kiriageMangan: true });
+    expect(r.total).toBe(12000);
+    expect(r.limitName).toBe('mangan');
+  });
+
+  it('non-dealer tsumo 4han 30fu without kiriage', () => {
+    const r = calculatePoints({ han: 4, fu: 30, isDealer: false, isTsumo: true });
+    expect(r.tsumoNonDealerPayment).toBe(2000);
+    expect(r.tsumoDealerPayment).toBe(3900);
+    expect(r.total).toBe(7900);
+  });
+
+  it('non-dealer tsumo 4han 30fu = mangan with kiriage', () => {
+    const r = calculatePoints({ han: 4, fu: 30, isDealer: false, isTsumo: true, kiriageMangan: true });
+    expect(r.tsumoNonDealerPayment).toBe(2000);
+    expect(r.tsumoDealerPayment).toBe(4000);
+    expect(r.total).toBe(8000);
+    expect(r.limitName).toBe('mangan');
+  });
+
+  it('dealer tsumo 3han 60fu without kiriage', () => {
+    const r = calculatePoints({ han: 3, fu: 60, isDealer: true, isTsumo: true });
+    expect(r.tsumoNonDealerPayment).toBe(3900);
+    expect(r.total).toBe(11700);
+  });
+
+  it('dealer tsumo 3han 60fu = mangan with kiriage', () => {
+    const r = calculatePoints({ han: 3, fu: 60, isDealer: true, isTsumo: true, kiriageMangan: true });
+    expect(r.tsumoNonDealerPayment).toBe(4000);
+    expect(r.total).toBe(12000);
+    expect(r.limitName).toBe('mangan');
+  });
+
+  it('5han 30fu is mangan regardless of kiriage flag', () => {
+    const without = calculatePoints({ han: 5, fu: 30, isDealer: false, isTsumo: false });
+    const withFlag = calculatePoints({ han: 5, fu: 30, isDealer: false, isTsumo: false, kiriageMangan: true });
+    expect(without.total).toBe(8000);
+    expect(withFlag.total).toBe(8000);
+    expect(without.limitName).toBe('mangan');
+    expect(withFlag.limitName).toBe('mangan');
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Multi-Agari Transfers
+// ──────────────────────────────────────────────────
+describe('Multi-Agari Transfers', () => {
+  it('double ron transfer: both winners paid by loser', () => {
+    const result = {
+      type: 'multi_agari' as const,
+      loserIndex: 0,
+      winners: [
+        { winnerIndex: 1, han: 3, fu: 30, pointsWon: 3900, riichiSticksCollected: 0 },
+        { winnerIndex: 2, han: 2, fu: 30, pointsWon: 2000, riichiSticksCollected: 0 },
+      ],
+      honbaBonus: 0,
+    };
+    const { deltas } = calculateTransfers(result, 0, 0, 0);
+    expect(deltas[0]).toBe(-3900 - 2000); // loser pays both
+    expect(deltas[1]).toBe(3900);
+    expect(deltas[2]).toBe(2000);
+    expect(deltas[3]).toBe(0);
+    expect(deltas.reduce((a, b) => a + b, 0)).toBe(0);
+  });
+
+  it('double ron with honba: each winner gets honba bonus from loser', () => {
+    const result = {
+      type: 'multi_agari' as const,
+      loserIndex: 3,
+      winners: [
+        { winnerIndex: 0, han: 1, fu: 30, pointsWon: 1500, riichiSticksCollected: 0 },
+        { winnerIndex: 1, han: 1, fu: 30, pointsWon: 1000, riichiSticksCollected: 0 },
+      ],
+      honbaBonus: 600, // 2 honba * 300
+    };
+    const { deltas } = calculateTransfers(result, 0, 2, 0);
+    // p0 (dealer): 1500 + 600 = 2100
+    // p1: 1000 + 600 = 1600
+    // p3: -(2100 + 1600) = -3700
+    expect(deltas[0]).toBe(2100);
+    expect(deltas[1]).toBe(1600);
+    expect(deltas[3]).toBe(-3700);
+    expect(deltas.reduce((a, b) => a + b, 0)).toBe(0);
+  });
+
+  it('triple ron with riichi sticks: closest winner collects', () => {
+    const result = {
+      type: 'multi_agari' as const,
+      loserIndex: 0,
+      winners: [
+        { winnerIndex: 1, han: 1, fu: 30, pointsWon: 1000, riichiSticksCollected: 3 },
+        { winnerIndex: 2, han: 1, fu: 30, pointsWon: 1000, riichiSticksCollected: 0 },
+        { winnerIndex: 3, han: 1, fu: 30, pointsWon: 1000, riichiSticksCollected: 0 },
+      ],
+      honbaBonus: 0,
+    };
+    const { deltas } = calculateTransfers(result, 0, 0, 3);
+    expect(deltas[0]).toBe(-3000); // loser pays all 3
+    expect(deltas[1]).toBe(1000 + 3000); // wins + riichi sticks
+    expect(deltas[2]).toBe(1000);
+    expect(deltas[3]).toBe(1000);
+    // Sum is 3000 (not 0) because 3 riichi sticks (3000pts) are collected from the pool
+    expect(deltas.reduce((a, b) => a + b, 0)).toBe(3000);
+  });
+});
+
+// ──────────────────────────────────────────────────
+// Final Score with different preset rulesets
+// ──────────────────────────────────────────────────
+describe('Final Score with preset rulesets', () => {
+  function makePlayers(pointsList: number[]): GamePlayer[] {
+    return pointsList.map((pts, i) => ({
+      id: `p${i}`, name: `P${i}`, points: pts,
+      initialSeat: (['east', 'south', 'west', 'north'] as const)[i],
+    }));
+  }
+
+  it('WRC rules: 30k start, no oka, uma 15/5/-5/-15', () => {
+    const players = makePlayers([40000, 30000, 20000, 10000]);
+    const scores = calculateFinalScores(players, 0, WRC_RULES);
+    // (40000-30000)/1000 + 15 = 25
+    expect(scores[0].gameScore).toBe(25);
+    // (30000-30000)/1000 + 5 = 5
+    expect(scores[1].gameScore).toBe(5);
+    // (20000-30000)/1000 + (-5) = -15
+    expect(scores[2].gameScore).toBe(-15);
+    // (10000-30000)/1000 + (-15) = -35
+    expect(scores[3].gameScore).toBe(-35);
+
+    // No oka, so sum should be -20 (100k points, return 30k*4=120k → deficit)
+    // Actually the sum is: (100000-120000)/1000 + (15+5-5-15) = -20 + 0 = -20
+    const total = scores.reduce((s, sc) => s + sc.gameScore, 0);
+    expect(total).toBe(-20);
+  });
+
+  it('Saikouisen rules: 30k start, no oka, uma 20/10/-10/-20', () => {
+    const players = makePlayers([35000, 30000, 20000, 15000]);
+    const scores = calculateFinalScores(players, 0, SAIKOUISEN_RULES);
+    // (35000-30000)/1000 + 20 = 25
+    expect(scores[0].gameScore).toBe(25);
+    // (30000-30000)/1000 + 10 = 10
+    expect(scores[1].gameScore).toBe(10);
+    // (20000-30000)/1000 + (-10) = -20
+    expect(scores[2].gameScore).toBe(-20);
+    // (15000-30000)/1000 + (-20) = -35
+    expect(scores[3].gameScore).toBe(-35);
+  });
+
+  it('M-League with all points equal: game score sums to 0', () => {
+    const players = makePlayers([25000, 25000, 25000, 25000]);
+    const scores = calculateFinalScores(players, 0, M_LEAGUE_RULES);
+    const total = scores.reduce((s, sc) => s + sc.gameScore, 0);
+    expect(Math.abs(total)).toBeLessThan(0.1);
   });
 });

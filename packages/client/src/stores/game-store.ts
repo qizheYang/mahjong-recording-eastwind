@@ -36,6 +36,7 @@ interface GameStore {
   toggleTag: (tag: string) => void;
   startGame: (seatOrder: string[], ruleset?: Partial<Ruleset>) => void;
   recordHand: (result: HandResultInput) => void;
+  editHand: (handNumber: number, result: HandResultInput) => void;
   undoLastHand: () => void;
   endGame: () => void;
   forceQuitGame: (keepRecord: boolean) => void;
@@ -161,6 +162,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
           set({ game: event.game });
           break;
 
+        case 'hand_edited':
+          set({ game: event.game });
+          break;
+
         case 'game_ended':
           set({ game: event.game, finalScores: event.finalScores, savedFilename: event.savedFilename ?? null });
           break;
@@ -228,6 +233,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   recordHand(result: HandResultInput) {
     wsClient?.send({ type: 'record_hand', result });
+  },
+
+  editHand(handNumber: number, result: HandResultInput) {
+    wsClient?.send({ type: 'edit_hand', handNumber, result });
   },
 
   undoLastHand() {

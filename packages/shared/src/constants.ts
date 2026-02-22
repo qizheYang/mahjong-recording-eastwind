@@ -20,6 +20,8 @@ export interface Ruleset {
   doubleRonEnabled: boolean;
   countedYakumanEnabled: boolean;
   doubleYakumanEnabled: boolean;
+  kiriageMangan: boolean;
+  nagashiManganEnabled: boolean;
   akadoraCount: number;
 }
 
@@ -28,6 +30,34 @@ export function defaultScoreFormula(returnPoints: number): string {
 }
 
 export const PREDEFINED_TAGS = ['公式战'] as const;
+
+/**
+ * Validate that uma values sum to 0.
+ */
+export function validateUma(uma: [number, number, number, number]): boolean {
+  return uma[0] + uma[1] + uma[2] + uma[3] === 0;
+}
+
+export const YAKUMAN_LIST = [
+  { id: 'kokushi', isDouble: false },
+  { id: 'suuankou', isDouble: false },
+  { id: 'daisangen', isDouble: false },
+  { id: 'shousuushii', isDouble: false },
+  { id: 'daisuushii', isDouble: true },
+  { id: 'tsuiisou', isDouble: false },
+  { id: 'chinroutou', isDouble: false },
+  { id: 'ryuuiisou', isDouble: false },
+  { id: 'chuuren', isDouble: false },
+  { id: 'suukantsu', isDouble: false },
+  { id: 'tenhou', isDouble: false },
+  { id: 'chiihou', isDouble: false },
+  // Double yakuman variants
+  { id: 'suuankou_tanki', isDouble: true },
+  { id: 'kokushi_13', isDouble: true },
+  { id: 'junsei_chuuren', isDouble: true },
+] as const;
+
+export type YakumanId = typeof YAKUMAN_LIST[number]['id'];
 
 export const M_LEAGUE_RULES: Ruleset = {
   startingPoints: 25000,
@@ -40,5 +70,54 @@ export const M_LEAGUE_RULES: Ruleset = {
   doubleRonEnabled: false,
   countedYakumanEnabled: false,
   doubleYakumanEnabled: false,
+  kiriageMangan: true,
+  nagashiManganEnabled: true,
   akadoraCount: 3,
+};
+
+export type PresetName = 'mleague' | 'official' | 'saikouisen' | 'wrc' | 'custom';
+
+export const OFFICIAL_MATCH_RULES: Ruleset = {
+  ...M_LEAGUE_RULES,
+  tobiEnabled: true,
+  doubleRonEnabled: true,
+};
+
+export const SAIKOUISEN_RULES: Ruleset = {
+  startingPoints: 30000,
+  returnPoints: 30000,
+  uma: [20, 10, -10, -20],
+  tobiEnabled: false,
+  scoreFormula: '(X - 30000) / 1000 + Y',
+  okaEnabled: false,
+  enchousenEnabled: false,
+  doubleRonEnabled: false,
+  countedYakumanEnabled: false,
+  doubleYakumanEnabled: false,
+  kiriageMangan: true,
+  nagashiManganEnabled: false,
+  akadoraCount: 0,
+};
+
+export const WRC_RULES: Ruleset = {
+  startingPoints: 30000,
+  returnPoints: 30000,
+  uma: [15, 5, -5, -15],
+  tobiEnabled: true,
+  scoreFormula: '(X - 30000) / 1000 + Y',
+  okaEnabled: false,
+  enchousenEnabled: false,
+  doubleRonEnabled: true,
+  countedYakumanEnabled: true,
+  doubleYakumanEnabled: false,
+  kiriageMangan: true,
+  nagashiManganEnabled: true,
+  akadoraCount: 0,
+};
+
+export const PRESET_RULESETS: Record<Exclude<PresetName, 'custom'>, Ruleset> = {
+  mleague: M_LEAGUE_RULES,
+  official: OFFICIAL_MATCH_RULES,
+  saikouisen: SAIKOUISEN_RULES,
+  wrc: WRC_RULES,
 };

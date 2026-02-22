@@ -5,7 +5,7 @@ import type {
 } from '@mahjong/shared';
 import {
   M_LEAGUE_RULES, WINDS,
-  processHandResult, undoLastHand, calculateFinalScores,
+  processHandResult, undoLastHand, editHand, calculateFinalScores,
 } from '@mahjong/shared';
 import { nanoid } from 'nanoid';
 
@@ -274,6 +274,25 @@ export class RoomManager {
     if (!removed) return { error: '没有可撤销的记录 (No hands to undo)' };
     this.touch(roomCode);
 
+    return game;
+  }
+
+  editHand(roomCode: string, handNumber: number, newInput: HandResultInput): Game | { error: string } {
+    const state = this.rooms.get(roomCode);
+    if (!state) return { error: '房间不存在' };
+
+    const game = state.room.currentGame;
+    if (!game) return { error: '没有进行中的对局' };
+
+    const success = editHand(game, handNumber, newInput);
+    if (!success) return { error: '无法编辑该手牌 (Cannot edit hand)' };
+
+    // If game ended as a result of the edit
+    if (game.status === 'completed') {
+      state.room.status = 'finished';
+    }
+
+    this.touch(roomCode);
     return game;
   }
 

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
 import { addPlayer, listTags, createTag } from '../lib/api';
 import { WINDS, M_LEAGUE_RULES, defaultScoreFormula } from '@mahjong/shared';
+import type { PresetName } from '@mahjong/shared';
 import { RulesIsland } from '../components/game/RulesIsland';
 import { useLocale } from '../i18n';
 
@@ -24,6 +25,9 @@ export function LobbyPage() {
   const [soloPhones, setSoloPhones] = useState(['', '', '']);
   const [addingIdx, setAddingIdx] = useState<number | null>(null);
   const [soloError, setSoloError] = useState('');
+
+  // Preset tracking
+  const [presetName, setPresetName] = useState<PresetName>('mleague');
 
   // Tags from API
   const [availableTags, setAvailableTags] = useState<string[]>([]);
@@ -147,6 +151,11 @@ export function LobbyPage() {
   const ruleUma = (customRuleset.uma ?? M_LEAGUE_RULES.uma);
   const ruleTobi = (customRuleset.tobiEnabled ?? M_LEAGUE_RULES.tobiEnabled);
   const ruleOka = (customRuleset.okaEnabled ?? M_LEAGUE_RULES.okaEnabled);
+  const ruleKiriage = (customRuleset.kiriageMangan ?? M_LEAGUE_RULES.kiriageMangan);
+  const ruleDoubleRon = (customRuleset.doubleRonEnabled ?? M_LEAGUE_RULES.doubleRonEnabled);
+  const ruleNagashi = (customRuleset.nagashiManganEnabled ?? M_LEAGUE_RULES.nagashiManganEnabled);
+  const ruleCountedYakuman = (customRuleset.countedYakumanEnabled ?? M_LEAGUE_RULES.countedYakumanEnabled);
+  const ruleDoubleYakuman = (customRuleset.doubleYakumanEnabled ?? M_LEAGUE_RULES.doubleYakumanEnabled);
   const ruleFormula = (customRuleset.scoreFormula ?? M_LEAGUE_RULES.scoreFormula);
 
   if (!connected && playerId) {
@@ -365,9 +374,21 @@ export function LobbyPage() {
         uma={ruleUma}
         tobiEnabled={ruleTobi}
         okaEnabled={ruleOka}
+        kiriageMangan={ruleKiriage}
+        doubleRonEnabled={ruleDoubleRon}
+        nagashiManganEnabled={ruleNagashi}
+        countedYakumanEnabled={ruleCountedYakuman}
+        doubleYakumanEnabled={ruleDoubleYakuman}
         scoreFormula={ruleFormula}
+        presetName={presetName}
         editable={true}
-        onChange={(updates) => setRuleset(updates as Partial<typeof M_LEAGUE_RULES>)}
+        onChange={(updates) => {
+          const { presetName: newPreset, ...ruleUpdates } = updates;
+          if (newPreset !== undefined) setPresetName(newPreset);
+          if (Object.keys(ruleUpdates).length > 0) {
+            setRuleset(ruleUpdates as Partial<typeof M_LEAGUE_RULES>);
+          }
+        }}
       />
 
       {/* Game Tags */}

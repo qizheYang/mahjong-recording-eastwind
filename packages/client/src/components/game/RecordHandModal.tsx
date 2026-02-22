@@ -1,57 +1,116 @@
 import { useState, useMemo } from 'react';
-import type { GamePlayer, HandResultInput } from '@mahjong/shared';
-import { calculatePoints, WINDS } from '@mahjong/shared';
+import type { GamePlayer, HandResultInput, Hand, MultiRonWinnerInput } from '@mahjong/shared';
+import { calculatePoints, calculateYakumanMultiplier, WINDS } from '@mahjong/shared';
 import { formatPoints } from '../../lib/format';
 import { useLocale } from '../../i18n';
+import { HanFuSelector } from './HanFuSelector';
+import { PlayerSelectGrid } from './PlayerSelectGrid';
+import { YakumanSelectStep } from './YakumanSelectStep';
 
 interface Props {
   players: GamePlayer[];
   currentDealer: number;
   honbaCount: number;
   riichiSticks: number;
+  kiriageMangan?: boolean;
+  doubleRonEnabled?: boolean;
+  doubleYakumanEnabled?: boolean;
+  nagashiManganEnabled?: boolean;
+  editingHand?: Hand;
   onSubmit: (result: HandResultInput) => void;
   onClose: () => void;
 }
 
-type Step = 'outcome' | 'winner' | 'method' | 'loser' | 'hanfu' | 'tenpai' | 'nagashiSelect' | 'oyaTenpai' | 'riichi' | 'confirm';
+type Step = 'outcome' | 'winner' | 'method' | 'loser' | 'hanfu' | 'yakumanSelect' | 'tenpai' | 'nagashiSelect' | 'oyaTenpai' | 'riichi' | 'confirm'
+  | 'multiLoser' | 'multiWinnerSelect' | 'multiHanFu' | 'multiYakumanSelect';
 
-export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, onSubmit, onClose }: Props) {
+function getInitialState(editingHand?: Hand) {
+  if (!editingHand?.input) {
+    return {
+      step: 'outcome' as Step,
+      resultType: 'agari' as const,
+      winnerIndex: null as number | null,
+      isTsumo: null as boolean | null,
+      loserIndex: null as number | null,
+      han: 1,
+      fu: 30,
+      tenpaiStatus: [false, false, false, false],
+      nagashiManganPlayers: [false, false, false, false],
+      riichiPlayers: [false, false, false, false],
+      multiRonWinners: [] as MultiRonWinnerInput[],
+      multiRonLoser: null as number | null,
+      selectedYakuman: [] as string[],
+    };
+  }
+  const inp = editingHand.input;
+  return {
+    step: 'confirm' as Step,
+    resultType: inp.resultType,
+    winnerIndex: inp.winnerIndex ?? null,
+    isTsumo: inp.isTsumo ?? null,
+    loserIndex: inp.loserIndex ?? null,
+    han: inp.han ?? 1,
+    fu: inp.fu ?? 30,
+    tenpaiStatus: inp.tenpaiStatus ?? [false, false, false, false],
+    nagashiManganPlayers: inp.nagashiManganPlayers ?? [false, false, false, false],
+    riichiPlayers: inp.riichiPlayers ?? [false, false, false, false],
+    multiRonWinners: inp.multiRon?.winners ?? [],
+    multiRonLoser: inp.multiRon?.loserIndex ?? null,
+    selectedYakuman: inp.yakumanList ?? [],
+  };
+}
+
+export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, kiriageMangan, doubleRonEnabled, doubleYakumanEnabled, nagashiManganEnabled, editingHand, onSubmit, onClose }: Props) {
   const { t } = useLocale();
-  const [step, setStep] = useState<Step>('outcome');
-  const [resultType, setResultType] = useState<'agari' | 'ryuukyoku'>('agari');
-  const [winnerIndex, setWinnerIndex] = useState<number | null>(null);
-  const [isTsumo, setIsTsumo] = useState<boolean | null>(null);
-  const [loserIndex, setLoserIndex] = useState<number | null>(null);
-  const [han, setHan] = useState(1);
-  const [fu, setFu] = useState(30);
-  const [tenpaiStatus, setTenpaiStatus] = useState([false, false, false, false]);
-  const [nagashiManganPlayers, setNagashiManganPlayers] = useState([false, false, false, false]);
-  const [riichiPlayers, setRiichiPlayers] = useState([false, false, false, false]);
+  const init = getInitialState(editingHand);
+  const [step, setStep] = useState<Step>(init.step);
+  const [resultType, setResultType] = useState<'agari' | 'ryuukyoku'>(init.resultType);
+  const [winnerIndex, setWinnerIndex] = useState<number | null>(init.winnerIndex);
+  const [isTsumo, setIsTsumo] = useState<boolean | null>(init.isTsumo);
+  const [loserIndex, setLoserIndex] = useState<number | null>(init.loserIndex);
+  const [han, setHan] = useState(init.han);
+  const [fu, setFu] = useState(init.fu);
+  const [tenpaiStatus, setTenpaiStatus] = useState(init.tenpaiStatus);
+  const [nagashiManganPlayers, setNagashiManganPlayers] = useState(init.nagashiManganPlayers);
+  const [riichiPlayers, setRiichiPlayers] = useState(init.riichiPlayers);
+
+  // Multi-ron state
+  const [multiRonWinners, setMultiRonWinners] = useState<MultiRonWinnerInput[]>(init.multiRonWinners);
+  const [multiRonLoser, setMultiRonLoser] = useState<number | null>(init.multiRonLoser);
+  const [editingWinnerIdx, setEditingWinnerIdx] = useState(0);
+  const [multiWinnerSelected, setMultiWinnerSelected] = useState<number[]>(
+    init.multiRonWinners.map(w => w.winnerIndex)
+  );
+
+  // Yakuman state
+  const [selectedYakuman, setSelectedYakuman] = useState<string[]>(init.selectedYakuman);
 
   // Calculate points preview
+  const yakumanCount = selectedYakuman.length > 0
+    ? calculateYakumanMultiplier(selectedYakuman, doubleYakumanEnabled ?? false)
+    : undefined;
+
   const pointsPreview = useMemo(() => {
     if (resultType !== 'agari' || winnerIndex === null || isTsumo === null) return null;
     const isDealer = winnerIndex === currentDealer;
-    return calculatePoints({ han, fu, isDealer, isTsumo });
-  }, [resultType, winnerIndex, isTsumo, han, fu, currentDealer]);
+    return calculatePoints({ han, fu, isDealer, isTsumo, kiriageMangan, yakumanCount });
+  }, [resultType, winnerIndex, isTsumo, han, fu, currentDealer, kiriageMangan, yakumanCount]);
 
   // Compute total with honba and riichi (including pending deposits)
   const totalWithBonuses = useMemo(() => {
     if (!pointsPreview) return 0;
-    const honbaBonus = honbaCount * (isTsumo ? 300 : 300);
+    const honbaBonus = honbaCount * 300;
     const newRiichiCount = riichiPlayers.filter(Boolean).length;
     const totalRiichiSticks = riichiSticks + newRiichiCount;
     const riichiBonus = totalRiichiSticks * 1000;
     return pointsPreview.total + honbaBonus + riichiBonus;
-  }, [pointsPreview, honbaCount, riichiSticks, riichiPlayers, isTsumo]);
+  }, [pointsPreview, honbaCount, riichiSticks, riichiPlayers]);
+
+  const isMultiRon = multiRonWinners.length > 0;
 
   function handleOutcome(type: 'agari' | 'ryuukyoku') {
     setResultType(type);
-    if (type === 'agari') {
-      setStep('winner');
-    } else {
-      setStep('tenpai');
-    }
+    setStep(type === 'agari' ? 'winner' : 'tenpai');
   }
 
   function handleSelectWinner(idx: number) {
@@ -63,6 +122,8 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
     setIsTsumo(tsumo);
     if (tsumo) {
       setStep('hanfu');
+    } else if (doubleRonEnabled) {
+      setStep('multiLoser');
     } else {
       setStep('loser');
     }
@@ -73,16 +134,85 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
     setStep('hanfu');
   }
 
+  function handleMultiLoserSelect(idx: number) {
+    setMultiRonLoser(idx);
+    setLoserIndex(idx);
+    setStep('multiWinnerSelect');
+    setMultiWinnerSelected([winnerIndex!]);
+  }
+
+  function handleMultiWinnerToggle(idx: number) {
+    setMultiWinnerSelected(prev =>
+      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+    );
+  }
+
+  function handleMultiWinnerConfirm() {
+    if (multiWinnerSelected.length === 1) {
+      // Single winner — fall back to normal ron flow
+      setLoserIndex(multiRonLoser);
+      setMultiRonWinners([]);
+      setMultiRonLoser(null);
+      setWinnerIndex(multiWinnerSelected[0]);
+      setStep('hanfu');
+      return;
+    }
+    const winners: MultiRonWinnerInput[] = multiWinnerSelected.map(idx => ({
+      winnerIndex: idx, han: 1, fu: 30,
+    }));
+    setMultiRonWinners(winners);
+    setEditingWinnerIdx(0);
+    setStep('multiHanFu');
+  }
+
+  function handleMultiHanFuNext() {
+    const w = multiRonWinners[editingWinnerIdx];
+    if (w && w.han >= 13) {
+      // Show yakuman selection for this multi-ron winner
+      setSelectedYakuman(w.yakumanList ?? []);
+      setStep('multiYakumanSelect');
+    } else if (editingWinnerIdx < multiRonWinners.length - 1) {
+      setEditingWinnerIdx(editingWinnerIdx + 1);
+    } else {
+      setStep('riichi');
+    }
+  }
+
+  function handleMultiYakumanConfirm(yakumanList: string[]) {
+    // Store yakumanList on the current multi-ron winner
+    setMultiRonWinners(prev => prev.map((w, i) =>
+      i === editingWinnerIdx ? { ...w, yakumanList: yakumanList.length > 0 ? yakumanList : undefined } : w
+    ));
+    if (editingWinnerIdx < multiRonWinners.length - 1) {
+      setEditingWinnerIdx(editingWinnerIdx + 1);
+      setSelectedYakuman([]);
+    } else {
+      setStep('riichi');
+    }
+  }
+
+  function updateMultiWinnerHanFu(newHan: number, newFu: number) {
+    setMultiRonWinners(prev => prev.map((w, i) =>
+      i === editingWinnerIdx ? { ...w, han: newHan, fu: newFu } : w
+    ));
+  }
+
   function handleConfirm() {
     const hasRiichi = riichiPlayers.some(Boolean);
-    if (resultType === 'agari') {
+    if (resultType === 'agari' && isMultiRon) {
+      onSubmit({
+        resultType: 'agari',
+        multiRon: { loserIndex: multiRonLoser!, winners: multiRonWinners },
+        ...(hasRiichi ? { riichiPlayers } : {}),
+      });
+    } else if (resultType === 'agari') {
       onSubmit({
         resultType: 'agari',
         winnerIndex: winnerIndex!,
         loserIndex: isTsumo ? undefined : loserIndex!,
         isTsumo: isTsumo!,
-        han,
-        fu,
+        han, fu,
+        ...(selectedYakuman.length > 0 ? { yakumanList: selectedYakuman } : {}),
         ...(hasRiichi ? { riichiPlayers } : {}),
       });
     } else {
@@ -100,12 +230,32 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
       case 'winner': setStep('outcome'); break;
       case 'method': setStep('winner'); break;
       case 'loser': setStep('method'); break;
-      case 'hanfu': setStep(isTsumo ? 'method' : 'loser'); break;
+      case 'multiLoser': setStep('method'); break;
+      case 'multiWinnerSelect': setStep('multiLoser'); break;
+      case 'multiHanFu':
+        if (editingWinnerIdx > 0) setEditingWinnerIdx(editingWinnerIdx - 1);
+        else setStep('multiWinnerSelect');
+        break;
+      case 'multiYakumanSelect': setStep('multiHanFu'); break;
+      case 'hanfu': setStep(isTsumo ? 'method' : (doubleRonEnabled ? 'multiLoser' : 'loser')); break;
+      case 'yakumanSelect': setStep('hanfu'); break;
       case 'tenpai': setStep('outcome'); break;
       case 'nagashiSelect': setStep('tenpai'); break;
       case 'oyaTenpai': setStep('nagashiSelect'); break;
       case 'riichi':
-        if (resultType === 'agari') setStep('hanfu');
+        if (isMultiRon) {
+          // Go back to last multi-ron winner's yakuman or hanfu
+          const lastW = multiRonWinners[multiRonWinners.length - 1];
+          if (lastW?.han >= 13) {
+            setEditingWinnerIdx(multiRonWinners.length - 1);
+            setStep('multiYakumanSelect');
+          } else {
+            setEditingWinnerIdx(multiRonWinners.length - 1);
+            setStep('multiHanFu');
+          }
+        }
+        else if (resultType === 'agari' && han >= 13) setStep('yakumanSelect');
+        else if (resultType === 'agari') setStep('hanfu');
         else if (nagashiManganPlayers.some(Boolean)) {
           setStep(nagashiManganPlayers[currentDealer] ? 'oyaTenpai' : 'nagashiSelect');
         }
@@ -115,16 +265,10 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
     }
   }
 
-  const seatWind = (idx: number) => WINDS[(idx - currentDealer + 4) % 4];
-
-  const FU_OPTIONS = [20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 110];
-
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
-      {/* Modal */}
       <div className="relative w-full max-w-md bg-mahjong-bg rounded-t-2xl sm:rounded-2xl
         max-h-[85dvh] overflow-y-auto p-4 pb-8">
 
@@ -134,10 +278,8 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             <button onClick={goBack} className="text-mahjong-muted text-sm px-2 py-1">
               {t('record.back')}
             </button>
-          ) : (
-            <div />
-          )}
-          <h2 className="text-lg font-bold">{t('record.title')}</h2>
+          ) : <div />}
+          <h2 className="text-lg font-bold">{editingHand ? t('record.editTitle') : t('record.title')}</h2>
           <button onClick={onClose} className="text-mahjong-muted text-sm px-2 py-1">
             {t('common.cancel')}
           </button>
@@ -168,23 +310,11 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         {step === 'winner' && (
           <div className="space-y-3">
             <p className="text-sm text-mahjong-muted text-center mb-4">{t('record.selectWinner')}</p>
-            {players.map((p, idx) => (
-              <button
-                key={p.id}
-                onClick={() => handleSelectWinner(idx)}
-                className={`w-full py-3 px-4 rounded-xl text-left flex items-center justify-between
-                  ${idx === currentDealer ? 'bg-mahjong-accent' : 'bg-mahjong-card'}
-                  active:scale-[0.98] transition-transform`}
-              >
-                <span>
-                  <span className="text-mahjong-gold font-bold mr-2">
-                    {t(`mahjong.wind.${seatWind(idx)}`)}
-                  </span>
-                  {p.name}
-                </span>
-                <span className="text-sm text-mahjong-muted">{formatPoints(p.points)}</span>
-              </button>
-            ))}
+            <PlayerSelectGrid
+              players={players}
+              currentDealer={currentDealer}
+              onClick={handleSelectWinner}
+            />
           </div>
         )}
 
@@ -212,33 +342,117 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
           </div>
         )}
 
-        {/* Step: Select loser (for Ron) */}
+        {/* Step: Select loser (single Ron, no double ron) */}
         {step === 'loser' && (
           <div className="space-y-3">
             <p className="text-sm text-mahjong-muted text-center mb-4">{t('record.selectDiscarder')}</p>
-            {players.map((p, idx) => {
-              if (idx === winnerIndex) return null;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => handleSelectLoser(idx)}
-                  className={`w-full py-3 px-4 rounded-xl text-left flex items-center justify-between
-                    bg-mahjong-card active:scale-[0.98] transition-transform`}
-                >
-                  <span>
-                    <span className="text-mahjong-gold font-bold mr-2">
-                      {t(`mahjong.wind.${seatWind(idx)}`)}
-                    </span>
-                    {p.name}
-                  </span>
-                  <span className="text-sm text-mahjong-muted">{formatPoints(p.points)}</span>
-                </button>
-              );
-            })}
+            <PlayerSelectGrid
+              players={players}
+              currentDealer={currentDealer}
+              excludeIndices={[winnerIndex!]}
+              highlightDealer={false}
+              onClick={handleSelectLoser}
+            />
           </div>
         )}
 
-        {/* Step: Han/Fu selection */}
+        {/* Step: Multi-ron — Select discarder */}
+        {step === 'multiLoser' && (
+          <div className="space-y-3">
+            <p className="text-sm text-mahjong-muted text-center mb-4">{t('record.selectDiscarder')}</p>
+            <PlayerSelectGrid
+              players={players}
+              currentDealer={currentDealer}
+              excludeIndices={[winnerIndex!]}
+              highlightDealer={false}
+              onClick={handleMultiLoserSelect}
+            />
+          </div>
+        )}
+
+        {/* Step: Multi-ron — Select winners (multi-select) */}
+        {step === 'multiWinnerSelect' && (
+          <div className="space-y-3">
+            <p className="text-sm text-mahjong-muted text-center mb-2">
+              {t('record.selectMultiWinners')}
+            </p>
+            <p className="text-xs text-mahjong-muted text-center mb-4">
+              {t('record.discarder')}: {players[multiRonLoser!]?.name}
+            </p>
+            <PlayerSelectGrid
+              players={players}
+              currentDealer={currentDealer}
+              excludeIndices={[multiRonLoser!]}
+              selectedIndices={multiWinnerSelected}
+              selectedLabel={t('mahjong.ron')}
+              selectedColor="green"
+              highlightDealer={false}
+              onClick={handleMultiWinnerToggle}
+            />
+            <div className="bg-mahjong-card rounded-xl p-3 text-sm text-center">
+              <p className="text-mahjong-muted">
+                {t('record.winnerCount', { count: multiWinnerSelected.length })}
+              </p>
+            </div>
+            <button
+              onClick={handleMultiWinnerConfirm}
+              disabled={multiWinnerSelected.length === 0}
+              className={`w-full py-3 rounded-xl font-bold text-lg
+                active:scale-[0.98] transition-transform
+                ${multiWinnerSelected.length > 0
+                  ? 'bg-mahjong-green text-mahjong-bg'
+                  : 'bg-mahjong-card text-mahjong-muted'}`}
+            >
+              {t('common.next')}
+            </button>
+          </div>
+        )}
+
+        {/* Step: Multi-ron — Han/Fu for each winner */}
+        {step === 'multiHanFu' && multiRonWinners[editingWinnerIdx] && (() => {
+          const w = multiRonWinners[editingWinnerIdx];
+          const isDealer = w.winnerIndex === currentDealer;
+          const preview = calculatePoints({ han: w.han, fu: w.fu, isDealer, isTsumo: false, kiriageMangan });
+
+          return (
+            <div className="space-y-4">
+              <p className="text-sm text-mahjong-muted text-center">
+                {t('record.editWinnerHanFu', { num: editingWinnerIdx + 1, total: multiRonWinners.length })}
+              </p>
+              <p className="text-center text-white font-medium">
+                <span className="text-mahjong-green">{players[w.winnerIndex]?.name}</span>
+                {' '}<span className="text-mahjong-gold">{t('mahjong.ron')}</span>
+                {' '}← {players[multiRonLoser!]?.name}
+              </p>
+
+              <HanFuSelector
+                han={w.han}
+                fu={w.fu}
+                onHanChange={(h) => updateMultiWinnerHanFu(h, w.fu)}
+                onFuChange={(f) => updateMultiWinnerHanFu(w.han, f)}
+                preview={preview}
+                extraInfo={
+                  <p className="text-sm text-mahjong-muted mt-1">
+                    {formatPoints(preview.ronPayment)}{t('mahjong.points')}
+                    {honbaCount > 0 && ` + ${honbaCount * 300} honba`}
+                  </p>
+                }
+              />
+
+              <button
+                onClick={handleMultiHanFuNext}
+                className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
+                  active:scale-[0.98] transition-transform"
+              >
+                {editingWinnerIdx < multiRonWinners.length - 1
+                  ? t('record.nextWinner')
+                  : t('common.next')}
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Step: Han/Fu selection (single agari) */}
         {step === 'hanfu' && (
           <div className="space-y-4">
             <p className="text-sm text-mahjong-muted text-center">
@@ -247,90 +461,52 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               {!isTsumo && loserIndex !== null && ` ← ${players[loserIndex]?.name}`}
             </p>
 
-            {/* Han selector */}
-            <div>
-              <label className="block text-sm text-mahjong-muted mb-2">{t('record.hanLabel')}</label>
-              <div className="flex flex-wrap gap-2">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(h => (
-                  <button
-                    key={h}
-                    onClick={() => setHan(h)}
-                    className={`w-10 h-10 rounded-lg font-bold text-sm
-                      ${han === h
-                        ? 'bg-mahjong-highlight text-white'
-                        : 'bg-mahjong-card text-mahjong-muted'
-                      } active:scale-95 transition-transform`}
-                  >
-                    {h}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Fu selector (only for < 5 han) */}
-            {han < 5 && (
-              <div>
-                <label className="block text-sm text-mahjong-muted mb-2">{t('record.fuLabel')}</label>
-                <div className="flex flex-wrap gap-2">
-                  {FU_OPTIONS.map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setFu(f)}
-                      className={`px-3 h-10 rounded-lg font-bold text-sm
-                        ${fu === f
-                          ? 'bg-mahjong-highlight text-white'
-                          : 'bg-mahjong-card text-mahjong-muted'
-                        } active:scale-95 transition-transform`}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Points preview */}
-            {pointsPreview && (
-              <div className="bg-mahjong-card rounded-xl p-4">
-                <p className="text-sm text-mahjong-muted mb-1">{t('record.pointsLabel')}</p>
-                {pointsPreview.limitName && (
-                  <p className="text-mahjong-gold font-bold text-lg mb-1">
-                    {t(`mahjong.limit.${pointsPreview.limitName}`)}
-                  </p>
-                )}
-                <p className="text-xl font-bold">
-                  {formatPoints(pointsPreview.total)}{t('mahjong.points')}
-                </p>
-                {isTsumo ? (
-                  <p className="text-sm text-mahjong-muted mt-1">
-                    {winnerIndex === currentDealer
-                      ? t('record.eachAll', { points: formatPoints(pointsPreview.tsumoNonDealerPayment) })
-                      : t('record.tsumoSplit', { nonDealer: formatPoints(pointsPreview.tsumoNonDealerPayment), dealer: formatPoints(pointsPreview.tsumoDealerPayment) })
-                    }
-                  </p>
-                ) : (
-                  <p className="text-sm text-mahjong-muted mt-1">
-                    {t('record.fromDiscarder', { points: formatPoints(pointsPreview.ronPayment) })}
-                  </p>
-                )}
-                {(honbaCount > 0 || riichiSticks > 0) && (
-                  <div className="text-xs text-mahjong-muted mt-2 space-y-0.5">
-                    {honbaCount > 0 && (
-                      <p>{t('record.honbaBonus', { points: honbaCount * (isTsumo ? 300 : 300), count: honbaCount })}</p>
-                    )}
-                    {riichiSticks > 0 && (
-                      <p>{t('record.riichiBonus', { points: riichiSticks * 1000, count: riichiSticks })}</p>
-                    )}
-                    <p className="text-mahjong-green font-medium">
-                      {t('record.total', { points: formatPoints(totalWithBonuses) })}
+            <HanFuSelector
+              han={han}
+              fu={fu}
+              onHanChange={setHan}
+              onFuChange={setFu}
+              preview={pointsPreview}
+              extraInfo={pointsPreview && (
+                <>
+                  {isTsumo ? (
+                    <p className="text-sm text-mahjong-muted mt-1">
+                      {winnerIndex === currentDealer
+                        ? t('record.eachAll', { points: formatPoints(pointsPreview.tsumoNonDealerPayment) })
+                        : t('record.tsumoSplit', { nonDealer: formatPoints(pointsPreview.tsumoNonDealerPayment), dealer: formatPoints(pointsPreview.tsumoDealerPayment) })
+                      }
                     </p>
-                  </div>
-                )}
-              </div>
-            )}
+                  ) : (
+                    <p className="text-sm text-mahjong-muted mt-1">
+                      {t('record.fromDiscarder', { points: formatPoints(pointsPreview.ronPayment) })}
+                    </p>
+                  )}
+                  {(honbaCount > 0 || riichiSticks > 0) && (
+                    <div className="text-xs text-mahjong-muted mt-2 space-y-0.5">
+                      {honbaCount > 0 && (
+                        <p>{t('record.honbaBonus', { points: honbaCount * 300, count: honbaCount })}</p>
+                      )}
+                      {riichiSticks > 0 && (
+                        <p>{t('record.riichiBonus', { points: riichiSticks * 1000, count: riichiSticks })}</p>
+                      )}
+                      <p className="text-mahjong-green font-medium">
+                        {t('record.total', { points: formatPoints(totalWithBonuses) })}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            />
 
             <button
-              onClick={() => setStep('riichi')}
+              onClick={() => {
+                if (han >= 13) {
+                  setSelectedYakuman([]);
+                  setStep('yakumanSelect');
+                } else {
+                  setStep('riichi');
+                }
+              }}
               className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
@@ -339,35 +515,49 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
           </div>
         )}
 
+        {/* Step: Yakuman selection (single agari, han >= 13) */}
+        {step === 'yakumanSelect' && (
+          <YakumanSelectStep
+            t={t}
+            selectedYakuman={selectedYakuman}
+            setSelectedYakuman={setSelectedYakuman}
+            doubleYakumanEnabled={doubleYakumanEnabled ?? false}
+            onConfirm={() => setStep('riichi')}
+          />
+        )}
+
+        {/* Step: Yakuman selection (multi-ron per-winner, han >= 13) */}
+        {step === 'multiYakumanSelect' && multiRonWinners[editingWinnerIdx] && (
+          <YakumanSelectStep
+            t={t}
+            selectedYakuman={selectedYakuman}
+            setSelectedYakuman={setSelectedYakuman}
+            doubleYakumanEnabled={doubleYakumanEnabled ?? false}
+            winnerName={players[multiRonWinners[editingWinnerIdx].winnerIndex]?.name}
+            onConfirm={() => handleMultiYakumanConfirm(selectedYakuman)}
+          />
+        )}
+
         {/* Step: Tenpai selection (for draw) */}
         {step === 'tenpai' && (
           <div className="space-y-4">
             <p className="text-sm text-mahjong-muted text-center mb-4">
               {t('record.selectTenpai')}
             </p>
-            {players.map((p, idx) => (
-              <button
-                key={p.id}
-                onClick={() => {
-                  const next = [...tenpaiStatus];
-                  next[idx] = !next[idx];
-                  setTenpaiStatus(next);
-                }}
-                className={`w-full py-3 px-4 rounded-xl text-left flex items-center justify-between
-                  ${tenpaiStatus[idx] ? 'bg-mahjong-green text-mahjong-bg' : 'bg-mahjong-card'}
-                  active:scale-[0.98] transition-transform`}
-              >
-                <span>
-                  <span className={`font-bold mr-2 ${tenpaiStatus[idx] ? 'text-mahjong-bg' : 'text-mahjong-gold'}`}>
-                    {t(`mahjong.wind.${seatWind(idx)}`)}
-                  </span>
-                  {p.name}
-                </span>
-                <span className={`text-sm font-medium ${tenpaiStatus[idx] ? '' : 'text-mahjong-muted'}`}>
-                  {tenpaiStatus[idx] ? t('mahjong.tenpai') : t('mahjong.noten')}
-                </span>
-              </button>
-            ))}
+            <PlayerSelectGrid
+              players={players}
+              currentDealer={currentDealer}
+              selectedIndices={tenpaiStatus.map((tp, i) => tp ? i : -1).filter(i => i >= 0)}
+              selectedLabel={t('mahjong.tenpai')}
+              unselectedLabel={t('mahjong.noten')}
+              selectedColor="green"
+              highlightDealer={false}
+              onClick={(idx) => {
+                const next = [...tenpaiStatus];
+                next[idx] = !next[idx];
+                setTenpaiStatus(next);
+              }}
+            />
 
             {/* Preview */}
             <div className="bg-mahjong-card rounded-xl p-3 text-sm">
@@ -393,49 +583,45 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
               {t('common.next')}
             </button>
 
-            <button
-              onClick={() => { setTenpaiStatus([false, false, false, false]); setStep('nagashiSelect'); }}
-              className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-gold font-bold
-                active:scale-[0.98] transition-transform border border-mahjong-gold/30"
-            >
-              {t('mahjong.nagashiMangan')}
-            </button>
+            {nagashiManganEnabled !== false && (
+              <button
+                onClick={() => { setTenpaiStatus([false, false, false, false]); setStep('nagashiSelect'); }}
+                className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-gold font-bold
+                  active:scale-[0.98] transition-transform border border-mahjong-gold/30"
+              >
+                {t('mahjong.nagashiMangan')}
+              </button>
+            )}
           </div>
         )}
 
-        {/* Step: Select nagashi mangan players (multi-select) */}
+        {/* Step: Select nagashi mangan players */}
         {step === 'nagashiSelect' && (
           <div className="space-y-3">
             <p className="text-sm text-mahjong-muted text-center mb-4">
               {t('record.selectNagashi')}
             </p>
-            {players.map((p, idx) => {
-              const isDealer = idx === currentDealer;
-              const total = isDealer ? 12000 : 8000;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    const next = [...nagashiManganPlayers];
-                    next[idx] = !next[idx];
-                    setNagashiManganPlayers(next);
-                  }}
-                  className={`w-full py-3 px-4 rounded-xl text-left flex items-center justify-between
-                    ${nagashiManganPlayers[idx] ? 'bg-mahjong-gold text-mahjong-bg' : 'bg-mahjong-card'}
-                    active:scale-[0.98] transition-transform`}
-                >
-                  <span>
-                    <span className={`font-bold mr-2 ${nagashiManganPlayers[idx] ? 'text-mahjong-bg' : 'text-mahjong-gold'}`}>
-                      {t(`mahjong.wind.${seatWind(idx)}`)}
-                    </span>
-                    {p.name}
+            <PlayerSelectGrid
+              players={players}
+              currentDealer={currentDealer}
+              selectedIndices={nagashiManganPlayers.map((n, i) => n ? i : -1).filter(i => i >= 0)}
+              selectedColor="gold"
+              highlightDealer={false}
+              onClick={(idx) => {
+                const next = [...nagashiManganPlayers];
+                next[idx] = !next[idx];
+                setNagashiManganPlayers(next);
+              }}
+              renderRight={(idx, selected) => {
+                const isDealer = idx === currentDealer;
+                const total = isDealer ? 12000 : 8000;
+                return (
+                  <span className={`text-sm ${selected ? '' : 'text-mahjong-muted'}`}>
+                    {selected ? t('record.nagashiPoints', { points: formatPoints(total) }) : formatPoints(players[idx].points)}
                   </span>
-                  <span className={`text-sm ${nagashiManganPlayers[idx] ? '' : 'text-mahjong-muted'}`}>
-                    {nagashiManganPlayers[idx] ? t('record.nagashiPoints', { points: formatPoints(total) }) : formatPoints(p.points)}
-                  </span>
-                </button>
-              );
-            })}
+                );
+              }}
+            />
 
             <button
               onClick={() => setStep(nagashiManganPlayers[currentDealer] ? 'oyaTenpai' : 'riichi')}
@@ -451,25 +637,24 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
           </div>
         )}
 
-        {/* Step: Ask if dealer is tenpai (only when dealer has nagashi mangan) */}
+        {/* Step: Ask if dealer is tenpai (dealer has nagashi mangan) */}
         {step === 'oyaTenpai' && (
           <div className="space-y-4">
             <p className="text-sm text-mahjong-muted text-center mb-2">
               {t('record.dealerTenpai')}
             </p>
 
-            {/* Nagashi context */}
             <div className="bg-mahjong-card rounded-xl p-3 text-sm">
               <p className="text-mahjong-gold font-medium mb-1">{t('record.nagashiContext')}</p>
               {nagashiManganPlayers.map((n, i) => n ? (
                 <p key={i} className="text-mahjong-gold">
-                  {t(`mahjong.wind.${seatWind(i)}`)} {players[i]?.name} +{formatPoints(i === currentDealer ? 12000 : 8000)}{t('mahjong.points')}
+                  {t(`mahjong.wind.${WINDS[(i - currentDealer + 4) % 4]}`)} {players[i]?.name} +{formatPoints(i === currentDealer ? 12000 : 8000)}{t('mahjong.points')}
                 </p>
               ) : null)}
             </div>
 
             <p className="text-center text-white font-medium">
-              <span className="text-mahjong-gold">{t(`mahjong.wind.${seatWind(currentDealer)}`)}</span>
+              <span className="text-mahjong-gold">{t(`mahjong.wind.${WINDS[0]}`)}</span>
               {' '}{players[currentDealer]?.name}
             </p>
             <p className="text-xs text-mahjong-muted text-center">
@@ -507,29 +692,19 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             <p className="text-sm text-mahjong-muted text-center mb-4">
               {t('record.selectRiichi')}
             </p>
-            {players.map((p, idx) => (
-              <button
-                key={p.id}
-                onClick={() => {
-                  const next = [...riichiPlayers];
-                  next[idx] = !next[idx];
-                  setRiichiPlayers(next);
-                }}
-                className={`w-full py-3 px-4 rounded-xl text-left flex items-center justify-between
-                  ${riichiPlayers[idx] ? 'bg-mahjong-gold text-mahjong-bg' : 'bg-mahjong-card'}
-                  active:scale-[0.98] transition-transform`}
-              >
-                <span>
-                  <span className={`font-bold mr-2 ${riichiPlayers[idx] ? 'text-mahjong-bg' : 'text-mahjong-gold'}`}>
-                    {t(`mahjong.wind.${seatWind(idx)}`)}
-                  </span>
-                  {p.name}
-                </span>
-                <span className={`text-sm font-medium ${riichiPlayers[idx] ? '' : 'text-mahjong-muted'}`}>
-                  {riichiPlayers[idx] ? t('mahjong.riichi') : '—'}
-                </span>
-              </button>
-            ))}
+            <PlayerSelectGrid
+              players={players}
+              currentDealer={currentDealer}
+              selectedIndices={riichiPlayers.map((r, i) => r ? i : -1).filter(i => i >= 0)}
+              selectedLabel={t('mahjong.riichi')}
+              selectedColor="gold"
+              highlightDealer={false}
+              onClick={(idx) => {
+                const next = [...riichiPlayers];
+                next[idx] = !next[idx];
+                setRiichiPlayers(next);
+              }}
+            />
 
             {riichiPlayers.some(Boolean) && (
               <div className="bg-mahjong-card rounded-xl p-3 text-sm">
@@ -555,7 +730,38 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             <p className="text-sm text-mahjong-muted text-center mb-2">{t('record.confirmRecord')}</p>
 
             <div className="bg-mahjong-card rounded-xl p-4 space-y-2">
-              {resultType === 'agari' ? (
+              {resultType === 'agari' && isMultiRon ? (
+                <>
+                  <p className="font-medium text-mahjong-gold">{t('record.multiRon')}</p>
+                  <p className="text-sm text-mahjong-muted">
+                    {t('record.discarder')}: {players[multiRonLoser!]?.name}
+                  </p>
+                  {multiRonWinners.map((w, i) => {
+                    const isDealer = w.winnerIndex === currentDealer;
+                    const wYakumanCount = w.yakumanList?.length
+                      ? calculateYakumanMultiplier(w.yakumanList, doubleYakumanEnabled ?? false)
+                      : undefined;
+                    const preview = calculatePoints({ han: w.han, fu: w.fu, isDealer, isTsumo: false, kiriageMangan, yakumanCount: wYakumanCount });
+                    return (
+                      <div key={i} className="border-t border-mahjong-bg pt-2 mt-2">
+                        <p className="text-sm">
+                          <span className="text-mahjong-green font-medium">{players[w.winnerIndex]?.name}</span>
+                          {' '}{w.han}han {w.han < 5 ? `${w.fu}fu` : ''}
+                          {w.yakumanList?.length ? (
+                            <span className="text-mahjong-gold ml-1">
+                              ({w.yakumanList.map(id => t(`yakuman.${id}` as any)).join(', ')})
+                            </span>
+                          ) : null}
+                          {preview.limitName && (
+                            <span className="text-mahjong-gold ml-1">{t(`mahjong.limit.${preview.limitName}`)}</span>
+                          )}
+                        </p>
+                        <p className="text-sm font-bold">{formatPoints(preview.ronPayment + honbaCount * 300)}{t('mahjong.points')}</p>
+                      </div>
+                    );
+                  })}
+                </>
+              ) : resultType === 'agari' ? (
                 <>
                   <p className="font-medium">
                     <span className="text-mahjong-green">{players[winnerIndex!]?.name}</span>
@@ -567,7 +773,14 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                       {t('record.discarder')}: {players[loserIndex]?.name}
                     </p>
                   )}
-                  <p className="text-sm">{han}han {han < 5 ? `${fu}fu` : ''}</p>
+                  <p className="text-sm">
+                    {han}han {han < 5 ? `${fu}fu` : ''}
+                    {selectedYakuman.length > 0 && (
+                      <span className="text-mahjong-gold ml-1">
+                        ({selectedYakuman.map(id => t(`yakuman.${id}` as any)).join(', ')})
+                      </span>
+                    )}
+                  </p>
                   {pointsPreview?.limitName && (
                     <p className="text-mahjong-gold font-bold">{t(`mahjong.limit.${pointsPreview.limitName}`)}</p>
                   )}

@@ -1,4 +1,4 @@
-import type { HandResult, AgariResult, RyuukyokuResult } from '../types/game.js';
+import type { HandResult, AgariResult, MultiAgariResult, RyuukyokuResult } from '../types/game.js';
 import { calculatePoints } from './calculator.js';
 
 export interface TransferResult {
@@ -17,9 +17,12 @@ export function calculateTransfers(
   dealerIndex: number,
   honbaCount: number,
   riichiSticksOnTable: number,
+  kiriageMangan?: boolean,
 ): TransferResult {
   if (result.type === 'agari') {
-    return calculateAgariTransfers(result, dealerIndex, honbaCount, riichiSticksOnTable);
+    return calculateAgariTransfers(result, dealerIndex, honbaCount, riichiSticksOnTable, kiriageMangan);
+  } else if (result.type === 'multi_agari') {
+    return calculateMultiAgariTransfers(result, dealerIndex, honbaCount, riichiSticksOnTable, kiriageMangan);
   } else {
     return calculateRyuukyokuTransfers(result, dealerIndex);
   }
@@ -30,12 +33,13 @@ function calculateAgariTransfers(
   dealerIndex: number,
   honbaCount: number,
   riichiSticksOnTable: number,
+  kiriageMangan?: boolean,
 ): TransferResult {
   const deltas = [0, 0, 0, 0];
   const { winnerIndex, loserIndex, isTsumo, han, fu } = result;
   const isDealer = winnerIndex === dealerIndex;
 
-  const calc = calculatePoints({ han, fu, isDealer, isTsumo });
+  const calc = calculatePoints({ han, fu, isDealer, isTsumo, kiriageMangan, yakumanCount: result.yakumanCount });
 
   if (isTsumo) {
     for (let i = 0; i < 4; i++) {
@@ -85,6 +89,59 @@ function calculateAgariTransfers(
   const description = isTsumo
     ? `Tsumo ${han}han/${fu}fu${limitStr}: ${calc.total}点${honbaStr}${riichiStr}`
     : `Ron ${han}han/${fu}fu${limitStr}: ${calc.ronPayment}点${honbaStr}${riichiStr}`;
+
+  return { deltas, description };
+}
+
+/**
+ * Get the closest winner to the loser in turn order (shimocha first).
+ * Used to determine who collects riichi sticks in multi-ron.
+ */
+function getClosestWinner(loserIndex: number, winnerIndices: number[]): number {
+  for (let offset = 1; offset <= 3; offset++) {
+    const candidate = (loserIndex + offset) % 4;
+    if (winnerIndices.includes(candidate)) return candidate;
+  }
+  return winnerIndices[0]; // fallback
+}
+
+function calculateMultiAgariTransfers(
+  result: MultiAgariResult,
+  dealerIndex: number,
+  honbaCount: number,
+  riichiSticksOnTable: number,
+  kiriageMangan?: boolean,
+): TransferResult {
+  const deltas = [0, 0, 0, 0];
+  const { loserIndex, winners } = result;
+
+  // Each winner gets their ron payment + honba bonus from the discarder
+  for (const w of winners) {
+    const isDealer = w.winnerIndex === dealerIndex;
+    const calc = calculatePoints({ han: w.han, fu: w.fu, isDealer, isTsumo: false, kiriageMangan, yakumanCount: w.yakumanCount });
+
+    let payment = calc.ronPayment;
+    payment += honbaCount * 300; // each winner gets honba bonus
+
+    deltas[loserIndex] -= payment;
+    deltas[w.winnerIndex] += payment;
+  }
+
+  // Riichi sticks go to the closest winner in turn order
+  if (riichiSticksOnTable > 0) {
+    const winnerIndices = winners.map(w => w.winnerIndex);
+    const closestWinner = getClosestWinner(loserIndex, winnerIndices);
+    deltas[closestWinner] += riichiSticksOnTable * 1000;
+  }
+
+  // Build description
+  const parts = winners.map(w => {
+    const isDealer = w.winnerIndex === dealerIndex;
+    const calc = calculatePoints({ han: w.han, fu: w.fu, isDealer, isTsumo: false, kiriageMangan, yakumanCount: w.yakumanCount });
+    const limitStr = calc.limitNameCn ? ` (${calc.limitNameCn})` : '';
+    return `P${w.winnerIndex + 1}: ${w.han}han/${w.fu}fu${limitStr} ${calc.ronPayment}点`;
+  });
+  const description = `Multi-ron: ${parts.join(', ')}`;
 
   return { deltas, description };
 }

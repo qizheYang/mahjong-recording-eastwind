@@ -17,13 +17,14 @@ export function GamePage() {
   const {
     room, game, finalScores, playerId, connected,
     connect, setSession,
-    recordHand, undoLastHand, endGame, forceQuitGame, error, errorCode, clearError,
+    recordHand, editHand, undoLastHand, endGame, forceQuitGame, error, errorCode, clearError,
   } = useGameStore();
 
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [confirmUndo, setConfirmUndo] = useState(false);
   const [showForceQuit, setShowForceQuit] = useState(false);
+  const [editingHandNumber, setEditingHandNumber] = useState<number | null>(null);
 
   // Restore session
   useEffect(() => {
@@ -56,7 +57,12 @@ export function GamePage() {
   }, [connected, room, game, roomCode, navigate]);
 
   function handleRecordHand(result: HandResultInput) {
-    recordHand(result);
+    if (editingHandNumber !== null) {
+      editHand(editingHandNumber, result);
+      setEditingHandNumber(null);
+    } else {
+      recordHand(result);
+    }
     setShowRecordModal(false);
   }
 
@@ -132,6 +138,11 @@ export function GamePage() {
           uma={game.ruleset?.uma ?? M_LEAGUE_RULES.uma}
           tobiEnabled={game.ruleset?.tobiEnabled ?? M_LEAGUE_RULES.tobiEnabled}
           okaEnabled={game.ruleset?.okaEnabled ?? M_LEAGUE_RULES.okaEnabled}
+          kiriageMangan={game.ruleset?.kiriageMangan ?? M_LEAGUE_RULES.kiriageMangan}
+          doubleRonEnabled={game.ruleset?.doubleRonEnabled ?? M_LEAGUE_RULES.doubleRonEnabled}
+          nagashiManganEnabled={game.ruleset?.nagashiManganEnabled ?? M_LEAGUE_RULES.nagashiManganEnabled}
+          countedYakumanEnabled={game.ruleset?.countedYakumanEnabled ?? M_LEAGUE_RULES.countedYakumanEnabled}
+          doubleYakumanEnabled={game.ruleset?.doubleYakumanEnabled ?? M_LEAGUE_RULES.doubleYakumanEnabled}
           scoreFormula={game.ruleset?.scoreFormula ?? M_LEAGUE_RULES.scoreFormula}
           editable={false}
         />
@@ -177,7 +188,14 @@ export function GamePage() {
       {/* Hand history */}
       {showHistory && (
         <div className="mt-4">
-          <HandHistory hands={game.hands} players={game.players} />
+          <HandHistory
+            hands={game.hands}
+            players={game.players}
+            onEditHand={(handNumber) => {
+              setEditingHandNumber(handNumber);
+              setShowRecordModal(true);
+            }}
+          />
         </div>
       )}
 
@@ -185,11 +203,24 @@ export function GamePage() {
       {showRecordModal && (
         <RecordHandModal
           players={game.players}
-          currentDealer={game.currentDealer}
-          honbaCount={game.honbaCount}
-          riichiSticks={game.riichiSticks}
+          currentDealer={editingHandNumber !== null
+            ? (game.hands.find(h => h.handNumber === editingHandNumber)?.dealerIndex ?? game.currentDealer)
+            : game.currentDealer}
+          honbaCount={editingHandNumber !== null
+            ? (game.hands.find(h => h.handNumber === editingHandNumber)?.honba ?? game.honbaCount)
+            : game.honbaCount}
+          riichiSticks={editingHandNumber !== null
+            ? (game.hands.find(h => h.handNumber === editingHandNumber)?.riichiSticksOnTable ?? game.riichiSticks)
+            : game.riichiSticks}
+          kiriageMangan={game.ruleset?.kiriageMangan}
+          doubleRonEnabled={game.ruleset?.doubleRonEnabled}
+          doubleYakumanEnabled={game.ruleset?.doubleYakumanEnabled}
+          nagashiManganEnabled={game.ruleset?.nagashiManganEnabled}
+          editingHand={editingHandNumber !== null
+            ? game.hands.find(h => h.handNumber === editingHandNumber)
+            : undefined}
           onSubmit={handleRecordHand}
-          onClose={() => setShowRecordModal(false)}
+          onClose={() => { setShowRecordModal(false); setEditingHandNumber(null); }}
         />
       )}
 

@@ -10,18 +10,32 @@ export type ClientEvent =
   | { type: 'swap_seats'; playerIdA: string; playerIdB: string }
   | { type: 'start_game'; seatOrder: string[]; ruleset?: Partial<Ruleset>; tags?: string[] }
   | { type: 'record_hand'; result: HandResultInput }
+  | { type: 'edit_hand'; handNumber: number; result: HandResultInput }
   | { type: 'undo_last_hand' }
   | { type: 'end_game' }
   | { type: 'force_quit_game'; keepRecord: boolean };
 
+export interface MultiRonWinnerInput {
+  winnerIndex: number;
+  han: number;
+  fu: number;
+  yakumanList?: string[];
+}
+
 export interface HandResultInput {
   resultType: 'agari' | 'ryuukyoku';
-  // For agari
+  // For single agari
   winnerIndex?: number;
   loserIndex?: number;
   isTsumo?: boolean;
   han?: number;
   fu?: number;
+  yakumanList?: string[]; // specific yakuman hands selected
+  // For multi-ron (double/triple ron)
+  multiRon?: {
+    loserIndex: number;
+    winners: MultiRonWinnerInput[];
+  };
   // For ryuukyoku
   tenpaiStatus?: boolean[];
   nagashiManganPlayers?: boolean[]; // [p0, p1, p2, p3] 流局満貫
@@ -39,5 +53,6 @@ export type ServerEvent =
   | { type: 'game_started'; game: Game }
   | { type: 'hand_recorded'; hand: Hand; game: Game }
   | { type: 'hand_undone'; game: Game }
+  | { type: 'hand_edited'; game: Game }
   | { type: 'game_ended'; game: Game; finalScores: FinalScore[]; savedFilename?: string }
   | { type: 'error'; message: string; code: string };
