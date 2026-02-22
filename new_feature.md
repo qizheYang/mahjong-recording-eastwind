@@ -46,7 +46,7 @@
   - `registerUser(username, email?)`, `verifyEmail(email, code)`, `resendOtp(email)`
 
 ### 验证步骤
-1. 确认 `.env` 中有 `RESEND_API_KEY=re_N2AvqRQS_EeFL6nL7fBiYZNfTrYHRQpd1`
+1. 确认 `.env` 中有 `RESEND_API_KEY` 已配置
 2. 启动 dev server: `npm run dev`
 3. 打开注册页面 (`/register`)
 4. 输入一个公式战 ID 和 email 地址（例如 `yangchar@usc.edu`）
