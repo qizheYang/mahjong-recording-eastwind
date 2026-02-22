@@ -742,7 +742,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                   {multiRonWinners.map((w, i) => {
                     const isDealer = w.winnerIndex === currentDealer;
                     const wYakumanCount = w.yakumanList?.length
-                      ? calculateYakumanMultiplier(w.yakumanList, doubleYakumanEnabled ?? false)
+                      ? calculateYakumanMultiplier(w.yakumanList, doubleYakumanEnabled ?? false, multipleYakumanEnabled ?? false)
                       : undefined;
                     const preview = calculatePoints({ han: w.han, fu: w.fu, isDealer, isTsumo: false, kiriageMangan, yakumanCount: wYakumanCount });
                     return (

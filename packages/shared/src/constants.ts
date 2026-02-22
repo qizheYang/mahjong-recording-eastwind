@@ -72,7 +72,7 @@ export const M_LEAGUE_RULES: Ruleset = {
   doubleRonEnabled: false,
   countedYakumanEnabled: false,
   doubleYakumanEnabled: false,
-  multipleYakumanEnabled: false,
+  multipleYakumanEnabled: true,
   kiriageMangan: true,
   nagashiManganEnabled: true,
   akadoraCount: 3,
