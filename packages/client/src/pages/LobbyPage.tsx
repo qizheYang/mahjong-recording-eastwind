@@ -118,7 +118,23 @@ export function LobbyPage() {
     } else if (selectedSwap === tappedPlayerId) {
       setSelectedSwap(null);
     } else {
-      swapSeats(selectedSwap, tappedPlayerId);
+      // In team mode, swap team and wind assignments between the two players
+      if (ruleTeamMode) {
+        const teamA = teamAssignments[selectedSwap];
+        const teamB = teamAssignments[tappedPlayerId];
+        if (teamA && teamB) {
+          setTeamAssignment(selectedSwap, teamB);
+          setTeamAssignment(tappedPlayerId, teamA);
+        }
+        const windA = windAssignments[selectedSwap];
+        const windB = windAssignments[tappedPlayerId];
+        if (windA && windB) {
+          setWindAssignment(selectedSwap, windB);
+          setWindAssignment(tappedPlayerId, windA);
+        }
+      } else {
+        swapSeats(selectedSwap, tappedPlayerId);
+      }
       setSelectedSwap(null);
     }
   }
