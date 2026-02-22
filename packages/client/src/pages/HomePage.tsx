@@ -127,6 +127,13 @@ export function HomePage() {
             >
               {t('home.playerStats')}
             </button>
+            <button
+              onClick={() => navigate('/register')}
+              className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-muted font-medium
+                active:scale-[0.98] transition-transform border border-mahjong-accent"
+            >
+              {t('user.register')}
+            </button>
 
             {/* Live games section */}
             {liveGames.length > 0 && (

@@ -317,6 +317,21 @@ export const zh = {
   'penalty.confirm': '确认罚则',
   'penalty.finalScoreNote': '仅在最终得分中扣除',
 
+  // User Registration
+  'user.register': '注册',
+  'user.registerTitle': '用户注册',
+  'user.username': '用户名',
+  'user.phone': '手机号',
+  'user.sendCode': '发送验证码',
+  'user.sendingCode': '发送中...',
+  'user.verifyCode': '验证',
+  'user.verifying': '验证中...',
+  'user.enterCode': '输入6位验证码',
+  'user.registerSuccess': '注册成功！',
+  'user.codeSent': '验证码已发送至 {phone}',
+  'user.resendCode': '重新发送',
+  'user.searchUser': '搜索用户...',
+
   // Error codes (from server)
   'error.INVALID_ROOM': '无法加入房间',
   'error.PARSE_ERROR': '无效消息格式',

@@ -7,6 +7,7 @@ import { gameFileRoutes } from './routes/game-files.js';
 import { playerRoutes } from './routes/players.js';
 import { adminRoutes } from './routes/admin.js';
 import { tagRoutes } from './routes/tags.js';
+import { userRoutes } from './routes/users.js';
 import { roomManager } from './ws/room-manager.js';
 import { fileURLToPath } from 'url';
 import { dirname, resolve, join, extname } from 'path';
@@ -52,6 +53,7 @@ export function createApp() {
   api.route('/api/players', playerRoutes);
   api.route('/api/admin', adminRoutes);
   api.route('/api/tags', tagRoutes);
+  api.route('/api/users', userRoutes);
 
   // Live games
   api.get('/api/live-games', (c) => c.json({ games: roomManager.listRooms() }));

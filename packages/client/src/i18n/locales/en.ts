@@ -319,6 +319,21 @@ export const en: Record<TranslationKey, string> = {
   'penalty.confirm': 'Confirm Penalty',
   'penalty.finalScoreNote': 'Deducted from final game score only',
 
+  // User Registration
+  'user.register': 'Register',
+  'user.registerTitle': 'User Registration',
+  'user.username': 'Username',
+  'user.phone': 'Phone Number',
+  'user.sendCode': 'Send Code',
+  'user.sendingCode': 'Sending...',
+  'user.verifyCode': 'Verify',
+  'user.verifying': 'Verifying...',
+  'user.enterCode': 'Enter 6-digit code',
+  'user.registerSuccess': 'Registration successful!',
+  'user.codeSent': 'Code sent to {phone}',
+  'user.resendCode': 'Resend Code',
+  'user.searchUser': 'Search user...',
+
   // Error codes
   'error.INVALID_ROOM': 'Cannot join room',
   'error.PARSE_ERROR': 'Invalid message format',

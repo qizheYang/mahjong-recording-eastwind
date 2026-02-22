@@ -181,3 +181,39 @@ export async function adminUpdateGameTags(
     body: JSON.stringify({ tags }),
   });
 }
+
+// User registration
+export interface RegisteredUser {
+  id: string;
+  username: string;
+  phone: string;
+}
+
+export async function registerUser(username: string, phone: string): Promise<{ id: string; username: string; phone: string; codeSent: boolean }> {
+  return request('/users/register', {
+    method: 'POST',
+    body: JSON.stringify({ username, phone }),
+  });
+}
+
+export async function verifyPhone(phone: string, code: string): Promise<{ verified: boolean }> {
+  return request('/users/verify', {
+    method: 'POST',
+    body: JSON.stringify({ phone, code }),
+  });
+}
+
+export async function resendOtp(phone: string): Promise<{ codeSent: boolean }> {
+  return request('/users/resend-otp', {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
+  });
+}
+
+export async function listRegisteredUsers(): Promise<{ users: RegisteredUser[] }> {
+  return request('/users');
+}
+
+export async function searchRegisteredUsers(q: string): Promise<{ users: RegisteredUser[] }> {
+  return request(`/users/search?q=${encodeURIComponent(q)}`);
+}

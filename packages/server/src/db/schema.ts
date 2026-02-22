@@ -68,3 +68,12 @@ export const tags = sqliteTable('tags', {
   name: text('name').primaryKey(),
   createdAt: integer('created_at').notNull(),
 });
+
+export const registeredUsers = sqliteTable('registered_users', {
+  id: text('id').primaryKey(),
+  username: text('username').notNull().unique(),
+  phone: text('phone').notNull(),
+  phoneVerified: integer('phone_verified').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});

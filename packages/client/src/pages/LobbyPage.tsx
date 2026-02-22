@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
-import { addPlayer, listTags, createTag } from '../lib/api';
+import { addPlayer, listTags, createTag, searchRegisteredUsers, type RegisteredUser } from '../lib/api';
 import { WINDS, M_LEAGUE_RULES, defaultScoreFormula } from '@mahjong/shared';
 import type { PresetName } from '@mahjong/shared';
 import { RulesIsland } from '../components/game/RulesIsland';
@@ -25,6 +25,24 @@ export function LobbyPage() {
   const [soloPhones, setSoloPhones] = useState(['', '', '']);
   const [addingIdx, setAddingIdx] = useState<number | null>(null);
   const [soloError, setSoloError] = useState('');
+
+  // Autocomplete state for solo mode
+  const [suggestions, setSuggestions] = useState<RegisteredUser[]>([]);
+  const [activeSlot, setActiveSlot] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (activeSlot === null) { setSuggestions([]); return; }
+    const query = soloNames[activeSlot]?.trim();
+    if (!query || query.length < 1) { setSuggestions([]); return; }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await searchRegisteredUsers(query);
+        setSuggestions(res.users);
+      } catch { setSuggestions([]); }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [activeSlot, soloNames]);
 
   // Preset tracking
   const [presetName, setPresetName] = useState<PresetName>('mleague');
@@ -285,7 +303,7 @@ export function LobbyPage() {
 
           {/* Empty slots */}
           {soloMode ? (
-            // Solo mode: show name + phone inputs for empty slots
+            // Solo mode: show name + phone inputs with autocomplete for empty slots
             Array.from({ length: emptySlots }).map((_, i) => {
               const slotIdx = i;
               const windIdx = totalPlayers + i;
@@ -298,20 +316,59 @@ export function LobbyPage() {
                     <span className="w-6 text-center text-sm font-bold text-mahjong-gold shrink-0">
                       {t(`mahjong.wind.${WINDS[windIdx]}`)}
                     </span>
-                    <input
-                      type="text"
-                      value={soloNames[slotIdx]}
-                      onChange={e => setSoloNames(prev => {
-                        const next = [...prev];
-                        next[slotIdx] = e.target.value;
-                        return next;
-                      })}
-                      onKeyDown={e => { if (e.key === 'Enter') handleAddPlayer(slotIdx); }}
-                      maxLength={12}
-                      placeholder={t('home.enterName')}
-                      className="flex-1 min-w-0 px-2 py-1.5 rounded bg-mahjong-bg border border-mahjong-accent
-                        text-white text-sm focus:outline-none focus:border-mahjong-highlight"
-                    />
+                    <div className="relative flex-1 min-w-0">
+                      <input
+                        type="text"
+                        value={soloNames[slotIdx]}
+                        onChange={e => {
+                          setSoloNames(prev => {
+                            const next = [...prev];
+                            next[slotIdx] = e.target.value;
+                            return next;
+                          });
+                          setActiveSlot(slotIdx);
+                        }}
+                        onFocus={() => setActiveSlot(slotIdx)}
+                        onBlur={() => setTimeout(() => setActiveSlot(null), 150)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddPlayer(slotIdx); }}
+                        maxLength={12}
+                        placeholder={t('user.searchUser')}
+                        className="w-full px-2 py-1.5 rounded bg-mahjong-bg border border-mahjong-accent
+                          text-white text-sm focus:outline-none focus:border-mahjong-highlight"
+                      />
+                      {/* Autocomplete dropdown */}
+                      {activeSlot === slotIdx && suggestions.length > 0 && (
+                        <div className="absolute z-10 left-0 right-0 top-full mt-0.5 bg-mahjong-bg border border-mahjong-accent
+                          rounded shadow-lg max-h-32 overflow-y-auto">
+                          {suggestions.map(u => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onMouseDown={e => e.preventDefault()}
+                              onClick={() => {
+                                setSoloNames(prev => {
+                                  const next = [...prev];
+                                  next[slotIdx] = u.username;
+                                  return next;
+                                });
+                                setSoloPhones(prev => {
+                                  const next = [...prev];
+                                  next[slotIdx] = u.phone;
+                                  return next;
+                                });
+                                setSuggestions([]);
+                                setActiveSlot(null);
+                              }}
+                              className="w-full text-left px-2 py-1.5 text-sm hover:bg-mahjong-accent/40 transition-colors
+                                flex items-center justify-between"
+                            >
+                              <span className="text-white">{u.username}</span>
+                              <span className="text-xs text-mahjong-muted">{u.phone}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <button
                       onClick={() => handleAddPlayer(slotIdx)}
                       disabled={addingIdx === slotIdx || !soloNames[slotIdx]?.trim()}

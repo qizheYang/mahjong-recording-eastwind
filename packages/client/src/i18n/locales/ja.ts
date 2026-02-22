@@ -319,6 +319,21 @@ export const ja: Record<TranslationKey, string> = {
   'penalty.confirm': '罰則を確定',
   'penalty.finalScoreNote': '最終スコアにのみ反映されます',
 
+  // User Registration
+  'user.register': '登録',
+  'user.registerTitle': 'ユーザー登録',
+  'user.username': 'ユーザー名',
+  'user.phone': '電話番号',
+  'user.sendCode': 'コード送信',
+  'user.sendingCode': '送信中...',
+  'user.verifyCode': '認証',
+  'user.verifying': '認証中...',
+  'user.enterCode': '6桁のコードを入力',
+  'user.registerSuccess': '登録完了！',
+  'user.codeSent': '{phone} にコードを送信しました',
+  'user.resendCode': '再送信',
+  'user.searchUser': 'ユーザー検索...',
+
   // Error codes
   'error.INVALID_ROOM': '部屋に参加できません',
   'error.PARSE_ERROR': '無効なメッセージ形式',

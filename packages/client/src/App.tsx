@@ -5,6 +5,7 @@ import { GamePage } from './pages/GamePage';
 import { ResultsPage } from './pages/ResultsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { PlayerPage } from './pages/PlayerPage';
+import { RegisterPage } from './pages/RegisterPage';
 import { I18nProvider, LanguageSelector } from './i18n';
 
 const BASE = import.meta.env.BASE_URL;
@@ -23,6 +24,7 @@ export function App() {
           <Route path="/results/:roomCode" element={<ResultsPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/player/:name" element={<PlayerPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

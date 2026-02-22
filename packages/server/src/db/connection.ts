@@ -98,6 +98,15 @@ function initializeTables(db: ReturnType<typeof drizzle>) {
     created_at INTEGER NOT NULL
   )`);
 
+  db.run(sql`CREATE TABLE IF NOT EXISTS registered_users (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    phone TEXT NOT NULL,
+    phone_verified INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`);
+
   // Seed predefined tags
   const now = Date.now();
   for (const tagName of PREDEFINED_TAGS) {
