@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
 import { addPlayer, removePlayer, killRoom, listTags, createTag, searchRegisteredUsers, type RegisteredUser } from '../lib/api';
 import { WINDS, M_LEAGUE_RULES, defaultScoreFormula } from '@mahjong/shared';
@@ -47,6 +47,9 @@ export function LobbyPage() {
     }, 200);
     return () => clearTimeout(timer);
   }, [activeSlot, soloNames]);
+
+  // Registration status check for current player
+  const [isPlayerRegistered, setIsPlayerRegistered] = useState<boolean | null>(null);
 
   // Preset tracking
   const [presetName, setPresetName] = useState<PresetName>('mleague');
@@ -214,6 +217,14 @@ export function LobbyPage() {
   }
 
   const myPlayer = room?.players.find(p => p.id === playerId);
+
+  useEffect(() => {
+    if (!myPlayer) return;
+    searchRegisteredUsers(myPlayer.name).then(res => {
+      setIsPlayerRegistered(res.users.some(u => u.username.toLowerCase() === myPlayer.name.toLowerCase()));
+    }).catch(() => {});
+  }, [myPlayer?.name]);
+
   const isReady = myPlayer?.ready ?? false;
   const readyCount = room?.players.filter(p => p.ready).length ?? 0;
   const totalPlayers = room?.players.length ?? 0;
@@ -644,6 +655,17 @@ export function LobbyPage() {
           </div>
         )}
       </div>
+
+      {/* Registration hint for unregistered players */}
+      {isPlayerRegistered === false && (
+        <Link
+          to="/register"
+          className="block text-center text-xs text-mahjong-muted bg-mahjong-card rounded-lg px-3 py-2 mb-3
+            hover:text-mahjong-gold transition-colors"
+        >
+          {t('lobby.registerHint')} →
+        </Link>
+      )}
 
       {soloError && (
         <p className="text-mahjong-highlight text-sm text-center mb-4">{soloError}</p>

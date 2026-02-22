@@ -111,6 +111,7 @@ export const en: Record<TranslationKey, string> = {
   'lobby.readyUp': 'Ready',
   'lobby.waitingPlayers': 'Waiting for {count} player(s)',
   'lobby.notJoined': 'Not joined to this room',
+  'lobby.registerHint': 'You are not registered. Register to track your game history.',
 
   // GamePage
   'game.recordHand': 'Record Hand',
@@ -268,6 +269,8 @@ export const en: Record<TranslationKey, string> = {
   'results.saveAnnotations': 'Save',
   'results.copyResults': 'Copy Results',
   'results.newGame': 'New Game',
+  'results.registerCTA': 'Register your account',
+  'results.registerHint': 'Register to track your game history',
   'results.shareTitle': '🀄 Mahjong Recorder - Game Results',
 
   // HistoryPage
@@ -309,6 +312,9 @@ export const en: Record<TranslationKey, string> = {
   'player.gameListCount': 'Game List ({count})',
   'player.notFound': 'Player not found',
   'player.backToHistory': 'Back to History',
+  'player.registered': 'Registered',
+  'player.unregistered': 'Unregistered',
+  'player.registerPrompt': 'Register to track history',
 
   // Penalty
   'penalty.title': 'Record Penalty',

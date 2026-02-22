@@ -8,28 +8,35 @@ import { eq } from 'drizzle-orm';
 const playerRoutes = new Hono();
 
 /** Merge registered users into player list so they appear even with 0 games */
-function mergeRegisteredUsers(players: PlayerRecord[]): PlayerRecord[] {
+function mergeRegisteredUsers(players: PlayerRecord[]): (PlayerRecord & { isRegistered: boolean })[] {
   const db = getDb();
   const users = db.select({ username: registeredUsers.username })
     .from(registeredUsers)
     .where(eq(registeredUsers.emailVerified, 1))
     .all();
 
+  const registeredNames = new Set(users.map(u => u.username.toLowerCase()));
   const existingNames = new Set(players.map(p => p.name.toLowerCase()));
+
+  const result: (PlayerRecord & { isRegistered: boolean })[] = players.map(p => ({
+    ...p,
+    isRegistered: registeredNames.has(p.name.toLowerCase()),
+  }));
 
   for (const user of users) {
     if (!existingNames.has(user.username.toLowerCase())) {
-      players.push({
+      result.push({
         name: user.username,
         games: [],
         totalGames: 0,
         avgPlacement: 0,
         avgGameScore: 0,
+        isRegistered: true,
       });
     }
   }
 
-  return players.sort((a, b) => a.name.localeCompare(b.name));
+  return result.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // List all players
@@ -52,17 +59,19 @@ playerRoutes.get('/:name', (c) => {
   const name = decodeURIComponent(c.req.param('name'));
   const player = getPlayer(name);
 
-  if (player) {
-    return c.json(player);
-  }
-
-  // Check if this is a registered user without games
+  // Check if this name belongs to a registered user
   const db = getDb();
   const user = db.select({ username: registeredUsers.username })
     .from(registeredUsers)
-    .where(eq(registeredUsers.username, name))
-    .get();
+    .where(eq(registeredUsers.emailVerified, 1))
+    .all()
+    .find(u => u.username.toLowerCase() === name.toLowerCase());
 
+  if (player) {
+    return c.json({ ...player, isRegistered: !!user });
+  }
+
+  // Registered user without games
   if (user) {
     return c.json({
       name: user.username,
@@ -70,6 +79,7 @@ playerRoutes.get('/:name', (c) => {
       totalGames: 0,
       avgPlacement: 0,
       avgGameScore: 0,
+      isRegistered: true,
     });
   }
 

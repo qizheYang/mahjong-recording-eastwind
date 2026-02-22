@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
 import { useAdminStore } from '../stores/admin-store';
-import { getGameAnnotations, updateGameAnnotations } from '../lib/api';
+import { getGameAnnotations, updateGameAnnotations, searchRegisteredUsers } from '../lib/api';
 import { formatPoints, formatGameScore } from '../lib/format';
 import { useLocale } from '../i18n';
 
@@ -48,6 +48,17 @@ export function ResultsPage() {
       }
     }).catch(() => {});
   }, [adminToken, savedFilename]);
+
+  // Check if current player is registered
+  const [isPlayerRegistered, setIsPlayerRegistered] = useState<boolean | null>(null);
+  const myName = game?.players.find(p => p.id === playerId)?.name;
+
+  useEffect(() => {
+    if (!myName) return;
+    searchRegisteredUsers(myName).then(res => {
+      setIsPlayerRegistered(res.users.some(u => u.username.toLowerCase() === myName.toLowerCase()));
+    }).catch(() => {});
+  }, [myName]);
 
   function handleNewGame() {
     resetForNewGame();
@@ -225,6 +236,17 @@ export function ResultsPage() {
             {annotationSaving ? t('common.saving') : annotationSaved ? t('common.saved') : t('results.saveAnnotations')}
           </button>
         </div>
+      )}
+
+      {/* Registration CTA for unregistered players */}
+      {isPlayerRegistered === false && (
+        <Link
+          to="/register"
+          className="block bg-mahjong-card rounded-xl p-4 mb-6 text-center hover:ring-1 hover:ring-mahjong-gold/30 transition-all"
+        >
+          <p className="text-sm font-medium text-mahjong-gold mb-1">{t('results.registerCTA')}</p>
+          <p className="text-xs text-mahjong-muted">{t('results.registerHint')}</p>
+        </Link>
       )}
 
       {/* Actions */}

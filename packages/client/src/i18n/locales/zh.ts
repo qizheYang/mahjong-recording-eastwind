@@ -109,6 +109,7 @@ export const zh = {
   'lobby.readyUp': '准备',
   'lobby.waitingPlayers': '等待{count}位玩家加入',
   'lobby.notJoined': '未加入此房间',
+  'lobby.registerHint': '你还未注册，注册后可以追踪历史记录',
 
   // GamePage
   'game.recordHand': '记录本局',
@@ -266,6 +267,8 @@ export const zh = {
   'results.saveAnnotations': '保存标注',
   'results.copyResults': '复制结果',
   'results.newGame': '新对局',
+  'results.registerCTA': '注册你的账号',
+  'results.registerHint': '注册以追踪你的比赛记录',
   'results.shareTitle': '🀄 麻雀记录 - 对局结果',
 
   // HistoryPage
@@ -307,6 +310,9 @@ export const zh = {
   'player.gameListCount': '对局列表 ({count})',
   'player.notFound': '玩家不存在',
   'player.backToHistory': '返回记录',
+  'player.registered': '已注册',
+  'player.unregistered': '未注册',
+  'player.registerPrompt': '注册以追踪历史记录',
 
   // Penalty
   'penalty.title': '记录罚则',

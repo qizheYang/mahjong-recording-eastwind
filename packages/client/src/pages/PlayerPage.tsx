@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getPlayerRecord, listTags, type PlayerRecord, type PlayerGameEntry } from '../lib/api';
 import { useLocale } from '../i18n';
 
@@ -170,6 +170,20 @@ export function PlayerPage() {
       {/* Header */}
       <div className="text-center my-6">
         <h1 className="text-2xl font-bold">{player.name}</h1>
+        <div className="mt-1 flex items-center justify-center gap-2">
+          {player.isRegistered ? (
+            <span className="text-xs px-2 py-0.5 rounded bg-mahjong-green/20 text-mahjong-green font-medium">
+              {t('player.registered')}
+            </span>
+          ) : (
+            <Link
+              to="/register"
+              className="text-xs px-2 py-0.5 rounded bg-mahjong-card text-mahjong-muted hover:text-white transition-colors"
+            >
+              {t('player.unregistered')} → {t('player.registerPrompt')}
+            </Link>
+          )}
+        </div>
         <p className="text-mahjong-muted text-xs mt-1">
           {t('player.gamesPlayed', { count: player.totalGames })}
         </p>

@@ -111,6 +111,7 @@ export const ja: Record<TranslationKey, string> = {
   'lobby.readyUp': '準備',
   'lobby.waitingPlayers': 'あと{count}人待機中',
   'lobby.notJoined': 'この部屋に参加していません',
+  'lobby.registerHint': '未登録です。登録すると履歴を追跡できます。',
 
   // GamePage
   'game.recordHand': '局を記録',
@@ -268,6 +269,8 @@ export const ja: Record<TranslationKey, string> = {
   'results.saveAnnotations': '保存',
   'results.copyResults': '結果をコピー',
   'results.newGame': '新しい対局',
+  'results.registerCTA': 'アカウントを登録',
+  'results.registerHint': '登録してゲーム履歴を追跡しましょう',
   'results.shareTitle': '🀄 麻雀記録 - 対局結果',
 
   // HistoryPage
@@ -309,6 +312,9 @@ export const ja: Record<TranslationKey, string> = {
   'player.gameListCount': '対局一覧 ({count})',
   'player.notFound': 'プレイヤーが見つかりません',
   'player.backToHistory': '記録に戻る',
+  'player.registered': '登録済み',
+  'player.unregistered': '未登録',
+  'player.registerPrompt': '登録して履歴を追跡',
 
   // Penalty
   'penalty.title': '罰則を記録',

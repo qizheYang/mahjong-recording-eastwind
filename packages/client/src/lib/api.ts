@@ -117,6 +117,7 @@ export interface PlayerRecord {
   totalGames: number;
   avgPlacement: number;
   avgGameScore: number;
+  isRegistered?: boolean;
 }
 
 export async function listPlayerRecords(query?: string): Promise<{ players: PlayerRecord[] }> {
