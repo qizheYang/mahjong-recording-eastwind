@@ -1,7 +1,7 @@
 /**
  * SMS OTP service using Twilio.
- * Gracefully degrades when Twilio credentials are not configured —
- * OTP codes are logged to console in dev mode for testing.
+ * When Twilio credentials are not configured, OTP is skipped entirely —
+ * users are registered as verified immediately.
  */
 
 import Twilio from 'twilio';
@@ -21,27 +21,30 @@ function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000)); // 6-digit code
 }
 
+/** Whether SMS verification is available */
+export function isOtpEnabled(): boolean {
+  return twilioEnabled;
+}
+
 export async function sendOtp(phone: string): Promise<{ sent: boolean }> {
+  if (!client || !FROM_NUMBER) {
+    return { sent: false };
+  }
+
   const code = generateOtp();
   const expiresAt = Date.now() + OTP_TTL_MS;
   otpStore.set(phone, { code, expiresAt });
 
-  if (client && FROM_NUMBER) {
-    try {
-      await client.messages.create({
-        body: `Your verification code is: ${code}`,
-        from: FROM_NUMBER,
-        to: phone,
-      });
-      return { sent: true };
-    } catch (err) {
-      console.error('[SMS] Failed to send OTP:', err);
-      return { sent: false };
-    }
-  } else {
-    // Dev mode fallback: log to console
-    console.log(`[SMS-DEV] OTP for ${phone}: ${code}`);
+  try {
+    await client.messages.create({
+      body: `Your verification code is: ${code}`,
+      from: FROM_NUMBER,
+      to: phone,
+    });
     return { sent: true };
+  } catch (err) {
+    console.error('[SMS] Failed to send OTP:', err);
+    return { sent: false };
   }
 }
 

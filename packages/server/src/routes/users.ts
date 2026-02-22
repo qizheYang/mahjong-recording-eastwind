@@ -3,11 +3,13 @@ import { nanoid } from 'nanoid';
 import { getDb } from '../db/connection.js';
 import { registeredUsers } from '../db/schema.js';
 import { eq, like, and } from 'drizzle-orm';
-import { sendOtp, verifyOtp } from '../services/sms-service.js';
+import { sendOtp, verifyOtp, isOtpEnabled } from '../services/sms-service.js';
 
 const userRoutes = new Hono();
 
-// Register a new user (sends OTP)
+// Register a new user
+// When Twilio is configured: creates unverified user + sends OTP
+// When Twilio is NOT configured: creates immediately verified user (no OTP needed)
 userRoutes.post('/register', async (c) => {
   const body = await c.req.json<{ username: string; phone: string }>();
   if (!body.username?.trim() || !body.phone?.trim()) {
@@ -25,28 +27,32 @@ userRoutes.post('/register', async (c) => {
     return c.json({ error: 'Username already taken' }, 409);
   }
 
-  // Create user record (unverified)
+  const otpEnabled = isOtpEnabled();
   const now = Date.now();
   const id = nanoid();
+
   db.insert(registeredUsers).values({
     id,
     username,
     phone,
-    phoneVerified: 0,
+    phoneVerified: otpEnabled ? 0 : 1, // Auto-verify when OTP not available
     createdAt: now,
     updatedAt: now,
   }).run();
 
-  // Send OTP
-  const result = await sendOtp(phone);
-  if (!result.sent) {
-    return c.json({ error: 'Failed to send verification code' }, 500);
+  if (otpEnabled) {
+    const result = await sendOtp(phone);
+    if (!result.sent) {
+      return c.json({ error: 'Failed to send verification code' }, 500);
+    }
+    return c.json({ id, username, phone, needsVerification: true });
   }
 
-  return c.json({ id, username, phone, codeSent: true });
+  // No OTP — user is immediately verified
+  return c.json({ id, username, phone, needsVerification: false });
 });
 
-// Verify phone with OTP code
+// Verify phone with OTP code (only used when Twilio is configured)
 userRoutes.post('/verify', async (c) => {
   const body = await c.req.json<{ phone: string; code: string }>();
   if (!body.phone?.trim() || !body.code?.trim()) {
@@ -70,7 +76,7 @@ userRoutes.post('/verify', async (c) => {
   return c.json({ verified: true });
 });
 
-// Resend OTP
+// Resend OTP (only used when Twilio is configured)
 userRoutes.post('/resend-otp', async (c) => {
   const body = await c.req.json<{ phone: string }>();
   if (!body.phone?.trim()) {

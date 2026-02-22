@@ -29,8 +29,12 @@ export function RegisterPage() {
     setLoading(true);
     setError('');
     try {
-      await registerUser(username.trim(), fullPhone);
-      setStep('verify');
+      const res = await registerUser(username.trim(), fullPhone);
+      if (res.needsVerification) {
+        setStep('verify');
+      } else {
+        setStep('success');
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -118,7 +122,7 @@ export function RegisterPage() {
               className="w-full py-3 rounded-xl bg-mahjong-highlight text-white font-bold text-lg
                 disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
-              {loading ? t('user.sendingCode') : t('user.sendCode')}
+              {loading ? t('common.loading') : t('user.register')}
             </button>
             <button
               onClick={() => navigate('/')}
