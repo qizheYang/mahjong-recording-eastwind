@@ -104,9 +104,9 @@ roomRoutes.delete('/:code', (c) => {
   // Check admin auth
   const adminUser = getAdminFromHeader(c.req.header('Authorization'));
   if (adminUser) {
-    // Admin can kill rooms with < 4 players
-    if (room.players.length >= 4) {
-      return c.json({ error: '无法解散满员房间 (Cannot kill full room)' }, 400);
+    // Admin can kill any room that hasn't started a game
+    if (room.status !== 'waiting') {
+      return c.json({ error: '对局中无法解散 (Cannot kill room with game in progress)' }, 400);
     }
     roomManager.killRoom(code, 'Admin disbanded room');
     return c.json({ ok: true });

@@ -165,7 +165,7 @@ export function HomePage() {
                         <span className="text-xs text-mahjong-muted">
                           {g.status === 'waiting' ? t('home.waitingCount', { n: g.playerNames.length }) : g.status === 'playing' ? t('home.playing') : t('home.finished')}
                         </span>
-                        {adminToken && g.playerNames.length < 4 && (
+                        {adminToken && g.status === 'waiting' && (
                           <button
                             onClick={async () => {
                               try {

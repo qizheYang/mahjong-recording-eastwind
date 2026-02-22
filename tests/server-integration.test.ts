@@ -9,6 +9,7 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { serve } from '@hono/node-server';
 import { createApp } from '../packages/server/src/app';
 import { createAdmin, signIn } from '../packages/server/src/services/admin-service';
+import { roomManager } from '../packages/server/src/ws/room-manager';
 import WebSocket from 'ws';
 import type { ServerEvent, ClientEvent } from '@mahjong/shared';
 import type { Server } from 'http';
@@ -1053,10 +1054,12 @@ describe('Kill Room', () => {
     expect(check.status).toBe(200);
   });
 
-  it('admin can kill room with < 4 players', async () => {
+  it('admin can kill waiting room even with 4 players', async () => {
     const create = await apiPost('/api/rooms', { playerName: 'P1' });
     const code = create.data.roomCode;
     await apiPost(`/api/rooms/${code}/join`, { playerName: 'P2' });
+    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P3' });
+    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P4' });
 
     const res = await apiDelete(`/api/rooms/${code}`, { Authorization: `Bearer ${adminToken}` });
     expect(res.status).toBe(200);
@@ -1067,12 +1070,20 @@ describe('Kill Room', () => {
     expect(check.status).toBe(404);
   });
 
-  it('admin cannot kill full room', async () => {
+  it('admin cannot kill room with game in progress', async () => {
     const create = await apiPost('/api/rooms', { playerName: 'P1' });
     const code = create.data.roomCode;
+    const hostId = create.data.playerId;
     await apiPost(`/api/rooms/${code}/join`, { playerName: 'P2' });
     await apiPost(`/api/rooms/${code}/join`, { playerName: 'P3' });
     await apiPost(`/api/rooms/${code}/join`, { playerName: 'P4' });
+
+    // Start the game via WS
+    const ws = track(await connectWs(code, hostId));
+    await ws.waitForEvent('room_state');
+    const room = roomManager.getRoom(code)!;
+    ws.send({ type: 'start_game', seatOrder: room.players.map(p => p.id) });
+    await ws.waitForEvent('game_started');
 
     const res = await apiDelete(`/api/rooms/${code}`, { Authorization: `Bearer ${adminToken}` });
     expect(res.status).toBe(400);
@@ -1080,6 +1091,7 @@ describe('Kill Room', () => {
     // Room should still exist
     const check = await apiGet(`/api/rooms/${code}`);
     expect(check.status).toBe(200);
+    ws.close();
   });
 
   it('connected players receive room_killed event', async () => {
