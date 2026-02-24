@@ -112,6 +112,8 @@ export const ja: Record<TranslationKey, string> = {
   'lobby.waitingPlayers': 'あと{count}人待機中',
   'lobby.notJoined': 'この部屋に参加していません',
   'lobby.registerHint': '未登録です。登録すると履歴を追跡できます。',
+  'lobby.customStartingPoints': 'カスタム配給原点',
+  'lobby.customStartingPointsDesc': '各プレイヤーの配給原点を個別に設定',
 
   // GamePage
   'game.recordHand': '局を記録',

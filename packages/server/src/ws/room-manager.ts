@@ -219,7 +219,7 @@ export class RoomManager {
     return result;
   }
 
-  startGame(roomCode: string, seatOrder: string[], customRuleset?: Partial<Ruleset>, tags?: string[], teams?: { playerId: string; team: string }[]): Game | { error: string } {
+  startGame(roomCode: string, seatOrder: string[], customRuleset?: Partial<Ruleset>, tags?: string[], teams?: { playerId: string; team: string }[], playerStartingPoints?: Record<string, number>): Game | { error: string } {
     const state = this.rooms.get(roomCode);
     if (!state) return { error: '房间不存在' };
     if (state.room.players.length !== 4) return { error: '需要4位玩家 (Need 4 players)' };
@@ -243,7 +243,7 @@ export class RoomManager {
         name: player.name,
         ...(player.phone ? { phone: player.phone } : {}),
         ...(teamMap.get(id) ? { team: teamMap.get(id) } : {}),
-        points: ruleset.startingPoints,
+        points: playerStartingPoints?.[id] ?? ruleset.startingPoints,
         initialSeat: WINDS[i],
       };
     });

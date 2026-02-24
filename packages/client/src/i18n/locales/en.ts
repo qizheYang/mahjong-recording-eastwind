@@ -112,6 +112,8 @@ export const en: Record<TranslationKey, string> = {
   'lobby.waitingPlayers': 'Waiting for {count} player(s)',
   'lobby.notJoined': 'Not joined to this room',
   'lobby.registerHint': 'You are not registered. Register to track your game history.',
+  'lobby.customStartingPoints': 'Custom Starting Points',
+  'lobby.customStartingPointsDesc': 'Set different starting points for each player',
 
   // GamePage
   'game.recordHand': 'Record Hand',

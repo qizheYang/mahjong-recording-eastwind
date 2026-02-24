@@ -89,7 +89,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
     }
 
     case 'start_game': {
-      const result = roomManager.startGame(roomCode, event.seatOrder, event.ruleset, event.tags, event.teams);
+      const result = roomManager.startGame(roomCode, event.seatOrder, event.ruleset, event.tags, event.teams, event.playerStartingPoints);
       if ('error' in result) {
         sendError(ws, result.error, 'START_ERROR');
         return;

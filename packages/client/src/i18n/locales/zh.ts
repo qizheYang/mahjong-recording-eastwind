@@ -110,6 +110,8 @@ export const zh = {
   'lobby.waitingPlayers': '等待{count}位玩家加入',
   'lobby.notJoined': '未加入此房间',
   'lobby.registerHint': '你还未注册，注册后可以追踪历史记录',
+  'lobby.customStartingPoints': '自定义起始点数',
+  'lobby.customStartingPointsDesc': '为每位玩家设置不同的起始点数',
 
   // GamePage
   'game.recordHand': '记录本局',

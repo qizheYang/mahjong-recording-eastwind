@@ -1,6 +1,6 @@
 {
   "name": "mahjong-recording",
-  "version": "1.6.3-beta",
+  "version": "1.6.4-beta",
   "private": true,
   "workspaces": [
     "packages/shared",

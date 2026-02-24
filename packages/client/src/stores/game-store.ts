@@ -29,6 +29,10 @@ interface GameStore {
   // Wind assignments (for lobby, team mode)
   windAssignments: Record<string, Wind>; // playerId -> wind
 
+  // Per-player starting points (for lobby)
+  customStartingPointsEnabled: boolean;
+  playerStartingPoints: Record<string, number>; // playerId -> points
+
   // UI state
   error: string | null;
   errorCode: string | null;
@@ -45,6 +49,8 @@ interface GameStore {
   clearTeamAssignments: () => void;
   setWindAssignment: (playerId: string, wind: Wind) => void;
   clearWindAssignments: () => void;
+  setCustomStartingPointsEnabled: (enabled: boolean) => void;
+  setPlayerStartingPoints: (playerId: string, points: number) => void;
   startGame: (seatOrder: string[], ruleset?: Partial<Ruleset>) => void;
   recordHand: (result: HandResultInput) => void;
   editHand: (handNumber: number, result: HandResultInput) => void;
@@ -72,6 +78,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameTags: [],
   teamAssignments: {},
   windAssignments: {},
+  customStartingPointsEnabled: false,
+  playerStartingPoints: {},
   error: null,
   errorCode: null,
 
@@ -87,6 +95,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         roomCode, playerId,
         room: null, game: null, finalScores: null, teamScores: null, savedFilename: null,
         connected: false, customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {},
+        customStartingPointsEnabled: false, playerStartingPoints: {},
       });
     } else {
       set({ roomCode, playerId });
@@ -273,6 +282,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ windAssignments: {} });
   },
 
+  setCustomStartingPointsEnabled(enabled: boolean) {
+    set({ customStartingPointsEnabled: enabled, playerStartingPoints: {} });
+  },
+
+  setPlayerStartingPoints(playerId: string, points: number) {
+    set((state) => ({
+      playerStartingPoints: { ...state.playerStartingPoints, [playerId]: points },
+    }));
+  },
+
   startGame(seatOrder: string[], ruleset?: Partial<Ruleset>) {
     const r = ruleset ?? get().customRuleset;
     const tags = get().gameTags;
@@ -282,12 +301,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const teams = nonEmptyTeams.length > 0
       ? nonEmptyTeams.map(([playerId, team]) => ({ playerId, team }))
       : undefined;
+    const { customStartingPointsEnabled, playerStartingPoints } = get();
+    const psp = customStartingPointsEnabled && Object.keys(playerStartingPoints).length > 0
+      ? playerStartingPoints
+      : undefined;
     wsClient?.send({
       type: 'start_game',
       seatOrder,
       ...(hasCustom ? { ruleset: r } : {}),
       ...(tags.length > 0 ? { tags } : {}),
       ...(teams ? { teams } : {}),
+      ...(psp ? { playerStartingPoints: psp } : {}),
     });
   },
 
@@ -324,6 +348,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resetForNewGame() {
-    set({ game: null, finalScores: null, teamScores: null, savedFilename: null, customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {} });
+    set({ game: null, finalScores: null, teamScores: null, savedFilename: null, customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {}, customStartingPointsEnabled: false, playerStartingPoints: {} });
   },
 }));

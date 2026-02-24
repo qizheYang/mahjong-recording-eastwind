@@ -13,9 +13,11 @@ export function LobbyPage() {
   const { t } = useLocale();
   const {
     room, game, playerId, connected, customRuleset, gameTags, teamAssignments, windAssignments,
+    customStartingPointsEnabled, playerStartingPoints,
     errorCode,
     connect, toggleReady, swapSeats, startGame, setSession, setRuleset, toggleTag,
-    setTeamAssignment, clearTeamAssignments, setWindAssignment, clearWindAssignments, clearError,
+    setTeamAssignment, clearTeamAssignments, setWindAssignment, clearWindAssignments,
+    setCustomStartingPointsEnabled, setPlayerStartingPoints, clearError,
   } = useGameStore();
 
   const [copied, setCopied] = useState(false);
@@ -711,6 +713,49 @@ export function LobbyPage() {
           }
         }}
       />
+
+      {/* Custom Starting Points per Player */}
+      {totalPlayers === 4 && room && (
+        <div className="mt-3 px-4 py-2 rounded-xl bg-mahjong-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm text-white">{t('lobby.customStartingPoints')}</span>
+              <p className="text-xs text-mahjong-muted">{t('lobby.customStartingPointsDesc')}</p>
+            </div>
+            <button
+              onClick={() => setCustomStartingPointsEnabled(!customStartingPointsEnabled)}
+              className={`w-11 h-6 rounded-full p-0.5 transition-colors flex items-center
+                ${customStartingPointsEnabled ? 'bg-mahjong-gold' : 'bg-mahjong-bg border border-mahjong-accent'}`}
+            >
+              <span className={`w-5 h-5 rounded-full bg-white block transition-transform
+                ${customStartingPointsEnabled ? 'translate-x-5' : 'translate-x-0'}`}
+              />
+            </button>
+          </div>
+          {customStartingPointsEnabled && (
+            <div className="mt-3 space-y-2">
+              {room.players.map((player, idx) => (
+                <div key={player.id} className="flex items-center gap-2">
+                  <span className="w-6 text-center text-sm font-bold text-mahjong-gold shrink-0">
+                    {t(`mahjong.wind.${WINDS[idx]}`)}
+                  </span>
+                  <span className="text-sm text-white flex-1 truncate">{player.name}</span>
+                  <input
+                    type="number"
+                    value={playerStartingPoints[player.id] ?? ruleStarting}
+                    onChange={e => {
+                      const v = parseInt(e.target.value);
+                      if (!isNaN(v)) setPlayerStartingPoints(player.id, v);
+                    }}
+                    className="w-28 px-2 py-1.5 rounded-lg bg-mahjong-bg border border-mahjong-accent
+                      text-white text-sm font-mono text-right focus:outline-none focus:border-mahjong-highlight"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Game Tags */}
       <div className="mt-3 px-4 py-2 rounded-xl bg-mahjong-card">
