@@ -483,9 +483,9 @@ export function HistoryPage() {
                     onClick={() => handleToggle(g.filename)}
                     className="w-full text-left px-4 py-3 active:bg-mahjong-accent/30 transition-colors"
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-mahjong-muted">{g.date}</span>
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between mb-1 gap-2">
+                      <span className="text-sm text-mahjong-muted shrink-0">{g.date}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
                         {g.interrupted && (
                           <span className="text-xs bg-mahjong-highlight/20 text-mahjong-highlight px-1.5 py-0.5 rounded">
                             {t('history.interrupted')}
@@ -506,14 +506,14 @@ export function HistoryPage() {
                     {g.finalScores.length > 0 ? (
                       <div className="space-y-0.5">
                         {g.finalScores.map(s => (
-                          <div key={s.name} className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className={`font-bold w-4 text-center ${PLACEMENT_COLORS[s.placement - 1]}`}>
+                          <div key={s.name} className="flex items-center justify-between text-sm gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`font-bold w-4 shrink-0 text-center ${PLACEMENT_COLORS[s.placement - 1]}`}>
                                 {s.placement}
                               </span>
-                              <span className="font-medium">{s.name}</span>
+                              <span className="font-medium truncate">{s.name}</span>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 shrink-0">
                               <span className="text-mahjong-muted font-mono text-xs">
                                 {s.rawPoints.toLocaleString()}
                               </span>
@@ -621,19 +621,19 @@ export function HistoryPage() {
                           <h3 className="text-xs text-mahjong-muted mb-2">{t('history.finalScores')}</h3>
                           <div className="space-y-1.5 mb-4">
                             {expandedRecord.finalScores.map(s => (
-                              <div key={s.name} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2">
-                                  <span className={`font-bold ${PLACEMENT_COLORS[s.placement - 1]}`}>
+                              <div key={s.name} className="flex items-center justify-between text-sm gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className={`font-bold shrink-0 ${PLACEMENT_COLORS[s.placement - 1]}`}>
                                     {s.placement}
                                   </span>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); navigate(`/player/${encodeURIComponent(s.name)}`); }}
-                                    className="hover:text-mahjong-gold transition-colors underline underline-offset-2 decoration-mahjong-accent"
+                                    className="hover:text-mahjong-gold transition-colors underline underline-offset-2 decoration-mahjong-accent truncate"
                                   >
                                     {s.name}
                                   </button>
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 shrink-0">
                                   <span className="text-mahjong-muted font-mono text-xs">
                                     {s.rawPoints.toLocaleString()}
                                   </span>
