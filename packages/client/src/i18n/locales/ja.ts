@@ -8,6 +8,7 @@ export const ja: Record<TranslationKey, string> = {
   'common.save': '保存',
   'common.saved': '保存済',
   'common.saving': '保存中...',
+  'common.deleting': '削除中...',
   'common.submit': '送信',
   'common.next': '次へ',
   'common.backToHome': 'ホームに戻る',
@@ -124,9 +125,8 @@ export const ja: Record<TranslationKey, string> = {
   'game.recordPenalty': '罰則',
   'game.forceQuit': '強制終了',
   'game.forceQuitTitle': '強制終了',
-  'game.forceQuitConfirm': '対局がまだ終わっていません。強制終了しますか？',
-  'game.keepRecord': '記録を保持 (中断)',
-  'game.discard': '記録しない',
+  'game.forceQuitConfirm': '対局がまだ終わっていません。終了して保存しますか？',
+  'game.endAndSave': '終了して保存',
 
   // RecordHandModal
   'record.title': '局を記録',
@@ -271,6 +271,8 @@ export const ja: Record<TranslationKey, string> = {
   'results.saveAnnotations': '保存',
   'results.copyResults': '結果をコピー',
   'results.newGame': '新しい対局',
+  'results.deleteRecord': '記録を削除',
+  'results.deleteRecordConfirm': 'この対局記録を削除しますか？この操作は元に戻せません。',
   'results.registerCTA': 'アカウントを登録',
   'results.registerHint': '登録してゲーム履歴を追跡しましょう',
   'results.shareTitle': '🀄 麻雀記録 - 対局結果',

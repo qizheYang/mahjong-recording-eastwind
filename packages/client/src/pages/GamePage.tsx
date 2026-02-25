@@ -261,18 +261,11 @@ export function GamePage() {
               {t('game.forceQuitConfirm')}
             </p>
             <button
-              onClick={() => { forceQuitGame(true); setShowForceQuit(false); }}
+              onClick={() => { forceQuitGame(); setShowForceQuit(false); }}
               className="w-full py-3 rounded-xl bg-mahjong-accent text-white font-bold
                 active:scale-[0.98] transition-transform"
             >
-              {t('game.keepRecord')}
-            </button>
-            <button
-              onClick={() => { forceQuitGame(false); setShowForceQuit(false); }}
-              className="w-full py-3 rounded-xl bg-mahjong-highlight text-white font-bold
-                active:scale-[0.98] transition-transform"
-            >
-              {t('game.discard')}
+              {t('game.endAndSave')}
             </button>
             <button
               onClick={() => setShowForceQuit(false)}

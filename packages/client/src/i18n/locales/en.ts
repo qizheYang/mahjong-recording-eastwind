@@ -8,6 +8,7 @@ export const en: Record<TranslationKey, string> = {
   'common.save': 'Save',
   'common.saved': 'Saved',
   'common.saving': 'Saving...',
+  'common.deleting': 'Deleting...',
   'common.submit': 'Submit',
   'common.next': 'Next',
   'common.backToHome': 'Back to Home',
@@ -124,9 +125,8 @@ export const en: Record<TranslationKey, string> = {
   'game.recordPenalty': 'Penalty',
   'game.forceQuit': 'Force Quit Game',
   'game.forceQuitTitle': 'Force Quit',
-  'game.forceQuitConfirm': 'Game is not finished. Force quit?',
-  'game.keepRecord': 'Keep Record (interrupted)',
-  'game.discard': 'Discard',
+  'game.forceQuitConfirm': 'Game is not finished. End and save?',
+  'game.endAndSave': 'End & Save',
 
   // RecordHandModal
   'record.title': 'Record Hand',
@@ -271,6 +271,8 @@ export const en: Record<TranslationKey, string> = {
   'results.saveAnnotations': 'Save',
   'results.copyResults': 'Copy Results',
   'results.newGame': 'New Game',
+  'results.deleteRecord': 'Delete Record',
+  'results.deleteRecordConfirm': 'Delete this game record? This cannot be undone.',
   'results.registerCTA': 'Register your account',
   'results.registerHint': 'Register to track your game history',
   'results.shareTitle': '🀄 Mahjong Recorder - Game Results',

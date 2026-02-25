@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
 import { useAdminStore } from '../stores/admin-store';
-import { getGameAnnotations, updateGameAnnotations, searchRegisteredUsers } from '../lib/api';
+import { getGameAnnotations, updateGameAnnotations, searchRegisteredUsers, deleteGame } from '../lib/api';
 import { formatPoints, formatGameScore } from '../lib/format';
 import { useLocale } from '../i18n';
 
@@ -60,9 +60,25 @@ export function ResultsPage() {
     }).catch(() => {});
   }, [myName]);
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   function handleNewGame() {
     resetForNewGame();
     navigate(`/lobby/${roomCode}`);
+  }
+
+  async function handleDeleteRecord() {
+    if (!savedFilename) return;
+    setDeleting(true);
+    try {
+      await deleteGame(savedFilename);
+      resetForNewGame();
+      navigate('/');
+    } catch {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   }
 
   async function handleSaveAnnotations() {
@@ -271,7 +287,45 @@ export function ResultsPage() {
         >
           {t('common.backToHome')}
         </button>
+        {savedFilename && (
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-full py-2 text-mahjong-highlight/60 text-xs
+              active:scale-[0.98] transition-transform"
+          >
+            {t('results.deleteRecord')}
+          </button>
+        )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="relative w-full max-w-xs bg-mahjong-bg rounded-2xl p-5 space-y-4">
+            <h3 className="text-lg font-bold text-center text-mahjong-highlight">
+              {t('results.deleteRecord')}
+            </h3>
+            <p className="text-sm text-mahjong-muted text-center">
+              {t('results.deleteRecordConfirm')}
+            </p>
+            <button
+              onClick={handleDeleteRecord}
+              disabled={deleting}
+              className="w-full py-3 rounded-xl bg-mahjong-highlight text-white font-bold
+                active:scale-[0.98] transition-transform disabled:opacity-50"
+            >
+              {deleting ? t('common.deleting') : t('results.deleteRecord')}
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="w-full py-2 text-mahjong-muted text-sm"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

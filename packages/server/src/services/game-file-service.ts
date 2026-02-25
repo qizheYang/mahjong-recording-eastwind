@@ -10,6 +10,7 @@ mkdirSync(GAMES_DIR, { recursive: true });
 export interface GameRecord {
   id: string;
   roomCode: string;
+  status?: 'in_progress';
   players: {
     name: string;
     phone?: string;
@@ -107,18 +108,68 @@ function sanitizeName(name: string): string {
     || 'player';                          // fallback if name becomes empty
 }
 
-/**
- * Save a completed game as a detailed JSON file.
- * Filename: YYYYMMDDHHmmSS-CODE-player1-player2-player3-player4.json
- */
-export function saveGameRecord(game: Game, finalScores: FinalScore[], options?: { interrupted?: boolean }, teamScores?: { teamName: string; playerIndices: number[]; totalGameScore: number; placement: number }[]): string {
-  const now = new Date();
-  const timestamp = toLA_Timestamp(now);
+/** Generate a game filename using start time */
+function generateGameFilename(game: Game): string {
+  const startTime = new Date(game.hands[0]?.recordedAt || Date.now());
+  const timestamp = toLA_Timestamp(startTime);
   const playerNames = game.players.map(p => sanitizeName(p.name)).join('-');
-  const filename = `${timestamp}-${game.roomCode}-${playerNames}.json`;
-  const filepath = join(GAMES_DIR, filename);
+  return `${timestamp}-${game.roomCode}-${playerNames}.json`;
+}
 
-  const record: GameRecord = {
+/** Build the hands array for a GameRecord */
+function buildHandsRecord(game: Game): GameRecord['hands'] {
+  return game.hands.map(hand => {
+    const r = hand.result;
+    const pointsBefore: Record<string, number> = {};
+    const pointsAfter: Record<string, number> = {};
+    const pointDeltas: Record<string, number> = {};
+
+    game.players.forEach((p, i) => {
+      pointsBefore[p.name] = hand.pointsBefore[i];
+      pointsAfter[p.name] = hand.pointsAfter[i];
+      pointDeltas[p.name] = hand.pointsAfter[i] - hand.pointsBefore[i];
+    });
+
+    const roundLabel = `${WIND_LABELS[hand.round.wind] || hand.round.wind}${hand.round.number}`;
+
+    const result: GameRecord['hands'][0]['result'] = { type: r.type };
+    if (r.type === 'agari') {
+      result.winner = game.players[r.winnerIndex]?.name;
+      result.loser = r.loserIndex !== null ? game.players[r.loserIndex]?.name : undefined;
+      result.method = r.isTsumo ? 'tsumo' : 'ron';
+      result.han = r.han;
+      result.fu = r.fu;
+      result.pointsWon = r.pointsWon;
+      result.honbaBonus = r.honbaBonus;
+      result.riichiSticksCollected = r.riichiSticksCollected;
+    } else {
+      result.tenpaiPlayers = r.tenpaiStatus
+        .map((t, i) => t ? game.players[i]?.name : null)
+        .filter((n): n is string => n !== null);
+    }
+
+    const riichiPlayerNames = (hand.riichiPlayers ?? [])
+      .map((r, i) => r ? game.players[i]?.name : null)
+      .filter((n): n is string => n !== null);
+
+    return {
+      handNumber: hand.handNumber,
+      round: roundLabel,
+      dealer: game.players[hand.dealerIndex]?.name,
+      honba: hand.honba,
+      riichiSticksOnTable: hand.riichiSticksOnTable,
+      ...(riichiPlayerNames.length > 0 ? { riichiPlayers: riichiPlayerNames } : {}),
+      result,
+      pointsBefore,
+      pointsAfter,
+      pointDeltas,
+    };
+  });
+}
+
+/** Build the common record fields shared by in-progress and finalized saves */
+function buildBaseRecord(game: Game): Omit<GameRecord, 'finalScores' | 'endedAt' | 'totalHands'> {
+  return {
     id: game.id,
     roomCode: game.roomCode,
     players: game.players.map(p => ({
@@ -133,53 +184,47 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[], options?: 
       uma: [...game.ruleset.uma],
       ...(game.ruleset.teamMode ? { teamMode: true } : {}),
     },
-    hands: game.hands.map(hand => {
-      const r = hand.result;
-      const pointsBefore: Record<string, number> = {};
-      const pointsAfter: Record<string, number> = {};
-      const pointDeltas: Record<string, number> = {};
+    hands: buildHandsRecord(game),
+    startedAt: toLA_ISO(new Date(game.hands[0]?.recordedAt || Date.now())),
+    tags: game.tags ?? [],
+  };
+}
 
-      game.players.forEach((p, i) => {
-        pointsBefore[p.name] = hand.pointsBefore[i];
-        pointsAfter[p.name] = hand.pointsAfter[i];
-        pointDeltas[p.name] = hand.pointsAfter[i] - hand.pointsBefore[i];
-      });
+/**
+ * Save an in-progress game. Creates or updates the JSON file.
+ * Returns the filename.
+ */
+export function saveInProgressGame(game: Game, existingFilename?: string): string {
+  const filename = existingFilename || generateGameFilename(game);
+  const filepath = join(GAMES_DIR, filename);
 
-      const roundLabel = `${WIND_LABELS[hand.round.wind] || hand.round.wind}${hand.round.number}`;
+  const record: GameRecord = {
+    ...buildBaseRecord(game),
+    status: 'in_progress',
+    finalScores: [],
+    endedAt: '',
+    totalHands: game.hands.length,
+  };
 
-      const result: GameRecord['hands'][0]['result'] = { type: r.type };
-      if (r.type === 'agari') {
-        result.winner = game.players[r.winnerIndex]?.name;
-        result.loser = r.loserIndex !== null ? game.players[r.loserIndex]?.name : undefined;
-        result.method = r.isTsumo ? 'tsumo' : 'ron';
-        result.han = r.han;
-        result.fu = r.fu;
-        result.pointsWon = r.pointsWon;
-        result.honbaBonus = r.honbaBonus;
-        result.riichiSticksCollected = r.riichiSticksCollected;
-      } else {
-        result.tenpaiPlayers = r.tenpaiStatus
-          .map((t, i) => t ? game.players[i]?.name : null)
-          .filter((n): n is string => n !== null);
-      }
+  writeFileSync(filepath, JSON.stringify(record, null, 2), 'utf-8');
+  return filename;
+}
 
-      const riichiPlayerNames = (hand.riichiPlayers ?? [])
-        .map((r, i) => r ? game.players[i]?.name : null)
-        .filter((n): n is string => n !== null);
+/**
+ * Finalize a game record: write final scores and remove in_progress status.
+ * Returns the filename.
+ */
+export function finalizeGameRecord(
+  game: Game,
+  finalScores: FinalScore[],
+  existingFilename: string,
+  options?: { interrupted?: boolean },
+  teamScores?: { teamName: string; playerIndices: number[]; totalGameScore: number; placement: number }[],
+): string {
+  const filepath = join(GAMES_DIR, existingFilename);
 
-      return {
-        handNumber: hand.handNumber,
-        round: roundLabel,
-        dealer: game.players[hand.dealerIndex]?.name,
-        honba: hand.honba,
-        riichiSticksOnTable: hand.riichiSticksOnTable,
-        ...(riichiPlayerNames.length > 0 ? { riichiPlayers: riichiPlayerNames } : {}),
-        result,
-        pointsBefore,
-        pointsAfter,
-        pointDeltas,
-      };
-    }),
+  const record: GameRecord = {
+    ...buildBaseRecord(game),
     finalScores: finalScores.map(s => ({
       placement: s.placement,
       name: s.name,
@@ -189,21 +234,28 @@ export function saveGameRecord(game: Game, finalScores: FinalScore[], options?: 
     })),
     ...(teamScores && teamScores.length > 0 ? { teamScores } : {}),
     ...(options?.interrupted ? { interrupted: true } : {}),
-    startedAt: toLA_ISO(new Date(game.hands[0]?.recordedAt || Date.now())),
-    endedAt: toLA_ISO(now),
+    endedAt: toLA_ISO(new Date()),
     totalHands: game.hands.length,
-    tags: game.tags ?? [],
   };
 
   writeFileSync(filepath, JSON.stringify(record, null, 2), 'utf-8');
-  console.log(`Game record saved: ${filepath}`);
-  return filename;
+  console.log(`Game record finalized: ${filepath}`);
+  return existingFilename;
+}
+
+/**
+ * Save a completed game as a detailed JSON file (legacy, used by tests).
+ * Filename: YYYYMMDDHHmmSS-CODE-player1-player2-player3-player4.json
+ */
+export function saveGameRecord(game: Game, finalScores: FinalScore[], options?: { interrupted?: boolean }, teamScores?: { teamName: string; playerIndices: number[]; totalGameScore: number; placement: number }[]): string {
+  const filename = generateGameFilename(game);
+  return finalizeGameRecord(game, finalScores, filename, options, teamScores);
 }
 
 /**
  * List all saved game records.
  */
-export function listGameRecords(): { filename: string; date: string; roomCode: string; players: string; tags: string[]; isOfficialGame: boolean; interrupted: boolean; finalScores: { placement: number; name: string; rawPoints: number; gameScore: number }[] }[] {
+export function listGameRecords(): { filename: string; date: string; roomCode: string; players: string; tags: string[]; isOfficialGame: boolean; interrupted: boolean; inProgress: boolean; finalScores: { placement: number; name: string; rawPoints: number; gameScore: number }[] }[] {
   if (!existsSync(GAMES_DIR)) return [];
 
   return readdirSync(GAMES_DIR)
@@ -223,12 +275,14 @@ export function listGameRecords(): { filename: string; date: string; roomCode: s
       let tags: string[] = [];
       let isOfficialGame = false;
       let interrupted = false;
+      let inProgress = false;
       let finalScores: { placement: number; name: string; rawPoints: number; gameScore: number }[] = [];
       try {
         const record = JSON.parse(readFileSync(join(GAMES_DIR, f), 'utf-8'));
         tags = record.tags ?? [];
         isOfficialGame = record.adminAnnotations?.isOfficialGame ?? false;
         interrupted = record.interrupted ?? false;
+        inProgress = record.status === 'in_progress';
         finalScores = (record.finalScores ?? []).map((s: any) => ({
           placement: s.placement,
           name: s.name,
@@ -237,7 +291,7 @@ export function listGameRecords(): { filename: string; date: string; roomCode: s
         }));
       } catch { /* ignore */ }
 
-      return { filename: f, date, roomCode, players, tags, isOfficialGame, interrupted, finalScores };
+      return { filename: f, date, roomCode, players, tags, isOfficialGame, interrupted, inProgress, finalScores };
     });
 }
 

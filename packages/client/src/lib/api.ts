@@ -99,6 +99,10 @@ export async function getGame(filename: string): Promise<any> {
   return request(`/games/${encodeURIComponent(filename)}`);
 }
 
+export async function deleteGame(filename: string): Promise<{ deleted: string }> {
+  return request(`/games/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+}
+
 // Player database
 export interface PlayerGameEntry {
   filename: string;

@@ -2,7 +2,7 @@ import type { WSContext, WSMessageReceive } from 'hono/ws';
 import type { ClientEvent, ServerEvent, Game, FinalScore, TeamScore } from '@mahjong/shared';
 import { calculateTeamScores } from '@mahjong/shared';
 import { roomManager } from './room-manager.js';
-import { saveGameRecord, getGameRecord } from '../services/game-file-service.js';
+import { saveInProgressGame, finalizeGameRecord, getGameRecord } from '../services/game-file-service.js';
 import { updatePlayerDB } from '../services/player-db.js';
 
 interface ConnectionContext {
@@ -71,7 +71,8 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
           const seatOrder = room.players.map(p => p.id);
           const game = roomManager.startGame(roomCode, seatOrder);
           if (!('error' in game)) {
-            roomManager.broadcast(roomCode, { type: 'game_started', game });
+            const savedFilename = autoSave(roomCode, game);
+            roomManager.broadcast(roomCode, { type: 'game_started', game, ...(savedFilename ? { savedFilename } : {}) });
           }
         }
       }
@@ -94,7 +95,8 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         sendError(ws, result.error, 'START_ERROR');
         return;
       }
-      roomManager.broadcast(roomCode, { type: 'game_started', game: result });
+      const savedFilename = autoSave(roomCode, result);
+      roomManager.broadcast(roomCode, { type: 'game_started', game: result, ...(savedFilename ? { savedFilename } : {}) });
       break;
     }
 
@@ -108,11 +110,10 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
       const { hand, game } = result;
 
       if (game.status === 'completed') {
-        // Game ended naturally (All Last conditions met)
+        // Game ended naturally — finalize the saved file
+        const savedFilename = finalizeGame(roomCode, game);
         const finalScores = roomManager.getGameFinalScores(roomCode);
         const teamScores = getTeamScores(game, finalScores ?? []);
-        // Save game record to JSON file
-        const savedFilename = saveGameToFile(game, finalScores ?? [], undefined, teamScores);
         roomManager.broadcast(roomCode, {
           type: 'game_ended',
           game,
@@ -121,7 +122,8 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
           ...(teamScores ? { teamScores } : {}),
         });
       } else {
-        roomManager.broadcast(roomCode, { type: 'hand_recorded', hand, game });
+        const savedFilename = autoSave(roomCode, game);
+        roomManager.broadcast(roomCode, { type: 'hand_recorded', hand, game, ...(savedFilename ? { savedFilename } : {}) });
       }
       break;
     }
@@ -134,9 +136,9 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
       }
 
       if (result.status === 'completed') {
+        const savedFilename = finalizeGame(roomCode, result);
         const finalScores = roomManager.getGameFinalScores(roomCode);
         const teamScores = getTeamScores(result, finalScores ?? []);
-        const savedFilename = saveGameToFile(result, finalScores ?? [], undefined, teamScores);
         roomManager.broadcast(roomCode, {
           type: 'game_ended',
           game: result,
@@ -145,6 +147,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
           ...(teamScores ? { teamScores } : {}),
         });
       } else {
+        autoSave(roomCode, result);
         roomManager.broadcast(roomCode, { type: 'hand_edited', game: result });
       }
       break;
@@ -156,6 +159,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         sendError(ws, result.error, 'UNDO_ERROR');
         return;
       }
+      autoSave(roomCode, result);
       roomManager.broadcast(roomCode, { type: 'hand_undone', game: result });
       break;
     }
@@ -166,6 +170,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         sendError(ws, result.error, 'RECORD_ERROR');
         return;
       }
+      autoSave(roomCode, result.game);
       roomManager.broadcast(roomCode, { type: 'penalty_recorded', penalty: result.penalty, game: result.game });
       break;
     }
@@ -176,6 +181,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         sendError(ws, result.error, 'UNDO_ERROR');
         return;
       }
+      autoSave(roomCode, result);
       roomManager.broadcast(roomCode, { type: 'penalty_undone', game: result });
       break;
     }
@@ -186,9 +192,8 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         sendError(ws, result.error, 'END_ERROR');
         return;
       }
+      const savedFilename = finalizeGame(roomCode, result.game, undefined, result.finalScores);
       const teamScores = getTeamScores(result.game, result.finalScores);
-      // Save game record to JSON file
-      const savedFilename = saveGameToFile(result.game, result.finalScores, undefined, teamScores);
       roomManager.broadcast(roomCode, {
         type: 'game_ended',
         game: result.game,
@@ -205,11 +210,9 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         sendError(ws, result.error, 'END_ERROR');
         return;
       }
+      // Always save — game is finalized as interrupted
+      const savedFilename = finalizeGame(roomCode, result.game, { interrupted: true }, result.finalScores);
       const teamScores = getTeamScores(result.game, result.finalScores);
-      let savedFilename: string | null = null;
-      if (event.keepRecord) {
-        savedFilename = saveGameToFile(result.game, result.finalScores, { interrupted: true }, teamScores);
-      }
       roomManager.broadcast(roomCode, {
         type: 'game_ended',
         game: result.game,
@@ -245,9 +248,35 @@ function getTeamScores(game: Game, finalScores: FinalScore[]): TeamScore[] | nul
   return scores.length > 0 ? scores : null;
 }
 
-function saveGameToFile(game: Game, finalScores: FinalScore[], options?: { interrupted?: boolean }, teamScores?: TeamScore[] | null): string | null {
+/** Auto-save in-progress game state to disk */
+function autoSave(roomCode: string, game: Game): string | null {
   try {
-    const filename = saveGameRecord(game, finalScores, options, teamScores ?? undefined);
+    const existing = roomManager.getSavedFilename(roomCode);
+    const filename = saveInProgressGame(game, existing ?? undefined);
+    if (!existing) {
+      roomManager.setSavedFilename(roomCode, filename);
+    }
+    return filename;
+  } catch (err) {
+    console.error('Failed to auto-save game:', err);
+    return null;
+  }
+}
+
+/** Finalize a game: write final scores, update player DB */
+function finalizeGame(roomCode: string, game: Game, options?: { interrupted?: boolean }, precomputedScores?: FinalScore[]): string | null {
+  try {
+    const existing = roomManager.getSavedFilename(roomCode);
+    if (!existing) {
+      // No in-progress file yet — shouldn't happen, but handle gracefully
+      console.warn('No in-progress file found for room', roomCode);
+    }
+    const finalScores = precomputedScores ?? roomManager.getGameFinalScores(roomCode) ?? [];
+    const teamScores = getTeamScores(game, finalScores);
+    // If we have an existing file, finalize it; otherwise create one
+    const filename = existing
+      ? finalizeGameRecord(game, finalScores, existing, options, teamScores ?? undefined)
+      : finalizeGameRecord(game, finalScores, saveInProgressGame(game), options, teamScores ?? undefined);
     // Update player database
     const record = getGameRecord(filename);
     if (record) {
@@ -255,7 +284,7 @@ function saveGameToFile(game: Game, finalScores: FinalScore[], options?: { inter
     }
     return filename;
   } catch (err) {
-    console.error('Failed to save game record:', err);
+    console.error('Failed to finalize game record:', err);
     return null;
   }
 }

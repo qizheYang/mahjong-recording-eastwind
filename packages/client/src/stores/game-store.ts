@@ -58,7 +58,7 @@ interface GameStore {
   recordPenalty: (penalty: PenaltyInput) => void;
   undoPenalty: () => void;
   endGame: () => void;
-  forceQuitGame: (keepRecord: boolean) => void;
+  forceQuitGame: () => void;
   clearError: () => void;
   resetForNewGame: () => void;
 }
@@ -176,11 +176,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
           break;
 
         case 'game_started':
-          set({ game: event.game, finalScores: null });
+          set({ game: event.game, finalScores: null, savedFilename: event.savedFilename ?? null });
           break;
 
         case 'hand_recorded':
-          set({ game: event.game });
+          set({ game: event.game, ...(event.savedFilename ? { savedFilename: event.savedFilename } : {}) });
           break;
 
         case 'hand_undone':
@@ -339,8 +339,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     wsClient?.send({ type: 'end_game' });
   },
 
-  forceQuitGame(keepRecord: boolean) {
-    wsClient?.send({ type: 'force_quit_game', keepRecord });
+  forceQuitGame() {
+    wsClient?.send({ type: 'force_quit_game' });
   },
 
   clearError() {

@@ -9,11 +9,14 @@ import {
   recordPenalty, undoLastPenalty,
 } from '@mahjong/shared';
 import { nanoid } from 'nanoid';
+import { saveInProgressGame, finalizeGameRecord, getGameRecord } from '../services/game-file-service.js';
+import { updatePlayerDB } from '../services/player-db.js';
 
 interface RoomState {
   room: Room;
   connections: Map<string, WSContext>; // playerId -> ws
   lastActivityAt: number;
+  savedFilename: string | null;
 }
 
 // Characters that won't be confused (no 0/O, 1/I/L)
@@ -48,6 +51,21 @@ export class RoomManager {
     for (const [code, state] of this.rooms) {
       if (now - state.lastActivityAt >= INACTIVITY_TIMEOUT) {
         console.log(`Cleaning up inactive room ${code} (idle ${Math.round((now - state.lastActivityAt) / 60000)}min)`);
+
+        // Auto-save in-progress game as interrupted before cleanup
+        const game = state.room.currentGame;
+        if (game && state.savedFilename) {
+          try {
+            const finalScores = calculateFinalScores(game.players, game.riichiSticks, game.ruleset, game.penalties);
+            const filename = finalizeGameRecord(game, finalScores, state.savedFilename, { interrupted: true });
+            const record = getGameRecord(filename);
+            if (record) updatePlayerDB(record, filename);
+            console.log(`Auto-saved interrupted game for room ${code}: ${filename}`);
+          } catch (err) {
+            console.error(`Failed to auto-save game for room ${code}:`, err);
+          }
+        }
+
         // Close any remaining WebSocket connections
         for (const ws of state.connections.values()) {
           try { ws.close(); } catch { /* ignore */ }
@@ -75,7 +93,7 @@ export class RoomManager {
       creatorId: playerId,
     };
 
-    this.rooms.set(code, { room, connections: new Map(), lastActivityAt: Date.now() });
+    this.rooms.set(code, { room, connections: new Map(), lastActivityAt: Date.now(), savedFilename: null });
 
     return { roomCode: code, playerId };
   }
@@ -183,6 +201,15 @@ export class RoomManager {
 
   getRoom(roomCode: string): Room | null {
     return this.rooms.get(roomCode)?.room ?? null;
+  }
+
+  getSavedFilename(roomCode: string): string | null {
+    return this.rooms.get(roomCode)?.savedFilename ?? null;
+  }
+
+  setSavedFilename(roomCode: string, filename: string): void {
+    const state = this.rooms.get(roomCode);
+    if (state) state.savedFilename = filename;
   }
 
   listRooms() {
@@ -385,6 +412,7 @@ export class RoomManager {
 
     state.room.currentGame = null;
     state.room.status = 'waiting';
+    state.savedFilename = null;
     state.room.players.forEach(p => { p.seatWind = null; p.ready = false; });
     this.touch(roomCode);
 

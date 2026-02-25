@@ -15,7 +15,7 @@ export type ClientEvent =
   | { type: 'record_penalty'; penalty: PenaltyInput }
   | { type: 'undo_penalty' }
   | { type: 'end_game' }
-  | { type: 'force_quit_game'; keepRecord: boolean };
+  | { type: 'force_quit_game' };
 
 export interface PenaltyInput {
   type: 'final_score' | 'immediate';
@@ -59,8 +59,8 @@ export type ServerEvent =
   | { type: 'player_left'; playerId: string }
   | { type: 'player_ready'; playerId: string; ready: boolean }
   | { type: 'seats_swapped'; players: Player[] }
-  | { type: 'game_started'; game: Game }
-  | { type: 'hand_recorded'; hand: Hand; game: Game }
+  | { type: 'game_started'; game: Game; savedFilename?: string }
+  | { type: 'hand_recorded'; hand: Hand; game: Game; savedFilename?: string }
   | { type: 'hand_undone'; game: Game }
   | { type: 'hand_edited'; game: Game }
   | { type: 'penalty_recorded'; penalty: Penalty; game: Game }

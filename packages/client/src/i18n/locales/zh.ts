@@ -6,6 +6,7 @@ export const zh = {
   'common.save': '保存',
   'common.saved': '已保存',
   'common.saving': '保存中...',
+  'common.deleting': '删除中...',
   'common.submit': '提交',
   'common.next': '下一步',
   'common.backToHome': '返回首页',
@@ -122,9 +123,8 @@ export const zh = {
   'game.recordPenalty': '罚则',
   'game.forceQuit': '强制结束',
   'game.forceQuitTitle': '强制结束',
-  'game.forceQuitConfirm': '对局尚未结束，确定要强制结束吗？',
-  'game.keepRecord': '保留记录 (中断)',
-  'game.discard': '不保留',
+  'game.forceQuitConfirm': '对局尚未结束，结束并保存？',
+  'game.endAndSave': '结束并保存',
 
   // RecordHandModal
   'record.title': '记录本局',
@@ -269,6 +269,8 @@ export const zh = {
   'results.saveAnnotations': '保存标注',
   'results.copyResults': '复制结果',
   'results.newGame': '新对局',
+  'results.deleteRecord': '删除记录',
+  'results.deleteRecordConfirm': '确定删除此对局记录？此操作不可撤销。',
   'results.registerCTA': '注册你的账号',
   'results.registerHint': '注册以追踪你的比赛记录',
   'results.shareTitle': '🀄 麻雀记录 - 对局结果',
