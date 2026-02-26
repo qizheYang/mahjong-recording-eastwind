@@ -13,7 +13,7 @@ export function ResultsPage() {
   const navigate = useNavigate();
   const { t } = useLocale();
   const {
-    game, finalScores, teamScores, savedFilename, playerId, connected,
+    game, finalScores, teamScores, savedFilename, wasForceQuit, playerId, connected,
     connect, setSession, resetForNewGame, leaveRoom,
   } = useGameStore();
   const { token: adminToken } = useAdminStore();
@@ -265,6 +265,20 @@ export function ResultsPage() {
         </Link>
       )}
 
+      {/* Force-quit: prominent delete option */}
+      {wasForceQuit && savedFilename && (
+        <div className="bg-mahjong-card rounded-xl p-4 mb-6 border border-mahjong-highlight/30">
+          <p className="text-sm text-mahjong-muted text-center mb-3">{t('results.forceQuitHint')}</p>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-full py-3 rounded-xl bg-mahjong-highlight text-white font-bold
+              active:scale-[0.98] transition-transform"
+          >
+            {t('results.deleteRecord')}
+          </button>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="mt-auto space-y-3 pb-4">
         <button
@@ -287,7 +301,7 @@ export function ResultsPage() {
         >
           {t('common.backToHome')}
         </button>
-        {savedFilename && (
+        {!wasForceQuit && savedFilename && (
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="w-full py-2 text-mahjong-highlight/60 text-xs

@@ -271,6 +271,7 @@ export const en: Record<TranslationKey, string> = {
   'results.saveAnnotations': 'Save',
   'results.copyResults': 'Copy Results',
   'results.newGame': 'New Game',
+  'results.forceQuitHint': 'Game was interrupted. Delete the record if not needed.',
   'results.deleteRecord': 'Delete Record',
   'results.deleteRecordConfirm': 'Delete this game record? This cannot be undone.',
   'results.registerCTA': 'Register your account',

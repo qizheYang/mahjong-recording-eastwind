@@ -269,6 +269,7 @@ export const zh = {
   'results.saveAnnotations': '保存标注',
   'results.copyResults': '复制结果',
   'results.newGame': '新对局',
+  'results.forceQuitHint': '对局被中断，不需要的记录可以删除',
   'results.deleteRecord': '删除记录',
   'results.deleteRecordConfirm': '确定删除此对局记录？此操作不可撤销。',
   'results.registerCTA': '注册你的账号',

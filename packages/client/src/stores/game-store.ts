@@ -16,6 +16,7 @@ interface GameStore {
   finalScores: FinalScore[] | null;
   teamScores: TeamScore[] | null;
   savedFilename: string | null;
+  wasForceQuit: boolean;
 
   // Ruleset config (for lobby)
   customRuleset: Partial<Ruleset>;
@@ -75,6 +76,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   finalScores: null,
   teamScores: null,
   savedFilename: null,
+  wasForceQuit: false,
   customRuleset: {},
   gameTags: [],
   teamAssignments: {},
@@ -341,6 +343,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   forceQuitGame() {
+    set({ wasForceQuit: true });
     wsClient?.send({ type: 'force_quit_game' });
   },
 
@@ -349,7 +352,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resetForNewGame() {
-    set({ game: null, finalScores: null, teamScores: null, savedFilename: null, customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {}, customStartingPointsEnabled: false, playerStartingPoints: {} });
+    set({ game: null, finalScores: null, teamScores: null, savedFilename: null, wasForceQuit: false, customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {}, customStartingPointsEnabled: false, playerStartingPoints: {} });
   },
 
   leaveRoom() {
@@ -362,6 +365,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       roomCode: null, playerId: null, connected: false,
       room: null, game: null, finalScores: null, teamScores: null, savedFilename: null,
+      wasForceQuit: false,
       customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {},
       customStartingPointsEnabled: false, playerStartingPoints: {},
       error: null, errorCode: null,

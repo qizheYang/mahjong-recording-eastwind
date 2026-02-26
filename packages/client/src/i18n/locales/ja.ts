@@ -271,6 +271,7 @@ export const ja: Record<TranslationKey, string> = {
   'results.saveAnnotations': '保存',
   'results.copyResults': '結果をコピー',
   'results.newGame': '新しい対局',
+  'results.forceQuitHint': '対局が中断されました。不要な記録は削除できます。',
   'results.deleteRecord': '記録を削除',
   'results.deleteRecordConfirm': 'この対局記録を削除しますか？この操作は元に戻せません。',
   'results.registerCTA': 'アカウントを登録',
