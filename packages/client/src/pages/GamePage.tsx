@@ -16,7 +16,7 @@ export function GamePage() {
   const navigate = useNavigate();
   const { t } = useLocale();
   const {
-    room, game, finalScores, playerId, connected,
+    room, game, finalScores, playerId, connected, roomCode: storeRoomCode,
     connect, setSession,
     recordHand, editHand, undoLastHand, recordPenalty, undoPenalty,
     endGame, forceQuitGame, error, errorCode, clearError,
@@ -31,8 +31,8 @@ export function GamePage() {
 
   // Restore session
   useEffect(() => {
-    const storedRoom = sessionStorage.getItem('roomCode');
-    const storedPlayer = sessionStorage.getItem('playerId');
+    const storedRoom = localStorage.getItem('roomCode');
+    const storedPlayer = localStorage.getItem('playerId');
     if (storedRoom === roomCode && storedPlayer && !playerId) {
       setSession(storedRoom, storedPlayer);
     }
@@ -58,6 +58,13 @@ export function GamePage() {
       navigate(`/lobby/${roomCode}`);
     }
   }, [connected, room, game, roomCode, navigate]);
+
+  // Redirect home if session was invalidated (e.g. INVALID_ROOM error)
+  useEffect(() => {
+    if (!storeRoomCode && !playerId) {
+      navigate('/', { replace: true });
+    }
+  }, [storeRoomCode, playerId, navigate]);
 
   function handleRecordHand(result: HandResultInput) {
     if (editingHandNumber !== null) {

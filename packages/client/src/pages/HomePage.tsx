@@ -43,6 +43,15 @@ export function HomePage() {
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
 
+  // Auto-rejoin: if there's a saved session, redirect back to the game/lobby
+  useEffect(() => {
+    const savedRoom = localStorage.getItem('roomCode');
+    const savedPlayer = localStorage.getItem('playerId');
+    if (savedRoom && savedPlayer) {
+      navigate(`/game/${savedRoom}`, { replace: true });
+    }
+  }, [navigate]);
+
   useEffect(() => {
     let cancelled = false;
     async function fetchLive() {

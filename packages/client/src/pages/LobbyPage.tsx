@@ -14,10 +14,10 @@ export function LobbyPage() {
   const {
     room, game, playerId, connected, customRuleset, gameTags, teamAssignments, windAssignments,
     customStartingPointsEnabled, playerStartingPoints,
-    errorCode,
+    roomCode: storeRoomCode, errorCode,
     connect, toggleReady, swapSeats, startGame, setSession, setRuleset, toggleTag,
     setTeamAssignment, clearTeamAssignments, setWindAssignment, clearWindAssignments,
-    setCustomStartingPointsEnabled, setPlayerStartingPoints, clearError,
+    setCustomStartingPointsEnabled, setPlayerStartingPoints, clearError, leaveRoom,
   } = useGameStore();
 
   const [copied, setCopied] = useState(false);
@@ -83,8 +83,8 @@ export function LobbyPage() {
 
   // Restore session from storage if needed
   useEffect(() => {
-    const storedRoom = sessionStorage.getItem('roomCode');
-    const storedPlayer = sessionStorage.getItem('playerId');
+    const storedRoom = localStorage.getItem('roomCode');
+    const storedPlayer = localStorage.getItem('playerId');
     if (storedRoom === roomCode && storedPlayer && !playerId) {
       setSession(storedRoom, storedPlayer);
     }
@@ -104,13 +104,19 @@ export function LobbyPage() {
     }
   }, [game, roomCode, navigate]);
 
-  // Redirect on room killed
+  // Redirect on room killed or session invalidated
   useEffect(() => {
     if (errorCode === 'ROOM_KILLED') {
       clearError();
       navigate('/');
     }
   }, [errorCode, clearError, navigate]);
+
+  useEffect(() => {
+    if (!storeRoomCode && !playerId) {
+      navigate('/', { replace: true });
+    }
+  }, [storeRoomCode, playerId, navigate]);
 
   function handleCopyCode() {
     navigator.clipboard.writeText(roomCode || '');
@@ -200,8 +206,9 @@ export function LobbyPage() {
     if (!window.confirm(t('lobby.killRoomConfirm'))) return;
     try {
       await killRoom(roomCode, playerId);
+      leaveRoom();
       navigate('/');
-    } catch { /* room may already be gone */ navigate('/'); }
+    } catch { /* room may already be gone */ leaveRoom(); navigate('/'); }
   }
 
   function handleSoloStart() {
@@ -304,7 +311,7 @@ export function LobbyPage() {
         <div className="text-center">
           <p className="text-mahjong-muted mb-4">{t('lobby.notJoined')}</p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => { leaveRoom(); navigate('/'); }}
             className="px-6 py-2 rounded-lg bg-mahjong-accent text-white"
           >
             {t('common.backToHome')}

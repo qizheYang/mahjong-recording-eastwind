@@ -6,10 +6,10 @@ import { useLocale } from '../i18n';
 type Step = 'form' | 'success';
 
 function getReturnPath(): string {
-  const roomCode = sessionStorage.getItem('roomCode');
+  const roomCode = localStorage.getItem('roomCode');
   if (!roomCode) return '/';
   // Check if there's an active game or lobby to return to
-  const game = sessionStorage.getItem('playerId');
+  const game = localStorage.getItem('playerId');
   if (game) return `/game/${roomCode}`;
   return '/';
 }

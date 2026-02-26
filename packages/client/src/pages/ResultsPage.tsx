@@ -14,7 +14,7 @@ export function ResultsPage() {
   const { t } = useLocale();
   const {
     game, finalScores, teamScores, savedFilename, playerId, connected,
-    connect, setSession, resetForNewGame,
+    connect, setSession, resetForNewGame, leaveRoom,
   } = useGameStore();
   const { token: adminToken } = useAdminStore();
   const [isOfficial, setIsOfficial] = useState(false);
@@ -24,8 +24,8 @@ export function ResultsPage() {
 
   // Restore session
   useEffect(() => {
-    const storedRoom = sessionStorage.getItem('roomCode');
-    const storedPlayer = sessionStorage.getItem('playerId');
+    const storedRoom = localStorage.getItem('roomCode');
+    const storedPlayer = localStorage.getItem('playerId');
     if (storedRoom === roomCode && storedPlayer && !playerId) {
       setSession(storedRoom, storedPlayer);
     }
@@ -73,7 +73,7 @@ export function ResultsPage() {
     setDeleting(true);
     try {
       await deleteGame(savedFilename);
-      resetForNewGame();
+      leaveRoom();
       navigate('/');
     } catch {
       setDeleting(false);
@@ -282,7 +282,7 @@ export function ResultsPage() {
           {t('results.newGame')}
         </button>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => { leaveRoom(); navigate('/'); }}
           className="w-full py-2 text-mahjong-muted text-sm"
         >
           {t('common.backToHome')}

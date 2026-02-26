@@ -61,6 +61,7 @@ interface GameStore {
   forceQuitGame: () => void;
   clearError: () => void;
   resetForNewGame: () => void;
+  leaveRoom: () => void;
 }
 
 let wsClient: WsClient | null = null;
@@ -101,8 +102,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({ roomCode, playerId });
     }
     // Persist for reconnection
-    sessionStorage.setItem('roomCode', roomCode);
-    sessionStorage.setItem('playerId', playerId);
+    localStorage.setItem('roomCode', roomCode);
+    localStorage.setItem('playerId', playerId);
   },
 
   connect() {
@@ -204,8 +205,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           break;
 
         case 'room_killed':
-          sessionStorage.removeItem('roomCode');
-          sessionStorage.removeItem('playerId');
+          localStorage.removeItem('roomCode');
+          localStorage.removeItem('playerId');
           if (wsClient) {
             wsClient.disconnect();
             wsClient = null;
@@ -217,8 +218,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           set({ error: event.message, errorCode: event.code ?? null });
           // Invalid room/player — clear stale session so we don't retry on reload
           if (event.code === 'INVALID_ROOM') {
-            sessionStorage.removeItem('roomCode');
-            sessionStorage.removeItem('playerId');
+            localStorage.removeItem('roomCode');
+            localStorage.removeItem('playerId');
             if (wsClient) {
               wsClient.disconnect();
               wsClient = null;
@@ -349,5 +350,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   resetForNewGame() {
     set({ game: null, finalScores: null, teamScores: null, savedFilename: null, customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {}, customStartingPointsEnabled: false, playerStartingPoints: {} });
+  },
+
+  leaveRoom() {
+    localStorage.removeItem('roomCode');
+    localStorage.removeItem('playerId');
+    if (wsClient) {
+      wsClient.disconnect();
+      wsClient = null;
+    }
+    set({
+      roomCode: null, playerId: null, connected: false,
+      room: null, game: null, finalScores: null, teamScores: null, savedFilename: null,
+      customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {},
+      customStartingPointsEnabled: false, playerStartingPoints: {},
+      error: null, errorCode: null,
+    });
   },
 }));
