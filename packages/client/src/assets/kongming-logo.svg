@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- Background: rounded mahjong tile shape -->
+  <rect x="10" y="10" width="100" height="100" rx="14" ry="14"
+        fill="#1a3a2a" stroke="#c9a84c" stroke-width="2.5"/>
+
+  <!-- Feathered fan (Zhuge Liang's 羽扇) -->
+  <!-- Fan ribs radiating from bottom center -->
+  <g stroke="#c9a84c" stroke-width="1.8" stroke-linecap="round" fill="none">
+    <!-- Left outer rib -->
+    <path d="M60 82 L28 32"/>
+    <!-- Left-center rib -->
+    <path d="M60 82 L38 28"/>
+    <!-- Center-left rib -->
+    <path d="M60 82 L48 25"/>
+    <!-- Center rib -->
+    <path d="M60 82 L60 23"/>
+    <!-- Center-right rib -->
+    <path d="M60 82 L72 25"/>
+    <!-- Right-center rib -->
+    <path d="M60 82 L82 28"/>
+    <!-- Right outer rib -->
+    <path d="M60 82 L92 32"/>
+  </g>
+
+  <!-- Fan surface (translucent fill between ribs) -->
+  <path d="M28 32 C33 22, 45 18, 60 23 C75 18, 87 22, 92 32 L60 82 Z"
+        fill="#2d5a3d" opacity="0.7"/>
+
+  <!-- Decorative arc across the fan -->
+  <path d="M33 38 C43 28, 55 24, 60 23 C65 24, 77 28, 87 38"
+        stroke="#c9a84c" stroke-width="1.2" fill="none" opacity="0.6"/>
+  <path d="M38 48 C47 38, 55 34, 60 33 C65 34, 73 38, 82 48"
+        stroke="#c9a84c" stroke-width="1" fill="none" opacity="0.4"/>
+
+  <!-- Fan handle -->
+  <line x1="60" y1="82" x2="60" y2="100" stroke="#c9a84c" stroke-width="3" stroke-linecap="round"/>
+  <!-- Handle ornament -->
+  <circle cx="60" cy="100" r="3" fill="#c9a84c"/>
+
+  <!-- Small mahjong tile accent at fan center -->
+  <rect x="55" y="55" width="10" height="14" rx="2" ry="2"
+        fill="#e8dcc8" stroke="#8a7a5a" stroke-width="0.8"/>
+  <!-- 中 character on mini tile -->
+  <text x="60" y="66" text-anchor="middle" font-size="9" font-weight="bold"
+        fill="#c0392b" font-family="serif">中</text>
+</svg>

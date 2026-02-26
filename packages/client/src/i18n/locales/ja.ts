@@ -50,7 +50,7 @@ export const ja: Record<TranslationKey, string> = {
   'mahjong.tobi.disabled': '飛びなし',
 
   // HomePage
-  'home.title': '🀄 麻雀記録',
+  'home.title': '孔明システム',
   'home.subtitle': 'リーチ麻雀レコーダー',
   'home.mLeague': 'Mリーグルール',
   'home.createRoom': '部屋を作成',
@@ -276,7 +276,7 @@ export const ja: Record<TranslationKey, string> = {
   'results.deleteRecordConfirm': 'この対局記録を削除しますか？この操作は元に戻せません。',
   'results.registerCTA': 'アカウントを登録',
   'results.registerHint': '登録してゲーム履歴を追跡しましょう',
-  'results.shareTitle': '🀄 麻雀記録 - 対局結果',
+  'results.shareTitle': '孔明システム - 対局結果',
 
   // HistoryPage
   'history.title': '対局記録',

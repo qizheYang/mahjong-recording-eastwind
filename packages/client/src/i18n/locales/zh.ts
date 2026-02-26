@@ -48,7 +48,7 @@ export const zh = {
   'mahjong.tobi.disabled': '飞无',
 
   // HomePage
-  'home.title': '🀄 麻雀记录',
+  'home.title': '孔明系统',
   'home.subtitle': '立直麻将记录器',
   'home.mLeague': 'M联赛规则',
   'home.createRoom': '创建房间',
@@ -274,7 +274,7 @@ export const zh = {
   'results.deleteRecordConfirm': '确定删除此对局记录？此操作不可撤销。',
   'results.registerCTA': '注册你的账号',
   'results.registerHint': '注册以追踪你的比赛记录',
-  'results.shareTitle': '🀄 麻雀记录 - 对局结果',
+  'results.shareTitle': '孔明系统 - 对局结果',
 
   // HistoryPage
   'history.title': '对局记录',

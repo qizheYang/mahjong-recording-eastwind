@@ -50,7 +50,7 @@ export const en: Record<TranslationKey, string> = {
   'mahjong.tobi.disabled': 'Tobi OFF',
 
   // HomePage
-  'home.title': '🀄 Mahjong Recorder',
+  'home.title': 'Kong Ming',
   'home.subtitle': 'Riichi Mahjong Recorder',
   'home.mLeague': 'M-League Rules',
   'home.createRoom': 'Create Room',
@@ -276,7 +276,7 @@ export const en: Record<TranslationKey, string> = {
   'results.deleteRecordConfirm': 'Delete this game record? This cannot be undone.',
   'results.registerCTA': 'Register your account',
   'results.registerHint': 'Register to track your game history',
-  'results.shareTitle': '🀄 Mahjong Recorder - Game Results',
+  'results.shareTitle': 'Kong Ming - Game Results',
 
   // HistoryPage
   'history.title': 'Game History',

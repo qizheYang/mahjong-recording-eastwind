@@ -5,6 +5,7 @@ import { useGameStore } from '../stores/game-store';
 import { useAdminStore } from '../stores/admin-store';
 import { useUserStore } from '../stores/user-store';
 import { useLocale } from '../i18n';
+import kongmingLogo from '../assets/kongming-logo.svg';
 
 export function HomePage() {
   const [mode, setMode] = useState<'menu' | 'join'>('menu');
@@ -123,6 +124,7 @@ export function HomePage() {
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-8">
+          <img src={kongmingLogo} alt="Kong Ming" className="w-16 h-16 mx-auto mb-3" />
           <h1 className="text-4xl font-bold mb-2">{t('home.title')}</h1>
           <p className="text-mahjong-muted text-sm">{t('home.subtitle')}</p>
           <p className="text-mahjong-muted text-xs mt-1">{t('home.mLeague')}</p>
