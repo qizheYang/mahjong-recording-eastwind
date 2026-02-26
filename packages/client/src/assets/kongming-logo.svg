@@ -1,46 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-  <!-- Background: rounded mahjong tile shape -->
-  <rect x="10" y="10" width="100" height="100" rx="14" ry="14"
-        fill="#1a3a2a" stroke="#c9a84c" stroke-width="2.5"/>
+  <defs>
+    <linearGradient id="feather" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e84040"/>
+      <stop offset="50%" stop-color="#c0392b"/>
+      <stop offset="100%" stop-color="#8b1a1a"/>
+    </linearGradient>
+    <linearGradient id="featherGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0d060"/>
+      <stop offset="100%" stop-color="#c9a84c"/>
+    </linearGradient>
+  </defs>
 
-  <!-- Feathered fan (Zhuge Liang's 羽扇) -->
-  <!-- Fan ribs radiating from bottom center -->
-  <g stroke="#c9a84c" stroke-width="1.8" stroke-linecap="round" fill="none">
-    <!-- Left outer rib -->
-    <path d="M60 82 L28 32"/>
-    <!-- Left-center rib -->
-    <path d="M60 82 L38 28"/>
-    <!-- Center-left rib -->
-    <path d="M60 82 L48 25"/>
-    <!-- Center rib -->
-    <path d="M60 82 L60 23"/>
-    <!-- Center-right rib -->
-    <path d="M60 82 L72 25"/>
-    <!-- Right-center rib -->
-    <path d="M60 82 L82 28"/>
-    <!-- Right outer rib -->
-    <path d="M60 82 L92 32"/>
+  <!-- Outer plume feathers (vermilion bird tail feathers fanning out) -->
+  <!-- Far left feather -->
+  <path d="M60 88 Q30 55 18 22 Q24 18 30 22 Q38 48 60 88 Z" fill="url(#feather)" opacity="0.7"/>
+  <!-- Left feather -->
+  <path d="M60 88 Q36 50 28 16 Q34 12 40 16 Q44 44 60 88 Z" fill="url(#feather)" opacity="0.8"/>
+  <!-- Center-left feather -->
+  <path d="M60 88 Q46 46 42 10 Q48 7 54 10 Q52 42 60 88 Z" fill="url(#feather)" opacity="0.9"/>
+  <!-- Center feather -->
+  <path d="M60 88 Q58 44 60 6 Q64 6 66 6 Q64 44 60 88 Z" fill="url(#feather)"/>
+  <!-- Center-right feather -->
+  <path d="M60 88 Q74 46 78 10 Q72 7 66 10 Q68 42 60 88 Z" fill="url(#feather)" opacity="0.9"/>
+  <!-- Right feather -->
+  <path d="M60 88 Q84 50 92 16 Q86 12 80 16 Q76 44 60 88 Z" fill="url(#feather)" opacity="0.8"/>
+  <!-- Far right feather -->
+  <path d="M60 88 Q90 55 102 22 Q96 18 90 22 Q82 48 60 88 Z" fill="url(#feather)" opacity="0.7"/>
+
+  <!-- Gold feather veins / ribs -->
+  <g stroke="url(#featherGold)" stroke-width="1" stroke-linecap="round" fill="none" opacity="0.6">
+    <path d="M60 88 Q32 56 22 24"/>
+    <path d="M60 88 Q38 50 32 18"/>
+    <path d="M60 88 Q48 46 46 12"/>
+    <path d="M60 88 L60 8"/>
+    <path d="M60 88 Q72 46 74 12"/>
+    <path d="M60 88 Q82 50 88 18"/>
+    <path d="M60 88 Q88 56 98 24"/>
   </g>
 
-  <!-- Fan surface (translucent fill between ribs) -->
-  <path d="M28 32 C33 22, 45 18, 60 23 C75 18, 87 22, 92 32 L60 82 Z"
-        fill="#2d5a3d" opacity="0.7"/>
+  <!-- Decorative gold arcs across fan -->
+  <path d="M26 30 Q42 18 60 14 Q78 18 94 30" stroke="#c9a84c" stroke-width="1.2" fill="none" opacity="0.5"/>
+  <path d="M34 46 Q46 34 60 30 Q74 34 86 46" stroke="#c9a84c" stroke-width="1" fill="none" opacity="0.35"/>
+  <path d="M42 60 Q50 50 60 47 Q70 50 78 60" stroke="#c9a84c" stroke-width="0.8" fill="none" opacity="0.25"/>
 
-  <!-- Decorative arc across the fan -->
-  <path d="M33 38 C43 28, 55 24, 60 23 C65 24, 77 28, 87 38"
-        stroke="#c9a84c" stroke-width="1.2" fill="none" opacity="0.6"/>
-  <path d="M38 48 C47 38, 55 34, 60 33 C65 34, 73 38, 82 48"
-        stroke="#c9a84c" stroke-width="1" fill="none" opacity="0.4"/>
-
-  <!-- Fan handle -->
-  <line x1="60" y1="82" x2="60" y2="100" stroke="#c9a84c" stroke-width="3" stroke-linecap="round"/>
+  <!-- Handle -->
+  <line x1="60" y1="88" x2="60" y2="110" stroke="#c9a84c" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Handle binding wrap -->
+  <rect x="56.5" y="90" width="7" height="4" rx="1" fill="#a08030"/>
   <!-- Handle ornament -->
-  <circle cx="60" cy="100" r="3" fill="#c9a84c"/>
-
-  <!-- Small mahjong tile accent at fan center -->
-  <rect x="55" y="55" width="10" height="14" rx="2" ry="2"
-        fill="#e8dcc8" stroke="#8a7a5a" stroke-width="0.8"/>
-  <!-- 中 character on mini tile -->
-  <text x="60" y="66" text-anchor="middle" font-size="9" font-weight="bold"
-        fill="#c0392b" font-family="serif">中</text>
+  <circle cx="60" cy="112" r="3.5" fill="#c9a84c"/>
+  <circle cx="60" cy="112" r="1.8" fill="#8b1a1a"/>
 </svg>
