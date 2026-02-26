@@ -284,6 +284,9 @@ export const en: Record<TranslationKey, string> = {
   'history.playersTab': 'Players',
   'history.searchGames': 'Search player name (exact)...',
   'history.searchPlayers': 'Search player...',
+  'history.advancedSearch': 'Advanced Search (phone/email)',
+  'history.basicSearch': 'Back to Basic Search',
+  'history.searchByContact': 'Search by phone or email...',
   'history.from': 'From',
   'history.to': 'To',
   'history.interrupted': 'Interrupted',
@@ -355,6 +358,10 @@ export const en: Record<TranslationKey, string> = {
   'user.gongshizhanId': '公式战 ID',
   'user.registerSuccess': 'Registration successful!',
   'user.searchUser': 'Search user...',
+  'user.email': 'Email',
+  'user.emailPlaceholder': 'Enter email...',
+  'user.phone': 'Phone Number',
+  'user.phonePlaceholder': 'Enter phone number...',
 
   // Team mode
   'rules.teamMode': '2v2 Team Mode',

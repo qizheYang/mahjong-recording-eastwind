@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { listGames, getGame, listPlayerRecords, rebuildPlayerDB, getGameAnnotations, updateGameAnnotations, listTags, adminUpdateGameTags, adminDeleteTag, adminDeleteGame, type GameListItem, type PlayerRecord, type AdminAnnotations } from '../lib/api';
+import { listGames, getGame, listPlayerRecords, rebuildPlayerDB, getGameAnnotations, updateGameAnnotations, listTags, adminUpdateGameTags, adminDeleteTag, adminDeleteGame, searchPlayerByContact, type GameListItem, type PlayerRecord, type AdminAnnotations } from '../lib/api';
 import { useAdminStore } from '../stores/admin-store';
 import { useLocale } from '../i18n';
 
@@ -93,6 +93,10 @@ export function HistoryPage() {
   // Player sort
   type PlayerSort = 'name' | 'rank' | 'score' | 'games';
   const [playerSort, setPlayerSort] = useState<PlayerSort>('name');
+
+  // Advanced search (phone/email)
+  const [advancedSearch, setAdvancedSearch] = useState(false);
+  const [advancedResults, setAdvancedResults] = useState<PlayerRecord[] | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -193,6 +197,19 @@ export function HistoryPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [nameFilter]);
+
+  // Advanced search by phone/email (players tab)
+  useEffect(() => {
+    if (!advancedSearch) { setAdvancedResults(null); return; }
+    const q = nameFilter.trim();
+    if (q.length === 0) { setAdvancedResults(null); return; }
+    const timer = setTimeout(() => {
+      searchPlayerByContact(q)
+        .then(res => setAdvancedResults(res.players))
+        .catch(() => setAdvancedResults(null));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [nameFilter, advancedSearch]);
 
   async function handleToggle(filename: string) {
     if (expandedFile === filename) {
@@ -372,10 +389,18 @@ export function HistoryPage() {
           type="text"
           value={nameFilter}
           onChange={e => setNameFilter(e.target.value)}
-          placeholder={tab === 'games' ? t('history.searchGames') : t('history.searchPlayers')}
+          placeholder={tab === 'games' ? t('history.searchGames') : advancedSearch ? t('history.searchByContact') : t('history.searchPlayers')}
           className="w-full px-3 py-2 rounded-lg bg-mahjong-card border border-mahjong-accent
             text-white text-sm focus:outline-none focus:border-mahjong-highlight"
         />
+        {tab === 'players' && (
+          <button
+            onClick={() => { setAdvancedSearch(!advancedSearch); setAdvancedResults(null); }}
+            className="mt-1.5 text-xs text-mahjong-gold"
+          >
+            {advancedSearch ? t('history.basicSearch') : t('history.advancedSearch')}
+          </button>
+        )}
       </div>
 
       {error && <p className="text-mahjong-highlight text-sm mb-4">{error}</p>}
@@ -764,14 +789,17 @@ export function HistoryPage() {
             ))}
           </div>
 
-          {filteredPlayers.length === 0 && (
+          {(() => {
+            const displayPlayers = advancedSearch && advancedResults !== null ? advancedResults : filteredPlayers;
+            return (<>
+          {displayPlayers.length === 0 && (
             <p className="text-center text-mahjong-muted py-8">
-              {t('history.noPlayerData')}
+              {advancedSearch && nameFilter.trim() ? t('history.noPlayerData') : t('history.noPlayerData')}
             </p>
           )}
 
           <div className="space-y-2">
-            {filteredPlayers.map(p => (
+            {displayPlayers.map(p => (
               <button
                 key={p.name}
                 onClick={() => navigate(`/player/${encodeURIComponent(p.name)}`)}
@@ -802,6 +830,8 @@ export function HistoryPage() {
               </button>
             ))}
           </div>
+            </>);
+          })()}
         </div>
       )}
 

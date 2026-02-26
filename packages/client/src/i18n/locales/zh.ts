@@ -282,6 +282,9 @@ export const zh = {
   'history.playersTab': '玩家',
   'history.searchGames': '搜索玩家名称 (精确匹配)...',
   'history.searchPlayers': '搜索玩家...',
+  'history.advancedSearch': '高级搜索 (手机/邮箱)',
+  'history.basicSearch': '返回基本搜索',
+  'history.searchByContact': '输入手机号或邮箱搜索...',
   'history.from': '从',
   'history.to': '到',
   'history.interrupted': '中断',
@@ -353,6 +356,10 @@ export const zh = {
   'user.gongshizhanId': '公式战 ID',
   'user.registerSuccess': '注册成功！',
   'user.searchUser': '搜索用户...',
+  'user.email': '电子邮箱',
+  'user.emailPlaceholder': '输入邮箱...',
+  'user.phone': '手机号码',
+  'user.phonePlaceholder': '输入手机号...',
 
   // Team mode
   'rules.teamMode': '2v2组队模式',

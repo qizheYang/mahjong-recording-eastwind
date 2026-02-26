@@ -284,6 +284,9 @@ export const ja: Record<TranslationKey, string> = {
   'history.playersTab': 'プレイヤー',
   'history.searchGames': 'プレイヤー名検索 (完全一致)...',
   'history.searchPlayers': 'プレイヤー検索...',
+  'history.advancedSearch': '詳細検索（電話/メール）',
+  'history.basicSearch': '基本検索に戻る',
+  'history.searchByContact': '電話番号またはメールで検索...',
   'history.from': '開始',
   'history.to': '終了',
   'history.interrupted': '中断',
@@ -355,6 +358,10 @@ export const ja: Record<TranslationKey, string> = {
   'user.gongshizhanId': '公式战 ID',
   'user.registerSuccess': '登録完了！',
   'user.searchUser': 'ユーザー検索...',
+  'user.email': 'メールアドレス',
+  'user.emailPlaceholder': 'メールアドレスを入力...',
+  'user.phone': '電話番号',
+  'user.phonePlaceholder': '電話番号を入力...',
 
   // Team mode
   'rules.teamMode': '2v2チームモード',

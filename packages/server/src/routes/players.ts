@@ -54,6 +54,36 @@ playerRoutes.post('/rebuild', (c) => {
   return c.json({ rebuilt: count });
 });
 
+// Advanced search: find player by phone or email (from registered_users)
+playerRoutes.get('/search-contact', (c) => {
+  const q = c.req.query('q')?.trim();
+  if (!q) return c.json({ players: [] });
+
+  const db = getDb();
+  const qLower = q.toLowerCase();
+
+  const users = db.select({
+    username: registeredUsers.username,
+    email: registeredUsers.email,
+    phone: registeredUsers.phone,
+  })
+    .from(registeredUsers)
+    .where(eq(registeredUsers.emailVerified, 1))
+    .all()
+    .filter(u => u.email.toLowerCase() === qLower || u.phone === q);
+
+  if (users.length === 0) return c.json({ players: [] });
+
+  const results = users.map(u => {
+    const player = getPlayer(u.username);
+    return player
+      ? { ...player, isRegistered: true }
+      : { name: u.username, games: [], totalGames: 0, avgPlacement: 0, avgGameScore: 0, isRegistered: true };
+  });
+
+  return c.json({ players: results });
+});
+
 // Get a specific player
 playerRoutes.get('/:name', (c) => {
   const name = decodeURIComponent(c.req.param('name'));

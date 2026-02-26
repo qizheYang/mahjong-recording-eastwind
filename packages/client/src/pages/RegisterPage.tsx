@@ -9,16 +9,19 @@ export function RegisterPage() {
   const { t } = useLocale();
   const setFromRegister = useUserStore(s => s.setFromRegister);
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const canSubmit = username.trim() && email.trim() && phone.trim();
+
   async function handleRegister() {
-    if (!username.trim()) return;
+    if (!canSubmit) return;
     setLoading(true);
     setError('');
     try {
-      const res = await registerUser(username.trim());
-      // Auto-login if token was returned (email-verified user)
+      const res = await registerUser(username.trim(), email.trim(), phone.trim());
       if (res.token) {
         setFromRegister(res.token, res.username);
       }
@@ -42,7 +45,6 @@ export function RegisterPage() {
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleRegister()}
               maxLength={20}
               autoFocus
               className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
@@ -50,10 +52,33 @@ export function RegisterPage() {
               placeholder={t('user.gongshizhanId')}
             />
           </div>
+          <div>
+            <label className="block text-sm text-mahjong-muted mb-1">{t('user.email')}</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
+                text-white text-lg focus:outline-none focus:border-mahjong-highlight"
+              placeholder={t('user.emailPlaceholder')}
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-mahjong-muted mb-1">{t('user.phone')}</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleRegister()}
+              className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
+                text-white text-lg focus:outline-none focus:border-mahjong-highlight"
+              placeholder={t('user.phonePlaceholder')}
+            />
+          </div>
           {error && <p className="text-mahjong-highlight text-sm">{error}</p>}
           <button
             onClick={handleRegister}
-            disabled={loading || !username.trim()}
+            disabled={loading || !canSubmit}
             className="w-full py-3 rounded-xl bg-mahjong-highlight text-white font-bold text-lg
               disabled:opacity-50 active:scale-[0.98] transition-transform"
           >

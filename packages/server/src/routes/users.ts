@@ -9,12 +9,20 @@ const userRoutes = new Hono();
 
 // Register a new user (and auto-login)
 userRoutes.post('/register', async (c) => {
-  const body = await c.req.json<{ username: string }>();
+  const body = await c.req.json<{ username: string; email: string; phone: string }>();
   if (!body.username?.trim()) {
     return c.json({ error: 'Username is required' }, 400);
   }
+  if (!body.email?.trim() || !/.+@.+\..+/.test(body.email.trim())) {
+    return c.json({ error: 'Valid email is required' }, 400);
+  }
+  if (!body.phone?.trim()) {
+    return c.json({ error: 'Phone number is required' }, 400);
+  }
 
   const username = body.username.trim();
+  const email = body.email.trim().toLowerCase();
+  const phone = body.phone.trim();
   const db = getDb();
 
   // Check if username already taken
@@ -23,13 +31,20 @@ userRoutes.post('/register', async (c) => {
     return c.json({ error: 'Username already taken' }, 409);
   }
 
+  // Check if email already taken
+  const existingEmail = db.select().from(registeredUsers).where(eq(registeredUsers.email, email)).get();
+  if (existingEmail) {
+    return c.json({ error: 'Email already registered' }, 409);
+  }
+
   const now = Date.now();
   const id = nanoid();
 
   db.insert(registeredUsers).values({
     id,
     username,
-    email: '',
+    email,
+    phone,
     emailVerified: 1,
     createdAt: now,
     updatedAt: now,

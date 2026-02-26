@@ -222,10 +222,10 @@ export interface RegisteredUser {
   username: string;
 }
 
-export async function registerUser(username: string): Promise<{ id: string; username: string; token: string | null }> {
+export async function registerUser(username: string, email: string, phone: string): Promise<{ id: string; username: string; token: string | null }> {
   return request('/users/register', {
     method: 'POST',
-    body: JSON.stringify({ username }),
+    body: JSON.stringify({ username, email, phone }),
   });
 }
 
@@ -248,4 +248,8 @@ export async function listRegisteredUsers(): Promise<{ users: RegisteredUser[] }
 
 export async function searchRegisteredUsers(q: string): Promise<{ users: RegisteredUser[] }> {
   return request(`/users/search?q=${encodeURIComponent(q)}`);
+}
+
+export async function searchPlayerByContact(q: string): Promise<{ players: PlayerRecord[] }> {
+  return request(`/players/search-contact?q=${encodeURIComponent(q)}`);
 }

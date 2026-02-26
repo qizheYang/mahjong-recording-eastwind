@@ -108,7 +108,8 @@ const userTokenCache = new Map<string, string>();
 async function getOrCreateToken(name: string): Promise<string> {
   if (userTokenCache.has(name)) return userTokenCache.get(name)!;
   // Try register first
-  const reg = await apiPost('/api/users/register', { username: name });
+  const emailSlug = name.toLowerCase().replace(/[^a-z0-9]/g, '') || `user${Date.now()}`;
+  const reg = await apiPost('/api/users/register', { username: name, email: `${emailSlug}-${Date.now()}@test.com`, phone: `555-${Date.now()}` });
   if (reg.status === 200 && reg.data.token) {
     userTokenCache.set(name, reg.data.token);
     return reg.data.token;
@@ -1175,6 +1176,7 @@ describe('Player Registration & Record Matching', () => {
       id: `test-${username}-${now}`,
       username,
       email,
+      phone: `555-${now}`,
       emailVerified: 1,
       createdAt: now,
       updatedAt: now,

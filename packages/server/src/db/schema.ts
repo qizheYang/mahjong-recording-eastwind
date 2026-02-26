@@ -79,6 +79,7 @@ export const registeredUsers = sqliteTable('registered_users', {
   id: text('id').primaryKey(),
   username: text('username').notNull().unique(),
   email: text('email').notNull().unique().default(''),
+  phone: text('phone').notNull().default(''),
   emailVerified: integer('email_verified').notNull().default(0),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),

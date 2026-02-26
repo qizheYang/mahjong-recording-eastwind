@@ -98,18 +98,11 @@ function initializeTables(db: ReturnType<typeof drizzle>) {
     created_at INTEGER NOT NULL
   )`);
 
-  // Migrate: if old phone-based schema exists, drop and recreate
-  try {
-    const cols = db.all(sql`PRAGMA table_info(registered_users)`) as { name: string }[];
-    if (cols.some((c: { name: string }) => c.name === 'phone')) {
-      db.run(sql`DROP TABLE registered_users`);
-    }
-  } catch { /* table doesn't exist yet */ }
-
   db.run(sql`CREATE TABLE IF NOT EXISTS registered_users (
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL DEFAULT '',
     email_verified INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
