@@ -5,6 +5,15 @@ import { useLocale } from '../i18n';
 
 type Step = 'form' | 'success';
 
+function getReturnPath(): string {
+  const roomCode = sessionStorage.getItem('roomCode');
+  if (!roomCode) return '/';
+  // Check if there's an active game or lobby to return to
+  const game = sessionStorage.getItem('playerId');
+  if (game) return `/game/${roomCode}`;
+  return '/';
+}
+
 export function RegisterPage() {
   const navigate = useNavigate();
   const { t } = useLocale();
@@ -57,7 +66,7 @@ export function RegisterPage() {
               {loading ? t('common.loading') : t('user.register')}
             </button>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate(getReturnPath())}
               className="w-full py-2 text-mahjong-muted text-sm"
             >
               {t('common.back')}
@@ -69,7 +78,7 @@ export function RegisterPage() {
           <div className="space-y-4 text-center">
             <p className="text-mahjong-green text-lg font-bold">{t('user.registerSuccess')}</p>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate(getReturnPath())}
               className="w-full py-3 rounded-xl bg-mahjong-accent text-white font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
