@@ -1,53 +1,80 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 120">
   <defs>
-    <linearGradient id="feather" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#e84040"/>
-      <stop offset="50%" stop-color="#c0392b"/>
-      <stop offset="100%" stop-color="#8b1a1a"/>
+    <linearGradient id="f1" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0%" stop-color="#f5e6e0"/>
+      <stop offset="40%" stop-color="#e8d0c4"/>
+      <stop offset="100%" stop-color="#d4b8a8"/>
     </linearGradient>
-    <linearGradient id="featherGold" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#f0d060"/>
-      <stop offset="100%" stop-color="#c9a84c"/>
+    <linearGradient id="f2" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0%" stop-color="#f0ddd4"/>
+      <stop offset="100%" stop-color="#c9a898"/>
     </linearGradient>
   </defs>
 
-  <!-- Outer plume feathers (vermilion bird tail feathers fanning out) -->
-  <!-- Far left feather -->
-  <path d="M60 88 Q30 55 18 22 Q24 18 30 22 Q38 48 60 88 Z" fill="url(#feather)" opacity="0.7"/>
-  <!-- Left feather -->
-  <path d="M60 88 Q36 50 28 16 Q34 12 40 16 Q44 44 60 88 Z" fill="url(#feather)" opacity="0.8"/>
-  <!-- Center-left feather -->
-  <path d="M60 88 Q46 46 42 10 Q48 7 54 10 Q52 42 60 88 Z" fill="url(#feather)" opacity="0.9"/>
-  <!-- Center feather -->
-  <path d="M60 88 Q58 44 60 6 Q64 6 66 6 Q64 44 60 88 Z" fill="url(#feather)"/>
-  <!-- Center-right feather -->
-  <path d="M60 88 Q74 46 78 10 Q72 7 66 10 Q68 42 60 88 Z" fill="url(#feather)" opacity="0.9"/>
-  <!-- Right feather -->
-  <path d="M60 88 Q84 50 92 16 Q86 12 80 16 Q76 44 60 88 Z" fill="url(#feather)" opacity="0.8"/>
-  <!-- Far right feather -->
-  <path d="M60 88 Q90 55 102 22 Q96 18 90 22 Q82 48 60 88 Z" fill="url(#feather)" opacity="0.7"/>
+  <!-- 11 feathers spreading wide (~180°) from handle point at bottom center -->
+  <!-- Each feather: elongated teardrop/quill shape, slightly curved -->
 
-  <!-- Gold feather veins / ribs -->
-  <g stroke="url(#featherGold)" stroke-width="1" stroke-linecap="round" fill="none" opacity="0.6">
-    <path d="M60 88 Q32 56 22 24"/>
-    <path d="M60 88 Q38 50 32 18"/>
-    <path d="M60 88 Q48 46 46 12"/>
-    <path d="M60 88 L60 8"/>
-    <path d="M60 88 Q72 46 74 12"/>
-    <path d="M60 88 Q82 50 88 18"/>
-    <path d="M60 88 Q88 56 98 24"/>
+  <!-- Feather 1 (far left, nearly horizontal) -->
+  <path d="M70 85 Q42 78 12 62 Q8 58 10 54 Q14 56 18 58 Q46 68 70 85Z" fill="url(#f1)" opacity="0.65"/>
+  <!-- Feather 2 -->
+  <path d="M70 85 Q38 68 14 44 Q11 39 14 36 Q17 39 20 42 Q44 60 70 85Z" fill="url(#f1)" opacity="0.72"/>
+  <!-- Feather 3 -->
+  <path d="M70 85 Q40 58 22 28 Q20 23 23 20 Q26 23 28 27 Q46 52 70 85Z" fill="url(#f1)" opacity="0.8"/>
+  <!-- Feather 4 -->
+  <path d="M70 85 Q48 50 36 16 Q35 10 38 8 Q41 11 42 16 Q52 46 70 85Z" fill="url(#f2)" opacity="0.85"/>
+  <!-- Feather 5 -->
+  <path d="M70 85 Q58 46 54 8 Q54 2 58 1 Q61 3 62 8 Q62 44 70 85Z" fill="url(#f2)" opacity="0.92"/>
+  <!-- Feather 6 (center, pointing straight up) -->
+  <path d="M70 85 Q68 42 70 4 Q72 1 74 4 Q74 42 72 85Z" fill="url(#f2)"/>
+  <!-- Feather 7 -->
+  <path d="M70 85 Q80 44 78 8 Q78 2 82 1 Q85 3 86 8 Q82 46 70 85Z" fill="url(#f2)" opacity="0.92"/>
+  <!-- Feather 8 -->
+  <path d="M70 85 Q90 50 98 16 Q99 10 102 8 Q105 11 104 16 Q96 46 70 85Z" fill="url(#f2)" opacity="0.85"/>
+  <!-- Feather 9 -->
+  <path d="M70 85 Q98 58 118 28 Q120 23 117 20 Q114 23 112 27 Q96 52 70 85Z" fill="url(#f1)" opacity="0.8"/>
+  <!-- Feather 10 -->
+  <path d="M70 85 Q102 68 126 44 Q129 39 126 36 Q123 39 120 42 Q98 60 70 85Z" fill="url(#f1)" opacity="0.72"/>
+  <!-- Feather 11 (far right, nearly horizontal) -->
+  <path d="M70 85 Q98 78 128 62 Q132 58 130 54 Q126 56 122 58 Q96 68 70 85Z" fill="url(#f1)" opacity="0.65"/>
+
+  <!-- Feather quill lines (central vein of each feather) -->
+  <g stroke="#b8967a" stroke-width="0.6" stroke-linecap="round" fill="none" opacity="0.5">
+    <path d="M70 85 Q42 76 14 58"/>
+    <path d="M70 85 Q40 66 17 40"/>
+    <path d="M70 85 Q42 56 25 24"/>
+    <path d="M70 85 Q50 48 39 12"/>
+    <path d="M70 85 Q60 44 58 5"/>
+    <path d="M70 85 L71 3"/>
+    <path d="M70 85 Q80 44 82 5"/>
+    <path d="M70 85 Q90 48 101 12"/>
+    <path d="M70 85 Q98 56 115 24"/>
+    <path d="M70 85 Q100 66 123 40"/>
+    <path d="M70 85 Q98 76 126 58"/>
   </g>
 
-  <!-- Decorative gold arcs across fan -->
-  <path d="M26 30 Q42 18 60 14 Q78 18 94 30" stroke="#c9a84c" stroke-width="1.2" fill="none" opacity="0.5"/>
-  <path d="M34 46 Q46 34 60 30 Q74 34 86 46" stroke="#c9a84c" stroke-width="1" fill="none" opacity="0.35"/>
-  <path d="M42 60 Q50 50 60 47 Q70 50 78 60" stroke="#c9a84c" stroke-width="0.8" fill="none" opacity="0.25"/>
+  <!-- Subtle barb lines on feathers for texture -->
+  <g stroke="#c4a48a" stroke-width="0.3" fill="none" opacity="0.3">
+    <!-- Left side barbs -->
+    <path d="M30 52 Q45 60 50 70"/>
+    <path d="M24 38 Q40 48 48 62"/>
+    <path d="M32 22 Q44 36 50 52"/>
+    <path d="M44 14 Q52 30 56 48"/>
+    <!-- Right side barbs -->
+    <path d="M110 52 Q95 60 90 70"/>
+    <path d="M116 38 Q100 48 92 62"/>
+    <path d="M108 22 Q96 36 90 52"/>
+    <path d="M96 14 Q88 30 84 48"/>
+  </g>
 
-  <!-- Handle -->
-  <line x1="60" y1="88" x2="60" y2="110" stroke="#c9a84c" stroke-width="3.5" stroke-linecap="round"/>
-  <!-- Handle binding wrap -->
-  <rect x="56.5" y="90" width="7" height="4" rx="1" fill="#a08030"/>
-  <!-- Handle ornament -->
-  <circle cx="60" cy="112" r="3.5" fill="#c9a84c"/>
-  <circle cx="60" cy="112" r="1.8" fill="#8b1a1a"/>
+  <!-- Handle (bamboo-colored) -->
+  <line x1="70" y1="85" x2="70" y2="112" stroke="#8B7355" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Handle binding (silk thread wrapping) -->
+  <rect x="66.5" y="86" width="7" height="5" rx="1.5" fill="#c9a84c"/>
+  <line x1="67" y1="87.5" x2="73" y2="87.5" stroke="#a08030" stroke-width="0.5"/>
+  <line x1="67" y1="89" x2="73" y2="89" stroke="#a08030" stroke-width="0.5"/>
+  <!-- Tassel at bottom -->
+  <circle cx="70" cy="114" r="2" fill="#c9a84c"/>
+  <path d="M68 115 Q66 118 65 120" stroke="#c0392b" stroke-width="1" fill="none" stroke-linecap="round"/>
+  <path d="M70 116 Q70 119 70 120" stroke="#c0392b" stroke-width="1" fill="none" stroke-linecap="round"/>
+  <path d="M72 115 Q74 118 75 120" stroke="#c0392b" stroke-width="1" fill="none" stroke-linecap="round"/>
 </svg>
