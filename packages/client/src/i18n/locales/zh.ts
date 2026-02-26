@@ -343,12 +343,7 @@ export const zh = {
   'user.register': '注册',
   'user.registerTitle': '用户注册',
   'user.gongshizhanId': '公式战 ID',
-  'user.email': '邮箱',
-  'user.verifyCode': '验证',
-  'user.verifying': '验证中...',
   'user.registerSuccess': '注册成功！',
-  'user.codeSent': '验证码已发送至 {email}',
-  'user.resendCode': '重新发送',
   'user.searchUser': '搜索用户...',
 
   // Team mode

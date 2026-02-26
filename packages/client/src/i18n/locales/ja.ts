@@ -345,12 +345,7 @@ export const ja: Record<TranslationKey, string> = {
   'user.register': '登録',
   'user.registerTitle': 'ユーザー登録',
   'user.gongshizhanId': '公式战 ID',
-  'user.email': 'メール',
-  'user.verifyCode': '認証',
-  'user.verifying': '認証中...',
   'user.registerSuccess': '登録完了！',
-  'user.codeSent': '{email} にコードを送信しました',
-  'user.resendCode': '再送信',
   'user.searchUser': 'ユーザー検索...',
 
   // Team mode

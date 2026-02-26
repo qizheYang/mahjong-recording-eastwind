@@ -345,12 +345,7 @@ export const en: Record<TranslationKey, string> = {
   'user.register': 'Register',
   'user.registerTitle': 'User Registration',
   'user.gongshizhanId': '公式战 ID',
-  'user.email': 'Email',
-  'user.verifyCode': 'Verify',
-  'user.verifying': 'Verifying...',
   'user.registerSuccess': 'Registration successful!',
-  'user.codeSent': 'Code sent to {email}',
-  'user.resendCode': 'Resend Code',
   'user.searchUser': 'Search user...',
 
   // Team mode

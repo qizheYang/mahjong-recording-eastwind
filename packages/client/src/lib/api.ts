@@ -218,27 +218,12 @@ export async function adminUpdateGameTags(
 export interface RegisteredUser {
   id: string;
   username: string;
-  email: string;
 }
 
-export async function registerUser(username: string, email: string): Promise<{ id: string; username: string; email: string; needsVerification: boolean }> {
+export async function registerUser(username: string): Promise<{ id: string; username: string }> {
   return request('/users/register', {
     method: 'POST',
-    body: JSON.stringify({ username, email }),
-  });
-}
-
-export async function verifyEmail(email: string, code: string): Promise<{ verified: boolean }> {
-  return request('/users/verify', {
-    method: 'POST',
-    body: JSON.stringify({ email, code }),
-  });
-}
-
-export async function resendOtp(email: string): Promise<{ codeSent: boolean }> {
-  return request('/users/resend-otp', {
-    method: 'POST',
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ username }),
   });
 }
 
