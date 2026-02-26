@@ -342,6 +342,13 @@ export const en: Record<TranslationKey, string> = {
   'penalty.confirm': 'Confirm Penalty',
   'penalty.finalScoreNote': 'Deducted from final game score only',
 
+  // Auth
+  'auth.login': 'Log In',
+  'auth.loggingIn': 'Logging in...',
+  'auth.logout': 'Log Out',
+  'auth.enterUsername': 'Enter username...',
+  'auth.noAccount': "No account? Register here",
+
   // User Registration
   'user.register': 'Register',
   'user.registerTitle': 'User Registration',

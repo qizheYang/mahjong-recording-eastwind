@@ -18,17 +18,19 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return data as T;
 }
 
-export async function createRoom(playerName: string, phone?: string): Promise<{ roomCode: string; playerId: string }> {
+export async function createRoom(token: string): Promise<{ roomCode: string; playerId: string }> {
   return request('/rooms', {
     method: 'POST',
-    body: JSON.stringify({ playerName, ...(phone ? { phone } : {}) }),
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({}),
   });
 }
 
-export async function joinRoom(code: string, playerName: string, phone?: string): Promise<{ roomCode: string; playerId: string }> {
+export async function joinRoom(code: string, token: string): Promise<{ roomCode: string; playerId: string }> {
   return request(`/rooms/${code.toUpperCase()}/join`, {
     method: 'POST',
-    body: JSON.stringify({ playerName, ...(phone ? { phone } : {}) }),
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({}),
   });
 }
 
@@ -220,10 +222,23 @@ export interface RegisteredUser {
   username: string;
 }
 
-export async function registerUser(username: string): Promise<{ id: string; username: string }> {
+export async function registerUser(username: string): Promise<{ id: string; username: string; token: string | null }> {
   return request('/users/register', {
     method: 'POST',
     body: JSON.stringify({ username }),
+  });
+}
+
+export async function userLogin(username: string): Promise<{ token: string; username: string }> {
+  return request('/users/login', {
+    method: 'POST',
+    body: JSON.stringify({ username }),
+  });
+}
+
+export async function userGetMe(token: string): Promise<{ username: string }> {
+  return request('/users/me', {
+    headers: { Authorization: `Bearer ${token}` },
   });
 }
 

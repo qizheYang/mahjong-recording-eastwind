@@ -340,6 +340,13 @@ export const zh = {
   'penalty.confirm': '确认罚则',
   'penalty.finalScoreNote': '仅在最终得分中扣除',
 
+  // Auth
+  'auth.login': '登录',
+  'auth.loggingIn': '登录中...',
+  'auth.logout': '登出',
+  'auth.enterUsername': '输入用户名...',
+  'auth.noAccount': '没有账号？点击注册',
+
   // User Registration
   'user.register': '注册',
   'user.registerTitle': '用户注册',

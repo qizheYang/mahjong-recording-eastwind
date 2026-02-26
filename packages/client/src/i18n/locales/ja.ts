@@ -342,6 +342,13 @@ export const ja: Record<TranslationKey, string> = {
   'penalty.confirm': '罰則を確定',
   'penalty.finalScoreNote': '最終スコアにのみ反映されます',
 
+  // Auth
+  'auth.login': 'ログイン',
+  'auth.loggingIn': 'ログイン中...',
+  'auth.logout': 'ログアウト',
+  'auth.enterUsername': 'ユーザー名を入力...',
+  'auth.noAccount': 'アカウントがない？登録はこちら',
+
   // User Registration
   'user.register': '登録',
   'user.registerTitle': 'ユーザー登録',

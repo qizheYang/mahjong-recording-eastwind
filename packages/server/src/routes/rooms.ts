@@ -1,32 +1,30 @@
 import { Hono } from 'hono';
 import { roomManager } from '../ws/room-manager.js';
 import { getAdminFromHeader } from '../services/admin-service.js';
+import { getUserFromHeader } from '../services/user-auth-service.js';
 
 const roomRoutes = new Hono();
 
-// Create a new room
+// Create a new room (requires user auth)
 roomRoutes.post('/', async (c) => {
-  const body = await c.req.json<{ playerName: string; phone?: string }>();
-
-  if (!body.playerName || body.playerName.trim().length === 0) {
-    return c.json({ error: '请输入玩家名称 (Player name required)' }, 400);
+  const username = getUserFromHeader(c.req.header('Authorization'));
+  if (!username) {
+    return c.json({ error: '请先登录 (Please log in first)' }, 401);
   }
 
-  const { roomCode, playerId } = roomManager.createRoom(body.playerName.trim(), body.phone?.trim() || undefined);
-
+  const { roomCode, playerId } = roomManager.createRoom(username);
   return c.json({ roomCode, playerId });
 });
 
-// Join an existing room
+// Join an existing room (requires user auth)
 roomRoutes.post('/:code/join', async (c) => {
   const code = c.req.param('code').toUpperCase();
-  const body = await c.req.json<{ playerName: string; phone?: string }>();
-
-  if (!body.playerName || body.playerName.trim().length === 0) {
-    return c.json({ error: '请输入玩家名称 (Player name required)' }, 400);
+  const username = getUserFromHeader(c.req.header('Authorization'));
+  if (!username) {
+    return c.json({ error: '请先登录 (Please log in first)' }, 401);
   }
 
-  const result = roomManager.joinRoom(code, body.playerName.trim(), body.phone?.trim() || undefined);
+  const result = roomManager.joinRoom(code, username);
 
   if ('error' in result) {
     return c.json({ error: result.error }, 400);
@@ -35,7 +33,7 @@ roomRoutes.post('/:code/join', async (c) => {
   return c.json({ roomCode: code, playerId: result.playerId });
 });
 
-// Add a player by name (solo recording mode — host adds other players)
+// Add a player by name (solo recording mode — host adds other players, no auth needed)
 roomRoutes.post('/:code/add-player', async (c) => {
   const code = c.req.param('code').toUpperCase();
   const body = await c.req.json<{ playerName: string; phone?: string }>();

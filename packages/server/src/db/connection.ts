@@ -115,6 +115,12 @@ function initializeTables(db: ReturnType<typeof drizzle>) {
     updated_at INTEGER NOT NULL
   )`);
 
+  db.run(sql`CREATE TABLE IF NOT EXISTS user_tokens (
+    token TEXT PRIMARY KEY,
+    username TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+  )`);
+
   // Seed predefined tags
   const now = Date.now();
   for (const tagName of PREDEFINED_TAGS) {

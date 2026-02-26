@@ -69,6 +69,12 @@ export const tags = sqliteTable('tags', {
   createdAt: integer('created_at').notNull(),
 });
 
+export const userTokens = sqliteTable('user_tokens', {
+  token: text('token').primaryKey(),
+  username: text('username').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+});
+
 export const registeredUsers = sqliteTable('registered_users', {
   id: text('id').primaryKey(),
   username: text('username').notNull().unique(),

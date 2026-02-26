@@ -92,14 +92,44 @@ async function connectWs(roomCode: string, playerId: string): Promise<BufferedWs
 }
 
 // Helper: HTTP request
-async function apiPost(path: string, body: object): Promise<{ status: number; data: any }> {
+async function apiPost(path: string, body: object, headers?: Record<string, string>): Promise<{ status: number; data: any }> {
   const res = await fetch(`http://localhost:${port}${BASE_PATH}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
   });
   const data = await res.json();
   return { status: res.status, data };
+}
+
+// Auth helpers: register user (or login if already registered) to get a token
+const userTokenCache = new Map<string, string>();
+
+async function getOrCreateToken(name: string): Promise<string> {
+  if (userTokenCache.has(name)) return userTokenCache.get(name)!;
+  // Try register first
+  const reg = await apiPost('/api/users/register', { username: name });
+  if (reg.status === 200 && reg.data.token) {
+    userTokenCache.set(name, reg.data.token);
+    return reg.data.token;
+  }
+  // Fallback to login
+  const login = await apiPost('/api/users/login', { username: name });
+  if (login.status === 200) {
+    userTokenCache.set(name, login.data.token);
+    return login.data.token;
+  }
+  throw new Error(`Failed to get token for ${name}: reg=${reg.status}, login=${login.status}`);
+}
+
+async function createRoomAs(playerName: string): Promise<{ status: number; data: any }> {
+  const token = await getOrCreateToken(playerName);
+  return apiPost('/api/rooms', {}, { Authorization: `Bearer ${token}` });
+}
+
+async function joinRoomAs(code: string, playerName: string): Promise<{ status: number; data: any }> {
+  const token = await getOrCreateToken(playerName);
+  return apiPost(`/api/rooms/${code}/join`, {}, { Authorization: `Bearer ${token}` });
 }
 
 async function apiGet(path: string, headers?: Record<string, string>): Promise<{ status: number; data: any }> {
@@ -163,46 +193,46 @@ describe('REST API', () => {
   });
 
   it('create room returns roomCode and playerId', async () => {
-    const { status, data } = await apiPost('/api/rooms', { playerName: '太郎' });
+    const { status, data } = await createRoomAs('太郎');
     expect(status).toBe(200);
     expect(data.roomCode).toMatch(/^[A-Z0-9]{4}$/);
     expect(data.playerId).toBeTruthy();
   });
 
   it('join room returns playerId', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'Host' });
+    const create = await createRoomAs('Host');
     const code = create.data.roomCode;
 
-    const join = await apiPost(`/api/rooms/${code}/join`, { playerName: 'Guest' });
+    const join = await joinRoomAs(code, 'Guest');
     expect(join.status).toBe(200);
     expect(join.data.playerId).toBeTruthy();
     expect(join.data.roomCode).toBe(code);
   });
 
   it('get room returns room state', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'Alice' });
+    const create = await createRoomAs('RestAlice');
     const code = create.data.roomCode;
 
     const { status, data } = await apiGet(`/api/rooms/${code}`);
     expect(status).toBe(200);
     expect(data.room.code).toBe(code);
     expect(data.room.players).toHaveLength(1);
-    expect(data.room.players[0].name).toBe('Alice');
+    expect(data.room.players[0].name).toBe('RestAlice');
   });
 
   it('cannot join full room', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'P1' });
+    const create = await createRoomAs('Full_P1');
     const code = create.data.roomCode;
-    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P2' });
-    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P3' });
-    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P4' });
+    await joinRoomAs(code, 'Full_P2');
+    await joinRoomAs(code, 'Full_P3');
+    await joinRoomAs(code, 'Full_P4');
 
-    const full = await apiPost(`/api/rooms/${code}/join`, { playerName: 'P5' });
+    const full = await joinRoomAs(code, 'Full_P5');
     expect(full.status).toBe(400);
   });
 
   it('cannot join non-existent room', async () => {
-    const res = await apiPost('/api/rooms/ZZZZ/join', { playerName: 'Lost' });
+    const res = await joinRoomAs('ZZZZ', 'Lost');
     expect(res.status).toBe(400);
   });
 });
@@ -212,7 +242,7 @@ describe('REST API', () => {
 // ──────────────────────────────────────────────────
 describe('WebSocket Connection', () => {
   it('connects and receives room_state', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'Alice' });
+    const create = await createRoomAs('WsAlice');
     const { roomCode, playerId } = create.data;
 
     const ws = track(await connectWs(roomCode, playerId));
@@ -226,9 +256,9 @@ describe('WebSocket Connection', () => {
   });
 
   it('second player gets player_joined notification', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'Alice' });
+    const create = await createRoomAs('WsAlice2');
     const code = create.data.roomCode;
-    const join = await apiPost(`/api/rooms/${code}/join`, { playerName: 'Bob' });
+    const join = await joinRoomAs(code, 'WsBob');
 
     // Alice connects
     const ws1 = track(await connectWs(code, create.data.playerId));
@@ -241,7 +271,7 @@ describe('WebSocket Connection', () => {
 
     const joined = await joinedPromise;
     if (joined.type === 'player_joined') {
-      expect(joined.player.name).toBe('Bob');
+      expect(joined.player.name).toBe('WsBob');
     }
   });
 });
@@ -258,12 +288,12 @@ describe('Full Game Flow', () => {
     const names = ['东风', '南风', '西风', '北风'];
     playerIds = [];
 
-    const create = await apiPost('/api/rooms', { playerName: names[0] });
+    const create = await createRoomAs(names[0]);
     roomCode = create.data.roomCode;
     playerIds.push(create.data.playerId);
 
     for (let i = 1; i < 4; i++) {
-      const join = await apiPost(`/api/rooms/${roomCode}/join`, { playerName: names[i] });
+      const join = await joinRoomAs(roomCode, names[i]);
       playerIds.push(join.data.playerId);
     }
 
@@ -582,7 +612,7 @@ describe('Full Game Flow', () => {
 // ──────────────────────────────────────────────────
 describe('Edge Cases', () => {
   it('cannot start game with fewer than 4 players', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'Solo' });
+    const create = await createRoomAs('EdgeSolo');
     const { roomCode, playerId } = create.data;
 
     const ws = track(await connectWs(roomCode, playerId));
@@ -596,15 +626,15 @@ describe('Edge Cases', () => {
   });
 
   it('ready toggle broadcasts to all players and auto-starts game', async () => {
-    const names = ['A', 'B', 'C', 'D'];
+    const names = ['Ready_A', 'Ready_B', 'Ready_C', 'Ready_D'];
     const playerIds: string[] = [];
 
-    const create = await apiPost('/api/rooms', { playerName: names[0] });
+    const create = await createRoomAs(names[0]);
     const code = create.data.roomCode;
     playerIds.push(create.data.playerId);
 
     for (let i = 1; i < 4; i++) {
-      const join = await apiPost(`/api/rooms/${code}/join`, { playerName: names[i] });
+      const join = await joinRoomAs(code, names[i]);
       playerIds.push(join.data.playerId);
     }
 
@@ -651,10 +681,10 @@ describe('Edge Cases', () => {
   });
 
   it('ready toggle can be cancelled', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'Toggler' });
+    const create = await createRoomAs('Toggler');
     const code = create.data.roomCode;
     for (let i = 0; i < 3; i++) {
-      await apiPost(`/api/rooms/${code}/join`, { playerName: `P${i + 2}` });
+      await joinRoomAs(code, `Toggle_P${i + 2}`);
     }
 
     const ws = track(await connectWs(code, create.data.playerId));
@@ -676,15 +706,15 @@ describe('Edge Cases', () => {
   });
 
   it('swap seats reorders players and resets ready state', async () => {
-    const names = ['Alice', 'Bob', 'Charlie', 'Diana'];
+    const names = ['SwapAlice', 'SwapBob', 'SwapCharlie', 'SwapDiana'];
     const playerIds: string[] = [];
 
-    const create = await apiPost('/api/rooms', { playerName: names[0] });
+    const create = await createRoomAs(names[0]);
     const code = create.data.roomCode;
     playerIds.push(create.data.playerId);
 
     for (let i = 1; i < 4; i++) {
-      const join = await apiPost(`/api/rooms/${code}/join`, { playerName: names[i] });
+      const join = await joinRoomAs(code, names[i]);
       playerIds.push(join.data.playerId);
     }
 
@@ -708,11 +738,11 @@ describe('Edge Cases', () => {
     for (const evt of swapEvents) {
       expect(evt.type).toBe('seats_swapped');
       if (evt.type === 'seats_swapped') {
-        // Players should be reordered: Charlie, Bob, Alice, Diana
-        expect(evt.players[0].name).toBe('Charlie');
-        expect(evt.players[1].name).toBe('Bob');
-        expect(evt.players[2].name).toBe('Alice');
-        expect(evt.players[3].name).toBe('Diana');
+        // Players should be reordered: SwapCharlie, SwapBob, SwapAlice, SwapDiana
+        expect(evt.players[0].name).toBe('SwapCharlie');
+        expect(evt.players[1].name).toBe('SwapBob');
+        expect(evt.players[2].name).toBe('SwapAlice');
+        expect(evt.players[3].name).toBe('SwapDiana');
         // All ready states should be reset
         for (const p of evt.players) {
           expect(p.ready).toBe(false);
@@ -722,15 +752,15 @@ describe('Edge Cases', () => {
   });
 
   it('swap seats during game is rejected', async () => {
-    const names = ['A', 'B', 'C', 'D'];
+    const names = ['SwapGame_A', 'SwapGame_B', 'SwapGame_C', 'SwapGame_D'];
     const playerIds: string[] = [];
 
-    const create = await apiPost('/api/rooms', { playerName: names[0] });
+    const create = await createRoomAs(names[0]);
     const code = create.data.roomCode;
     playerIds.push(create.data.playerId);
 
     for (let i = 1; i < 4; i++) {
-      const join = await apiPost(`/api/rooms/${code}/join`, { playerName: names[i] });
+      const join = await joinRoomAs(code, names[i]);
       playerIds.push(join.data.playerId);
     }
 
@@ -754,15 +784,15 @@ describe('Edge Cases', () => {
   });
 
   it('swap seats then ready system works to start game', async () => {
-    const names = ['East', 'South', 'West', 'North'];
+    const names = ['SwapEast', 'SwapSouth', 'SwapWest', 'SwapNorth'];
     const playerIds: string[] = [];
 
-    const create = await apiPost('/api/rooms', { playerName: names[0] });
+    const create = await createRoomAs(names[0]);
     const code = create.data.roomCode;
     playerIds.push(create.data.playerId);
 
     for (let i = 1; i < 4; i++) {
-      const join = await apiPost(`/api/rooms/${code}/join`, { playerName: names[i] });
+      const join = await joinRoomAs(code, names[i]);
       playerIds.push(join.data.playerId);
     }
 
@@ -778,10 +808,10 @@ describe('Edge Cases', () => {
     sockets[0].send({ type: 'swap_seats', playerIdA: playerIds[0], playerIdB: playerIds[3] });
     const swapEvents = await Promise.all(swapPromises);
 
-    // Verify new order: North, South, West, East
+    // Verify new order: SwapNorth, SwapSouth, SwapWest, SwapEast
     if (swapEvents[0].type === 'seats_swapped') {
-      expect(swapEvents[0].players[0].name).toBe('North');
-      expect(swapEvents[0].players[3].name).toBe('East');
+      expect(swapEvents[0].players[0].name).toBe('SwapNorth');
+      expect(swapEvents[0].players[3].name).toBe('SwapEast');
     }
 
     // All 4 players ready up after swap
@@ -800,10 +830,10 @@ describe('Edge Cases', () => {
 
     for (const evt of gameEvents) {
       if (evt.type === 'game_started') {
-        // Game should start with swapped order: North is East seat
-        expect(evt.game.players[0].name).toBe('North');
+        // Game should start with swapped order: SwapNorth is East seat
+        expect(evt.game.players[0].name).toBe('SwapNorth');
         expect(evt.game.players[0].initialSeat).toBe('east');
-        expect(evt.game.players[3].name).toBe('East');
+        expect(evt.game.players[3].name).toBe('SwapEast');
         expect(evt.game.players[3].initialSeat).toBe('north');
       }
     }
@@ -814,12 +844,12 @@ describe('Edge Cases', () => {
     const names = ['HistA', 'HistB', 'HistC', 'HistD'];
     const pIds: string[] = [];
 
-    const cr = await apiPost('/api/rooms', { playerName: names[0] });
+    const cr = await createRoomAs(names[0]);
     const code = cr.data.roomCode;
     pIds.push(cr.data.playerId);
 
     for (let i = 1; i < 4; i++) {
-      const j = await apiPost(`/api/rooms/${code}/join`, { playerName: names[i] });
+      const j = await joinRoomAs(code, names[i]);
       pIds.push(j.data.playerId);
     }
 
@@ -870,7 +900,7 @@ describe('Edge Cases', () => {
 
   it('solo mode: add players via REST, start game, record hands', async () => {
     // Creator creates room and connects via WS
-    const create = await apiPost('/api/rooms', { playerName: 'Host' });
+    const create = await createRoomAs('SoloHost');
     const code = create.data.roomCode;
     const hostId = create.data.playerId;
 
@@ -905,7 +935,7 @@ describe('Edge Cases', () => {
     expect(startEvt.type).toBe('game_started');
     if (startEvt.type === 'game_started') {
       expect(startEvt.game.status).toBe('in_progress');
-      expect(startEvt.game.players[0].name).toBe('Host');
+      expect(startEvt.game.players[0].name).toBe('SoloHost');
     }
 
     // Record a hand
@@ -929,7 +959,7 @@ describe('Edge Cases', () => {
 
   it('add-player validation: empty name, full room, nonexistent room', async () => {
     // Empty name
-    const create = await apiPost('/api/rooms', { playerName: 'Solo' });
+    const create = await createRoomAs('ValidSolo');
     const code = create.data.roomCode;
 
     const emptyName = await apiPost(`/api/rooms/${code}/add-player`, { playerName: '' });
@@ -950,15 +980,15 @@ describe('Edge Cases', () => {
   });
 
   it('custom ruleset: start game with 30000 points and tobi enabled', async () => {
-    const names = ['A', 'B', 'C', 'D'];
+    const names = ['Custom_A', 'Custom_B', 'Custom_C', 'Custom_D'];
     const playerIds: string[] = [];
 
-    const create = await apiPost('/api/rooms', { playerName: names[0] });
+    const create = await createRoomAs(names[0]);
     const code = create.data.roomCode;
     playerIds.push(create.data.playerId);
 
     for (let i = 1; i < 4; i++) {
-      const join = await apiPost(`/api/rooms/${code}/join`, { playerName: names[i] });
+      const join = await joinRoomAs(code, names[i]);
       playerIds.push(join.data.playerId);
     }
 
@@ -988,15 +1018,15 @@ describe('Edge Cases', () => {
   });
 
   it('CJK player names work in room creation and joining', async () => {
-    const create = await apiPost('/api/rooms', { playerName: '田中太郎' });
+    const create = await createRoomAs('田中太郎');
     expect(create.status).toBe(200);
     const code = create.data.roomCode;
 
-    const join1 = await apiPost(`/api/rooms/${code}/join`, { playerName: '佐藤花子' });
+    const join1 = await joinRoomAs(code, '佐藤花子');
     expect(join1.status).toBe(200);
-    const join2 = await apiPost(`/api/rooms/${code}/join`, { playerName: '李明' });
+    const join2 = await joinRoomAs(code, '李明');
     expect(join2.status).toBe(200);
-    const join3 = await apiPost(`/api/rooms/${code}/join`, { playerName: '김철수' });
+    const join3 = await joinRoomAs(code, '김철수');
     expect(join3.status).toBe(200);
 
     const room = await apiGet(`/api/rooms/${code}`);
@@ -1021,7 +1051,7 @@ describe('Kill Room', () => {
   });
 
   it('room has creatorId set', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'Creator' });
+    const create = await createRoomAs('KillCreator');
     const code = create.data.roomCode;
     const creatorId = create.data.playerId;
 
@@ -1030,7 +1060,7 @@ describe('Kill Room', () => {
   });
 
   it('creator can kill their own room', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'Creator' });
+    const create = await createRoomAs('KillCreator2');
     const code = create.data.roomCode;
     const creatorId = create.data.playerId;
 
@@ -1044,9 +1074,9 @@ describe('Kill Room', () => {
   });
 
   it('non-creator cannot kill room', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'Creator' });
+    const create = await createRoomAs('KillCreator3');
     const code = create.data.roomCode;
-    const join = await apiPost(`/api/rooms/${code}/join`, { playerName: 'Guest' });
+    const join = await joinRoomAs(code, 'KillGuest');
     const guestId = join.data.playerId;
 
     const res = await apiDelete(`/api/rooms/${code}?playerId=${guestId}`);
@@ -1058,11 +1088,11 @@ describe('Kill Room', () => {
   });
 
   it('admin can kill waiting room even with 4 players', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'P1' });
+    const create = await createRoomAs('Kill_P1');
     const code = create.data.roomCode;
-    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P2' });
-    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P3' });
-    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P4' });
+    await joinRoomAs(code, 'Kill_P2');
+    await joinRoomAs(code, 'Kill_P3');
+    await joinRoomAs(code, 'Kill_P4');
 
     const res = await apiDelete(`/api/rooms/${code}`, { Authorization: `Bearer ${adminToken}` });
     expect(res.status).toBe(200);
@@ -1074,12 +1104,12 @@ describe('Kill Room', () => {
   });
 
   it('admin cannot kill room with game in progress', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'P1' });
+    const create = await createRoomAs('KillProg_P1');
     const code = create.data.roomCode;
     const hostId = create.data.playerId;
-    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P2' });
-    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P3' });
-    await apiPost(`/api/rooms/${code}/join`, { playerName: 'P4' });
+    await joinRoomAs(code, 'KillProg_P2');
+    await joinRoomAs(code, 'KillProg_P3');
+    await joinRoomAs(code, 'KillProg_P4');
 
     // Start the game via WS
     const ws = track(await connectWs(code, hostId));
@@ -1098,10 +1128,10 @@ describe('Kill Room', () => {
   });
 
   it('connected players receive room_killed event', async () => {
-    const create = await apiPost('/api/rooms', { playerName: 'Host' });
+    const create = await createRoomAs('KillWsHost');
     const code = create.data.roomCode;
     const hostId = create.data.playerId;
-    const join = await apiPost(`/api/rooms/${code}/join`, { playerName: 'Guest' });
+    const join = await joinRoomAs(code, 'KillWsGuest');
 
     // Connect both players via WS
     const ws1 = track(await connectWs(code, hostId));
@@ -1151,10 +1181,11 @@ describe('Player Registration & Record Matching', () => {
     }).run();
   }
 
-  // Helper: play a complete game with 4 named players and return player names
+  // Helper: play a complete game with 4 named players
+  // Note: names[0] gets registered (creates room), names[1..3] are added via add-player (unregistered)
   async function playGameWithPlayers(names: string[]): Promise<void> {
     const pIds: string[] = [];
-    const cr = await apiPost('/api/rooms', { playerName: names[0] });
+    const cr = await createRoomAs(names[0]);
     const code = cr.data.roomCode;
     pIds.push(cr.data.playerId);
 
@@ -1187,7 +1218,7 @@ describe('Player Registration & Record Matching', () => {
 
   it('unregistered players appear in player list after a game', async () => {
     const uniqueName = `UnregPlayer_${Date.now()}`;
-    await playGameWithPlayers([uniqueName, 'Buddy1', 'Buddy2', 'Buddy3']);
+    await playGameWithPlayers(['UnregHost1', uniqueName, 'Buddy1', 'Buddy2']);
 
     // Check player list
     const res = await apiGet(`/api/players?q=${encodeURIComponent(uniqueName)}`);
@@ -1200,7 +1231,7 @@ describe('Player Registration & Record Matching', () => {
 
   it('player record shows isRegistered=false for unregistered player', async () => {
     const uniqueName = `Solo_${Date.now()}`;
-    await playGameWithPlayers([uniqueName, 'Other1', 'Other2', 'Other3']);
+    await playGameWithPlayers(['UnregHost2', uniqueName, 'Other1', 'Other2']);
 
     const res = await apiGet(`/api/players/${encodeURIComponent(uniqueName)}`);
     expect(res.status).toBe(200);
@@ -1212,8 +1243,8 @@ describe('Player Registration & Record Matching', () => {
   it('after registration, player record combines with existing games', async () => {
     const uniqueName = `RegTest_${Date.now()}`;
 
-    // Play a game before registration
-    await playGameWithPlayers([uniqueName, 'PartnerA', 'PartnerB', 'PartnerC']);
+    // Play a game before registration (uniqueName at index 1 = added via add-player, not registered)
+    await playGameWithPlayers(['RegTestHost', uniqueName, 'PartnerA', 'PartnerB']);
 
     // Verify unregistered
     const before = await apiGet(`/api/players/${encodeURIComponent(uniqueName)}`);
@@ -1258,8 +1289,8 @@ describe('Player Registration & Record Matching', () => {
     const baseName = `CaseTest_${Date.now()}`;
     const lowerName = baseName.toLowerCase();
 
-    // Play game with lowercase name
-    await playGameWithPlayers([lowerName, 'CaseA', 'CaseB', 'CaseC']);
+    // Play game with lowercase name (at index 1 so it's added via add-player, not registered)
+    await playGameWithPlayers(['CaseHost', lowerName, 'CaseA', 'CaseB']);
 
     // Register with original casing
     registerUserDirectly(baseName, `${baseName}@test.com`);
@@ -1274,9 +1305,9 @@ describe('Player Registration & Record Matching', () => {
   it('multiple games before registration all combine correctly', async () => {
     const uniqueName = `MultiGame_${Date.now()}`;
 
-    // Play two games
-    await playGameWithPlayers([uniqueName, 'MG_A', 'MG_B', 'MG_C']);
-    await playGameWithPlayers([uniqueName, 'MG_D', 'MG_E', 'MG_F']);
+    // Play two games (uniqueName at index 1 = not registered via room creation)
+    await playGameWithPlayers(['MG_Host1', uniqueName, 'MG_A', 'MG_B']);
+    await playGameWithPlayers(['MG_Host2', uniqueName, 'MG_D', 'MG_E']);
 
     // Should have 2 games unregistered
     const before = await apiGet(`/api/players/${encodeURIComponent(uniqueName)}`);

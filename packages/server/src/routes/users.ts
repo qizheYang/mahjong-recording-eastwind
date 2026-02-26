@@ -3,10 +3,11 @@ import { nanoid } from 'nanoid';
 import { getDb } from '../db/connection.js';
 import { registeredUsers } from '../db/schema.js';
 import { eq, like } from 'drizzle-orm';
+import { userSignIn, getUserFromHeader } from '../services/user-auth-service.js';
 
 const userRoutes = new Hono();
 
-// Register a new user
+// Register a new user (and auto-login)
 userRoutes.post('/register', async (c) => {
   const body = await c.req.json<{ username: string }>();
   if (!body.username?.trim()) {
@@ -34,7 +35,34 @@ userRoutes.post('/register', async (c) => {
     updatedAt: now,
   }).run();
 
-  return c.json({ id, username });
+  // Auto-login: issue a token
+  const session = userSignIn(username);
+
+  return c.json({ id, username, token: session?.token ?? null });
+});
+
+// Login (username only, no password)
+userRoutes.post('/login', async (c) => {
+  const body = await c.req.json<{ username: string }>();
+  if (!body.username?.trim()) {
+    return c.json({ error: 'Username is required' }, 400);
+  }
+
+  const session = userSignIn(body.username.trim());
+  if (!session) {
+    return c.json({ error: '用户名不存在 (Username not found)' }, 404);
+  }
+
+  return c.json(session);
+});
+
+// Verify current session
+userRoutes.get('/me', (c) => {
+  const username = getUserFromHeader(c.req.header('Authorization'));
+  if (!username) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+  return c.json({ username });
 });
 
 // List all registered users

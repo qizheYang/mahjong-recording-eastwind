@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createRoom, joinRoom, listLiveGames, adminKillRoom, searchRegisteredUsers, type LiveGameSummary, type RegisteredUser } from '../lib/api';
-import type { Wind } from '@mahjong/shared';
+import { createRoom, joinRoom, listLiveGames, adminKillRoom, type LiveGameSummary } from '../lib/api';
 import { useGameStore } from '../stores/game-store';
 import { useAdminStore } from '../stores/admin-store';
+import { useUserStore } from '../stores/user-store';
 import { useLocale } from '../i18n';
 
 export function HomePage() {
-  const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [mode, setMode] = useState<'menu' | 'join'>('menu');
   const [roomCode, setRoomCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -18,30 +16,22 @@ export function HomePage() {
   const [adminPass, setAdminPass] = useState('');
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState('');
+
+  // Login form state
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
+
   const navigate = useNavigate();
   const setSession = useGameStore(s => s.setSession);
-  const { token: adminToken, username: adminUsername, signIn: adminSignIn, signOut: adminSignOut, checkAuth } = useAdminStore();
+  const { token: adminToken, username: adminUsername, signIn: adminSignIn, signOut: adminSignOut, checkAuth: checkAdminAuth } = useAdminStore();
+  const { token: userToken, username: userUsername, login: userLogin, logout: userLogout, checkAuth: checkUserAuth } = useUserStore();
   const { t } = useLocale();
 
   const [liveGames, setLiveGames] = useState<LiveGameSummary[]>([]);
 
-  // Autocomplete state
-  const [nameSuggestions, setNameSuggestions] = useState<RegisteredUser[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
-  useEffect(() => {
-    const query = name.trim();
-    if (!query || query.length < 1) { setNameSuggestions([]); return; }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await searchRegisteredUsers(query);
-        setNameSuggestions(res.users);
-      } catch { setNameSuggestions([]); }
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [name]);
-
-  useEffect(() => { checkAuth(); }, [checkAuth]);
+  useEffect(() => { checkAdminAuth(); }, [checkAdminAuth]);
+  useEffect(() => { checkUserAuth(); }, [checkUserAuth]);
 
   // Auto-rejoin: if there's a saved session, redirect back to the game/lobby
   useEffect(() => {
@@ -65,12 +55,26 @@ export function HomePage() {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
+  async function handleLogin() {
+    if (!loginUsername.trim()) return;
+    setLoginLoading(true);
+    setLoginError('');
+    try {
+      await userLogin(loginUsername.trim());
+      setLoginUsername('');
+    } catch (e: any) {
+      setLoginError(e.message);
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
   async function handleCreate() {
-    if (!name.trim()) { setError(t('validation.enterName')); return; }
+    if (!userToken) return;
     setLoading(true);
     setError('');
     try {
-      const res = await createRoom(name.trim(), phone.trim() || undefined);
+      const res = await createRoom(userToken);
       setSession(res.roomCode, res.playerId);
       navigate(`/lobby/${res.roomCode}`);
     } catch (e: any) {
@@ -97,12 +101,12 @@ export function HomePage() {
   }
 
   async function handleJoin() {
-    if (!name.trim()) { setError(t('validation.enterName')); return; }
+    if (!userToken) return;
     if (!roomCode.trim()) { setError(t('validation.enterRoomCode')); return; }
     setLoading(true);
     setError('');
     try {
-      const res = await joinRoom(roomCode.trim(), name.trim(), phone.trim() || undefined);
+      const res = await joinRoom(roomCode.trim(), userToken);
       setSession(res.roomCode, res.playerId);
       navigate(`/lobby/${res.roomCode}`);
     } catch (e: any) {
@@ -111,6 +115,8 @@ export function HomePage() {
       setLoading(false);
     }
   }
+
+  const isLoggedIn = !!userToken;
 
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center p-4 relative">
@@ -122,14 +128,81 @@ export function HomePage() {
           <p className="text-mahjong-muted text-xs mt-1">{t('home.mLeague')}</p>
         </div>
 
-        {mode === 'menu' && (
-          <div className="space-y-3">
+        {/* Login form (shown when not logged in) */}
+        {!isLoggedIn && (
+          <div className="space-y-4 mb-6">
+            <div>
+              <input
+                type="text"
+                value={loginUsername}
+                onChange={e => setLoginUsername(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                maxLength={20}
+                autoFocus
+                className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
+                  text-white text-lg focus:outline-none focus:border-mahjong-highlight"
+                placeholder={t('auth.enterUsername')}
+              />
+            </div>
+            {loginError && <p className="text-mahjong-highlight text-sm">{loginError}</p>}
             <button
-              onClick={() => setMode('create')}
-              className="w-full py-4 rounded-xl bg-mahjong-highlight text-white font-bold text-lg
-                active:scale-[0.98] transition-transform"
+              onClick={handleLogin}
+              disabled={loginLoading || !loginUsername.trim()}
+              className="w-full py-3 rounded-xl bg-mahjong-highlight text-white font-bold text-lg
+                disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
-              {t('home.createRoom')}
+              {loginLoading ? t('auth.loggingIn') : t('auth.login')}
+            </button>
+            <button
+              onClick={() => navigate('/register')}
+              className="w-full py-2 text-mahjong-gold text-sm"
+            >
+              {t('auth.noAccount')}
+            </button>
+
+            {/* History/Stats still accessible without login */}
+            <div className="pt-2 space-y-2">
+              <button
+                onClick={() => navigate('/history')}
+                className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-muted font-medium
+                  active:scale-[0.98] transition-transform border border-mahjong-accent"
+              >
+                {t('home.gameHistory')}
+              </button>
+              <button
+                onClick={() => navigate('/history?tab=players')}
+                className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-muted font-medium
+                  active:scale-[0.98] transition-transform border border-mahjong-accent"
+              >
+                {t('home.playerStats')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Main menu (shown when logged in) */}
+        {isLoggedIn && mode === 'menu' && (
+          <div className="space-y-3">
+            {/* User info bar */}
+            <div className="flex items-center justify-between bg-mahjong-card rounded-xl px-4 py-3 mb-2">
+              <span className="text-sm text-mahjong-gold font-medium">{userUsername}</span>
+              <button
+                onClick={userLogout}
+                className="text-xs text-mahjong-muted hover:text-mahjong-highlight"
+              >
+                {t('auth.logout')}
+              </button>
+            </div>
+
+            {error && <p className="text-mahjong-highlight text-sm">{error}</p>}
+
+            <button
+              onClick={handleCreate}
+              disabled={loading}
+              className="w-full py-4 rounded-xl bg-mahjong-highlight text-white font-bold text-lg
+                disabled:opacity-50 active:scale-[0.98] transition-transform"
+            >
+              {loading ? t('home.creating') : t('home.createRoom')}
             </button>
             <button
               onClick={() => setMode('join')}
@@ -151,13 +224,6 @@ export function HomePage() {
                 active:scale-[0.98] transition-transform border border-mahjong-accent"
             >
               {t('home.playerStats')}
-            </button>
-            <button
-              onClick={() => navigate('/register')}
-              className="w-full py-3 rounded-xl bg-mahjong-card text-mahjong-muted font-medium
-                active:scale-[0.98] transition-transform border border-mahjong-accent"
-            >
-              {t('user.register')}
             </button>
 
             {/* Live games section */}
@@ -283,73 +349,18 @@ export function HomePage() {
           </div>
         )}
 
-        {mode === 'create' && (
+        {/* Join room form */}
+        {isLoggedIn && mode === 'join' && (
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm text-mahjong-muted mb-1">{t('home.yourName')}</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => { setName(e.target.value); setShowSuggestions(true); }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                  maxLength={12}
-                  autoFocus
-                  className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
-                    text-white text-lg focus:outline-none focus:border-mahjong-highlight"
-                  placeholder={t('home.enterName')}
-                />
-                {showSuggestions && nameSuggestions.length > 0 && (
-                  <div className="absolute z-10 left-0 right-0 top-full mt-0.5 bg-mahjong-bg border border-mahjong-accent
-                    rounded shadow-lg max-h-40 overflow-y-auto">
-                    {nameSuggestions.map(u => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onMouseDown={e => e.preventDefault()}
-                        onClick={() => { setName(u.username); setShowSuggestions(false); }}
-                        className="w-full text-left px-4 py-2 text-sm hover:bg-mahjong-accent/40 transition-colors"
-                      >
-                        <span className="text-white">{u.username}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="flex items-center justify-between bg-mahjong-card rounded-xl px-4 py-3 mb-2">
+              <span className="text-sm text-mahjong-gold font-medium">{userUsername}</span>
+              <button
+                onClick={userLogout}
+                className="text-xs text-mahjong-muted hover:text-mahjong-highlight"
+              >
+                {t('auth.logout')}
+              </button>
             </div>
-            <div>
-              <label className="block text-sm text-mahjong-muted mb-1">{t('home.phone')} ({t('home.phoneOptional')})</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                maxLength={20}
-                className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
-                  text-white text-lg focus:outline-none focus:border-mahjong-highlight"
-                placeholder={t('home.phoneOptional')}
-              />
-            </div>
-            {error && <p className="text-mahjong-highlight text-sm">{error}</p>}
-            <button
-              onClick={handleCreate}
-              disabled={loading}
-              className="w-full py-3 rounded-xl bg-mahjong-highlight text-white font-bold text-lg
-                disabled:opacity-50 active:scale-[0.98] transition-transform"
-            >
-              {loading ? t('home.creating') : t('home.create')}
-            </button>
-            <button
-              onClick={() => { setMode('menu'); setError(''); }}
-              className="w-full py-2 text-mahjong-muted text-sm"
-            >
-              {t('common.back')}
-            </button>
-          </div>
-        )}
-
-        {mode === 'join' && (
-          <div className="space-y-4">
             <div>
               <label className="block text-sm text-mahjong-muted mb-1">{t('home.roomCode')}</label>
               <input
@@ -362,50 +373,6 @@ export function HomePage() {
                   text-white text-2xl text-center tracking-[0.5em] font-mono uppercase
                   focus:outline-none focus:border-mahjong-highlight"
                 placeholder="____"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-mahjong-muted mb-1">{t('home.yourName')}</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => { setName(e.target.value); setShowSuggestions(true); }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                  maxLength={12}
-                  className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
-                    text-white text-lg focus:outline-none focus:border-mahjong-highlight"
-                  placeholder={t('home.enterName')}
-                />
-                {showSuggestions && nameSuggestions.length > 0 && (
-                  <div className="absolute z-10 left-0 right-0 top-full mt-0.5 bg-mahjong-bg border border-mahjong-accent
-                    rounded shadow-lg max-h-40 overflow-y-auto">
-                    {nameSuggestions.map(u => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onMouseDown={e => e.preventDefault()}
-                        onClick={() => { setName(u.username); setShowSuggestions(false); }}
-                        className="w-full text-left px-4 py-2 text-sm hover:bg-mahjong-accent/40 transition-colors"
-                      >
-                        <span className="text-white">{u.username}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm text-mahjong-muted mb-1">{t('home.phone')} ({t('home.phoneOptional')})</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                maxLength={20}
-                className="w-full px-4 py-3 rounded-lg bg-mahjong-card border border-mahjong-accent
-                  text-white text-lg focus:outline-none focus:border-mahjong-highlight"
-                placeholder={t('home.phoneOptional')}
               />
             </div>
             {error && <p className="text-mahjong-highlight text-sm">{error}</p>}
