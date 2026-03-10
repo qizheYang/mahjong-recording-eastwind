@@ -42,8 +42,8 @@ interface GameStore {
   setSession: (roomCode: string, playerId: string) => void;
   connect: () => void;
   disconnect: () => void;
-  toggleReady: () => void;
-  swapSeats: (playerIdA: string, playerIdB: string) => void;
+  toggleReady: () => boolean;
+  swapSeats: (playerIdA: string, playerIdB: string) => boolean;
   setRuleset: (updates: Partial<Ruleset>) => void;
   toggleTag: (tag: string) => void;
   setTeamAssignment: (playerId: string, teamName: string) => void;
@@ -52,14 +52,14 @@ interface GameStore {
   clearWindAssignments: () => void;
   setCustomStartingPointsEnabled: (enabled: boolean) => void;
   setPlayerStartingPoints: (playerId: string, points: number) => void;
-  startGame: (seatOrder: string[], ruleset?: Partial<Ruleset>) => void;
-  recordHand: (result: HandResultInput) => void;
-  editHand: (handNumber: number, result: HandResultInput) => void;
-  undoLastHand: () => void;
-  recordPenalty: (penalty: PenaltyInput) => void;
-  undoPenalty: () => void;
-  endGame: () => void;
-  forceQuitGame: () => void;
+  startGame: (seatOrder: string[], ruleset?: Partial<Ruleset>) => boolean;
+  recordHand: (result: HandResultInput) => boolean;
+  editHand: (handNumber: number, result: HandResultInput) => boolean;
+  undoLastHand: () => boolean;
+  recordPenalty: (penalty: PenaltyInput) => boolean;
+  undoPenalty: () => boolean;
+  endGame: () => boolean;
+  forceQuitGame: () => boolean;
   clearError: () => void;
   resetForNewGame: () => void;
   leaveRoom: () => void;
@@ -120,6 +120,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     wsClient = new WsClient(config.wsUrl);
+
+    wsClient.onStatus((status: boolean) => {
+      set({ connected: status });
+    });
 
     wsClient.onEvent((event: ServerEvent) => {
       switch (event.type) {
@@ -244,11 +248,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   toggleReady() {
-    wsClient?.send({ type: 'ready_toggle' });
+    return wsClient?.send({ type: 'ready_toggle' }) ?? false;
   },
 
   swapSeats(playerIdA: string, playerIdB: string) {
-    wsClient?.send({ type: 'swap_seats', playerIdA, playerIdB });
+    return wsClient?.send({ type: 'swap_seats', playerIdA, playerIdB }) ?? false;
   },
 
   setRuleset(updates: Partial<Ruleset>) {
@@ -308,43 +312,43 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const psp = customStartingPointsEnabled && Object.keys(playerStartingPoints).length > 0
       ? playerStartingPoints
       : undefined;
-    wsClient?.send({
+    return wsClient?.send({
       type: 'start_game',
       seatOrder,
       ...(hasCustom ? { ruleset: r } : {}),
       ...(tags.length > 0 ? { tags } : {}),
       ...(teams ? { teams } : {}),
       ...(psp ? { playerStartingPoints: psp } : {}),
-    });
+    }) ?? false;
   },
 
   recordHand(result: HandResultInput) {
-    wsClient?.send({ type: 'record_hand', result });
+    return wsClient?.send({ type: 'record_hand', result }) ?? false;
   },
 
   editHand(handNumber: number, result: HandResultInput) {
-    wsClient?.send({ type: 'edit_hand', handNumber, result });
+    return wsClient?.send({ type: 'edit_hand', handNumber, result }) ?? false;
   },
 
   undoLastHand() {
-    wsClient?.send({ type: 'undo_last_hand' });
+    return wsClient?.send({ type: 'undo_last_hand' }) ?? false;
   },
 
   recordPenalty(penalty: PenaltyInput) {
-    wsClient?.send({ type: 'record_penalty', penalty });
+    return wsClient?.send({ type: 'record_penalty', penalty }) ?? false;
   },
 
   undoPenalty() {
-    wsClient?.send({ type: 'undo_penalty' });
+    return wsClient?.send({ type: 'undo_penalty' }) ?? false;
   },
 
   endGame() {
-    wsClient?.send({ type: 'end_game' });
+    return wsClient?.send({ type: 'end_game' }) ?? false;
   },
 
   forceQuitGame() {
     set({ wasForceQuit: true });
-    wsClient?.send({ type: 'force_quit_game' });
+    return wsClient?.send({ type: 'force_quit_game' }) ?? false;
   },
 
   clearError() {

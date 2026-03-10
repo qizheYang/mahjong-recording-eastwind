@@ -14,6 +14,8 @@ export const ja: Record<TranslationKey, string> = {
   'common.backToHome': 'ホームに戻る',
   'common.loading': '読み込み中...',
   'common.connecting': '接続中...',
+  'common.reconnecting': '接続が切断されました。再接続中...',
+  'common.sendFailed': '操作失敗：接続が切断されました。再試行してください',
   'common.all': '全て',
   'common.none': 'なし',
 

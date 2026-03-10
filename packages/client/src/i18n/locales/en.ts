@@ -14,6 +14,8 @@ export const en: Record<TranslationKey, string> = {
   'common.backToHome': 'Back to Home',
   'common.loading': 'Loading...',
   'common.connecting': 'Connecting...',
+  'common.reconnecting': 'Connection lost, reconnecting...',
+  'common.sendFailed': 'Action failed: connection lost, please retry',
   'common.all': 'All',
   'common.none': 'None',
 

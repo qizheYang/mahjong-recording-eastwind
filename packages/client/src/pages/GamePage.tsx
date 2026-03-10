@@ -66,27 +66,40 @@ export function GamePage() {
     }
   }, [storeRoomCode, playerId, navigate]);
 
+  function showSendError() {
+    set_sendError(true);
+    setTimeout(() => set_sendError(false), 3000);
+  }
+
+  const [sendError, set_sendError] = useState(false);
+
   function handleRecordHand(result: HandResultInput) {
+    let sent: boolean;
     if (editingHandNumber !== null) {
-      editHand(editingHandNumber, result);
+      sent = editHand(editingHandNumber, result);
       setEditingHandNumber(null);
     } else {
-      recordHand(result);
+      sent = recordHand(result);
     }
-    setShowRecordModal(false);
+    if (sent) {
+      setShowRecordModal(false);
+    } else {
+      showSendError();
+    }
   }
 
   function handleUndo() {
     if (confirmUndo) {
-      undoLastHand();
+      const sent = undoLastHand();
       setConfirmUndo(false);
+      if (!sent) showSendError();
     } else {
       setConfirmUndo(true);
       setTimeout(() => setConfirmUndo(false), 3000);
     }
   }
 
-  if (!connected || !game) {
+  if (!game) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
         <p className="text-mahjong-muted">{t('common.connecting')}</p>
@@ -98,6 +111,24 @@ export function GamePage() {
 
   return (
     <div className="min-h-dvh flex flex-col p-4 max-w-md mx-auto">
+      {/* Reconnecting banner */}
+      {!connected && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-600 text-white text-center
+          py-2 text-sm font-medium animate-pulse">
+          {t('common.reconnecting')}
+        </div>
+      )}
+
+      {/* Send failure toast */}
+      {sendError && (
+        <div className="fixed top-10 left-4 right-4 z-50 bg-mahjong-highlight text-white
+          rounded-lg p-3 text-sm text-center"
+          onClick={() => set_sendError(false)}
+        >
+          {t('common.sendFailed')}
+        </div>
+      )}
+
       {/* Error toast */}
       {error && (
         <div className="fixed top-4 left-4 right-4 z-50 bg-mahjong-highlight text-white
@@ -249,8 +280,12 @@ export function GamePage() {
         <PenaltyModal
           players={game.players}
           onSubmit={(penalty) => {
-            recordPenalty(penalty);
-            setShowPenaltyModal(false);
+            const sent = recordPenalty(penalty);
+            if (sent) {
+              setShowPenaltyModal(false);
+            } else {
+              showSendError();
+            }
           }}
           onClose={() => setShowPenaltyModal(false)}
         />
@@ -268,7 +303,14 @@ export function GamePage() {
               {t('game.forceQuitConfirm')}
             </p>
             <button
-              onClick={() => { forceQuitGame(); setShowForceQuit(false); }}
+              onClick={() => {
+                const sent = forceQuitGame();
+                if (sent) {
+                  setShowForceQuit(false);
+                } else {
+                  showSendError();
+                }
+              }}
               className="w-full py-3 rounded-xl bg-mahjong-accent text-white font-bold
                 active:scale-[0.98] transition-transform"
             >

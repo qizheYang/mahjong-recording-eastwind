@@ -37,9 +37,15 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
   const ctx = connectionCtx.get(ws);
   if (!ctx) return;
 
+  // Handle heartbeat ping (plain text, not JSON)
+  const raw = typeof data === 'string' ? data : data.toString();
+  if (raw === 'ping') {
+    try { ws.send('pong'); } catch { /* ignore */ }
+    return;
+  }
+
   let event: ClientEvent;
   try {
-    const raw = typeof data === 'string' ? data : data.toString();
     event = JSON.parse(raw);
   } catch {
     sendError(ws, '无效消息格式 (Invalid message format)', 'PARSE_ERROR');

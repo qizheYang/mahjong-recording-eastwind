@@ -12,6 +12,8 @@ export const zh = {
   'common.backToHome': '返回首页',
   'common.loading': '加载中...',
   'common.connecting': '连接中...',
+  'common.reconnecting': '连接已断开，正在重连...',
+  'common.sendFailed': '操作失败：连接已断开，请稍后重试',
   'common.all': '全部',
   'common.none': '无',
 
