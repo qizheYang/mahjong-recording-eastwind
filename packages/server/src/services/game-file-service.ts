@@ -132,7 +132,7 @@ function buildHandsRecord(game: Game): GameRecord['hands'] {
 
     const roundLabel = `${WIND_LABELS[hand.round.wind] || hand.round.wind}${hand.round.number}`;
 
-    const result: GameRecord['hands'][0]['result'] = { type: r.type };
+    const result: GameRecord['hands'][0]['result'] = { type: r.type as 'agari' | 'ryuukyoku' };
     if (r.type === 'agari') {
       result.winner = game.players[r.winnerIndex]?.name;
       result.loser = r.loserIndex !== null ? game.players[r.loserIndex]?.name : undefined;
@@ -142,10 +142,10 @@ function buildHandsRecord(game: Game): GameRecord['hands'] {
       result.pointsWon = r.pointsWon;
       result.honbaBonus = r.honbaBonus;
       result.riichiSticksCollected = r.riichiSticksCollected;
-    } else {
+    } else if (r.type === 'ryuukyoku') {
       result.tenpaiPlayers = r.tenpaiStatus
-        .map((t, i) => t ? game.players[i]?.name : null)
-        .filter((n): n is string => n !== null);
+        .map((t: boolean, i: number) => t ? game.players[i]?.name : null)
+        .filter((n: string | null): n is string => n !== null);
     }
 
     const riichiPlayerNames = (hand.riichiPlayers ?? [])

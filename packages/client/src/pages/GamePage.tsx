@@ -18,7 +18,7 @@ export function GamePage() {
   const {
     room, game, finalScores, playerId, connected, roomCode: storeRoomCode,
     connect, setSession,
-    recordHand, editHand, undoLastHand, recordPenalty, undoPenalty,
+    toggleRiichi, recordHand, editHand, undoLastHand, recordPenalty, undoPenalty,
     endGame, forceQuitGame, error, errorCode, clearError,
   } = useGameStore();
 
@@ -170,6 +170,8 @@ export function GamePage() {
         players={game.players}
         currentDealer={game.currentDealer}
         currentRoundWind={game.currentRound.wind}
+        liveRiichi={game.liveRiichi}
+        onToggleRiichi={toggleRiichi}
       />
 
       {/* Rules info bar */}
@@ -186,6 +188,12 @@ export function GamePage() {
           doubleYakumanEnabled={game.ruleset?.doubleYakumanEnabled ?? M_LEAGUE_RULES.doubleYakumanEnabled}
           multipleYakumanEnabled={game.ruleset?.multipleYakumanEnabled ?? M_LEAGUE_RULES.multipleYakumanEnabled}
           scoreFormula={game.ruleset?.scoreFormula ?? M_LEAGUE_RULES.scoreFormula}
+          teamMode={game.ruleset?.teamMode}
+          manganMinimum={game.ruleset?.manganMinimum}
+          onlySubtract={game.ruleset?.onlySubtract}
+          teammateNoTsumoPayment={game.ruleset?.teammateNoTsumoPayment}
+          noRiichiDeposit={game.ruleset?.noRiichiDeposit}
+          scma2v2DrawPenalty={game.ruleset?.scma2v2DrawPenalty}
           editable={false}
         />
       </div>
@@ -267,6 +275,7 @@ export function GamePage() {
           multipleYakumanEnabled={game.ruleset?.multipleYakumanEnabled}
           countedYakumanEnabled={game.ruleset?.countedYakumanEnabled}
           nagashiManganEnabled={game.ruleset?.nagashiManganEnabled}
+          liveRiichi={game.liveRiichi}
           editingHand={editingHandNumber !== null
             ? game.hands.find(h => h.handNumber === editingHandNumber)
             : undefined}

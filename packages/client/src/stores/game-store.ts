@@ -45,6 +45,7 @@ interface GameStore {
   toggleReady: () => boolean;
   swapSeats: (playerIdA: string, playerIdB: string) => boolean;
   setRuleset: (updates: Partial<Ruleset>) => void;
+  replaceRuleset: (ruleset: Partial<Ruleset>) => void;
   toggleTag: (tag: string) => void;
   setTeamAssignment: (playerId: string, teamName: string) => void;
   clearTeamAssignments: () => void;
@@ -53,6 +54,7 @@ interface GameStore {
   setCustomStartingPointsEnabled: (enabled: boolean) => void;
   setPlayerStartingPoints: (playerId: string, points: number) => void;
   startGame: (seatOrder: string[], ruleset?: Partial<Ruleset>) => boolean;
+  toggleRiichi: (playerIndex: number) => boolean;
   recordHand: (result: HandResultInput) => boolean;
   editHand: (handNumber: number, result: HandResultInput) => boolean;
   undoLastHand: () => boolean;
@@ -206,6 +208,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
           set({ game: event.game });
           break;
 
+        case 'riichi_toggled':
+          set((state) => {
+            if (!state.game) return state;
+            return { game: { ...state.game, liveRiichi: event.liveRiichi } };
+          });
+          break;
+
         case 'game_ended':
           set({ game: event.game, finalScores: event.finalScores, teamScores: event.teamScores ?? null, savedFilename: event.savedFilename ?? null });
           break;
@@ -259,6 +268,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => ({
       customRuleset: { ...state.customRuleset, ...updates },
     }));
+  },
+
+  replaceRuleset(ruleset: Partial<Ruleset>) {
+    set({ customRuleset: ruleset });
   },
 
   toggleTag(tag: string) {
@@ -320,6 +333,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ...(teams ? { teams } : {}),
       ...(psp ? { playerStartingPoints: psp } : {}),
     }) ?? false;
+  },
+
+  toggleRiichi(playerIndex: number) {
+    return wsClient?.send({ type: 'toggle_riichi', playerIndex }) ?? false;
   },
 
   recordHand(result: HandResultInput) {

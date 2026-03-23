@@ -18,12 +18,13 @@ interface Props {
   multipleYakumanEnabled?: boolean;
   countedYakumanEnabled?: boolean;
   nagashiManganEnabled?: boolean;
+  liveRiichi?: boolean[];
   editingHand?: Hand;
   onSubmit: (result: HandResultInput) => void;
   onClose: () => void;
 }
 
-type Step = 'outcome' | 'winner' | 'method' | 'loser' | 'hanfu' | 'yakumanSelect' | 'tenpai' | 'nagashiSelect' | 'oyaTenpai' | 'riichi' | 'confirm'
+type Step = 'outcome' | 'winner' | 'method' | 'loser' | 'hanfu' | 'yakumanSelect' | 'tenpai' | 'nagashiSelect' | 'oyaTenpai' | 'confirm'
   | 'multiLoser' | 'multiWinnerSelect' | 'multiHanFu' | 'multiYakumanSelect';
 
 function getInitialState(editingHand?: Hand) {
@@ -65,7 +66,7 @@ function getInitialState(editingHand?: Hand) {
   };
 }
 
-export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, kiriageMangan, doubleRonEnabled, doubleYakumanEnabled, multipleYakumanEnabled, countedYakumanEnabled, nagashiManganEnabled, editingHand, onSubmit, onClose }: Props) {
+export function RecordHandModal({ players, currentDealer, honbaCount, riichiSticks, kiriageMangan, doubleRonEnabled, doubleYakumanEnabled, multipleYakumanEnabled, countedYakumanEnabled, nagashiManganEnabled, liveRiichi, editingHand, onSubmit, onClose }: Props) {
   const { t } = useLocale();
   const init = getInitialState(editingHand);
   const [step, setStep] = useState<Step>(init.step);
@@ -77,7 +78,9 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
   const [fu, setFu] = useState(init.fu);
   const [tenpaiStatus, setTenpaiStatus] = useState(init.tenpaiStatus);
   const [nagashiManganPlayers, setNagashiManganPlayers] = useState(init.nagashiManganPlayers);
-  const [riichiPlayers, setRiichiPlayers] = useState(init.riichiPlayers);
+  const [riichiPlayers] = useState(() =>
+    editingHand?.input?.riichiPlayers ?? liveRiichi ?? [false, false, false, false]
+  );
 
   // Multi-ron state
   const [multiRonWinners, setMultiRonWinners] = useState<MultiRonWinnerInput[]>(init.multiRonWinners);
@@ -186,7 +189,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
     } else if (editingWinnerIdx < multiRonWinners.length - 1) {
       setEditingWinnerIdx(editingWinnerIdx + 1);
     } else {
-      setStep('riichi');
+      setStep('confirm');
     }
   }
 
@@ -199,7 +202,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
       setEditingWinnerIdx(editingWinnerIdx + 1);
       setSelectedYakuman([]);
     } else {
-      setStep('riichi');
+      setStep('confirm');
     }
   }
 
@@ -258,9 +261,8 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
       case 'tenpai': setStep('outcome'); break;
       case 'nagashiSelect': setStep('tenpai'); break;
       case 'oyaTenpai': setStep('nagashiSelect'); break;
-      case 'riichi':
+      case 'confirm':
         if (isMultiRon) {
-          // Go back to last multi-ron winner's yakuman or hanfu
           const lastIdx = multiRonWinners.length - 1;
           const lastW = multiRonWinners[lastIdx];
           if (lastW?.han >= 13 && !multiKazoeFlags[lastIdx]) {
@@ -278,7 +280,6 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
         }
         else setStep('tenpai');
         break;
-      case 'confirm': setStep('riichi'); break;
     }
   }
 
@@ -553,7 +554,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             />
 
             <button
-              onClick={() => setStep('riichi')}
+              onClick={() => setStep('confirm')}
               className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
@@ -570,7 +571,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             setSelectedYakuman={setSelectedYakuman}
             doubleYakumanEnabled={doubleYakumanEnabled ?? false}
             multipleYakumanEnabled={multipleYakumanEnabled ?? false}
-            onConfirm={() => setStep('riichi')}
+            onConfirm={() => setStep('confirm')}
           />
         )}
 
@@ -625,7 +626,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             </div>
 
             <button
-              onClick={() => { setNagashiManganPlayers([false, false, false, false]); setStep('riichi'); }}
+              onClick={() => { setNagashiManganPlayers([false, false, false, false]); setStep('confirm'); }}
               className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
@@ -673,7 +674,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             />
 
             <button
-              onClick={() => setStep(nagashiManganPlayers[currentDealer] ? 'oyaTenpai' : 'riichi')}
+              onClick={() => setStep(nagashiManganPlayers[currentDealer] ? 'oyaTenpai' : 'confirm')}
               disabled={!nagashiManganPlayers.some(Boolean)}
               className={`w-full py-3 rounded-xl font-bold text-lg
                 active:scale-[0.98] transition-transform
@@ -715,7 +716,7 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
                 const next = [false, false, false, false];
                 next[currentDealer] = true;
                 setTenpaiStatus(next);
-                setStep('riichi');
+                setStep('confirm');
               }}
               className="w-full py-4 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
                 active:scale-[0.98] transition-transform"
@@ -725,50 +726,12 @@ export function RecordHandModal({ players, currentDealer, honbaCount, riichiStic
             <button
               onClick={() => {
                 setTenpaiStatus([false, false, false, false]);
-                setStep('riichi');
+                setStep('confirm');
               }}
               className="w-full py-4 rounded-xl bg-mahjong-card text-white font-bold text-lg
                 active:scale-[0.98] transition-transform"
             >
               {t('record.notenRotate')}
-            </button>
-          </div>
-        )}
-
-        {/* Step: Riichi declaration */}
-        {step === 'riichi' && (
-          <div className="space-y-4">
-            <p className="text-sm text-mahjong-muted text-center mb-4">
-              {t('record.selectRiichi')}
-            </p>
-            <PlayerSelectGrid
-              players={players}
-              currentDealer={currentDealer}
-              selectedIndices={riichiPlayers.map((r, i) => r ? i : -1).filter(i => i >= 0)}
-              selectedLabel={t('mahjong.riichi')}
-              selectedColor="gold"
-              highlightDealer={false}
-              onClick={(idx) => {
-                const next = [...riichiPlayers];
-                next[idx] = !next[idx];
-                setRiichiPlayers(next);
-              }}
-            />
-
-            {riichiPlayers.some(Boolean) && (
-              <div className="bg-mahjong-card rounded-xl p-3 text-sm">
-                <p className="text-mahjong-muted">
-                  {t('record.riichiDeposit', { count: riichiPlayers.filter(Boolean).length })}
-                </p>
-              </div>
-            )}
-
-            <button
-              onClick={() => setStep('confirm')}
-              className="w-full py-3 rounded-xl bg-mahjong-green text-mahjong-bg font-bold text-lg
-                active:scale-[0.98] transition-transform"
-            >
-              {riichiPlayers.some(Boolean) ? t('common.confirm') : t('record.noRiichi')}
             </button>
           </div>
         )}

@@ -308,7 +308,7 @@ export class RoomManager {
     const hand = processHandResult(game, input);
 
     // If game ended naturally (南4 or bust), mark room as finished
-    if (game.status === 'completed') {
+    if (game.status as string === 'completed') {
       state.room.status = 'finished';
     }
 

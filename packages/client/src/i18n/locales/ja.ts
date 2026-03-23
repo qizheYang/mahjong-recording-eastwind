@@ -102,6 +102,7 @@ export const ja: Record<TranslationKey, string> = {
   'lobby.you': '自分',
   'lobby.ready': '準備OK',
   'lobby.add': '追加',
+  'lobby.addPlayers': '選手を追加',
   'lobby.phoneOptional': '電話番号 (任意)...',
   'lobby.waitingSlot': '待機中...',
   'lobby.readyCount': '{n}/4 準備完了',
@@ -225,6 +226,20 @@ export const ja: Record<TranslationKey, string> = {
   'rules.multipleYakuman': '役満の複合',
   'rules.multipleYakumanDesc': '複数の役満を重複可（例: 字一色+小四喜）',
 
+  // SCMA 2v2 special rules
+  'rules.scma2v2Title': '2v2 特殊ルール',
+  'rules.manganMinimum': '満貫縛り',
+  'rules.manganMinimumDesc': '満貫未満の和了は流局扱い',
+  'rules.manganMinimumShort': '満縛',
+  'rules.onlySubtract': '只減不加',
+  'rules.onlySubtractDesc': '和了者は点数を得ず、放銃者のみ失点',
+  'rules.teammateNoTsumoPayment': '味方免除',
+  'rules.teammateNoTsumoPaymentDesc': 'ツモ時味方は支払い不要',
+  'rules.noRiichiDeposit': 'リーチ供託なし',
+  'rules.noRiichiDepositDesc': 'リーチ宣言時に1000点棒を出す必要なし',
+  'rules.scma2v2DrawPenalty': '2v2流局罰符',
+  'rules.scma2v2DrawPenaltyDesc': '倍額罰符、味方間は罰符なし',
+
   // Presets
   'preset.selectPreset': 'ルールプリセット',
   'preset.mleague': 'Mリーグ',
@@ -232,6 +247,7 @@ export const ja: Record<TranslationKey, string> = {
   'preset.saikouisen': '最高位戦',
   'preset.wrc': 'WRC',
   'preset.arule': 'Aルール',
+  'preset.scma2v2': 'SCMA 2v2',
   'preset.custom': 'カスタム',
 
   // Yakuman

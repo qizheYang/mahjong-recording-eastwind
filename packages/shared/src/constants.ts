@@ -25,6 +25,14 @@ export interface Ruleset {
   multipleYakumanEnabled: boolean;
   akadoraCount: number;
   teamMode?: boolean;
+  // SCMA 2v2 special rules
+  manganMinimum?: boolean;           // 満贯縛り: sub-mangan wins treated as ryuukyoku
+  onlySubtract?: boolean;            // 只减不加: winner gets 0 points, losers pay normally
+  teammateNoTsumoPayment?: boolean;  // 队友自摸免付: teammate pays 0 on tsumo
+  noRiichiDeposit?: boolean;         // 无立直拱托: riichi declaration doesn't cost 1000
+  scma2v2DrawPenalty?: boolean;      // 2v2流局罚符: custom doubled draw penalty, teammates exempt
+  maxHonba?: number;                 // 强制流局本场数: force draw when honba reaches this
+  forcedTeamSeating?: boolean;       // 强制分队: East+North = Team A, South+West = Team B
 }
 
 export function defaultScoreFormula(returnPoints: number): string {
@@ -78,7 +86,7 @@ export const M_LEAGUE_RULES: Ruleset = {
   akadoraCount: 3,
 };
 
-export type PresetName = 'mleague' | 'official' | 'saikouisen' | 'wrc' | 'arule' | 'custom';
+export type PresetName = 'mleague' | 'official' | 'saikouisen' | 'wrc' | 'arule' | 'scma2v2' | 'custom';
 
 export const OFFICIAL_MATCH_RULES: Ruleset = {
   ...M_LEAGUE_RULES,
@@ -138,10 +146,28 @@ export const A_RULE: Ruleset = {
   akadoraCount: 0,
 };
 
+export const SCMA_2V2_RULES: Ruleset = {
+  ...M_LEAGUE_RULES,
+  uma: [0, 0, 0, 0],
+  okaEnabled: false,
+  tobiEnabled: false,
+  doubleRonEnabled: false,
+  nagashiManganEnabled: false,
+  teamMode: true,
+  manganMinimum: true,
+  onlySubtract: true,
+  teammateNoTsumoPayment: true,
+  noRiichiDeposit: true,
+  scma2v2DrawPenalty: true,
+  maxHonba: 10,
+  forcedTeamSeating: true,
+};
+
 export const PRESET_RULESETS: Record<Exclude<PresetName, 'custom'>, Ruleset> = {
   mleague: M_LEAGUE_RULES,
   official: OFFICIAL_MATCH_RULES,
   saikouisen: SAIKOUISEN_RULES,
   wrc: WRC_RULES,
   arule: A_RULE,
+  scma2v2: SCMA_2V2_RULES,
 };

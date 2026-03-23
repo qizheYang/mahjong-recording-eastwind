@@ -115,6 +115,9 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
 
       const { hand, game } = result;
 
+      // Reset live riichi after each hand
+      game.liveRiichi = [false, false, false, false];
+
       if (game.status === 'completed') {
         // Game ended naturally — finalize the saved file
         const savedFilename = finalizeGame(roomCode, game);
@@ -141,6 +144,8 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         return;
       }
 
+      result.liveRiichi = [false, false, false, false];
+
       if (result.status === 'completed') {
         const savedFilename = finalizeGame(roomCode, result);
         const finalScores = roomManager.getGameFinalScores(roomCode);
@@ -165,6 +170,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         sendError(ws, result.error, 'UNDO_ERROR');
         return;
       }
+      result.liveRiichi = [false, false, false, false];
       autoSave(roomCode, result);
       roomManager.broadcast(roomCode, { type: 'hand_undone', game: result });
       break;
@@ -226,6 +232,17 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
         ...(savedFilename ? { savedFilename } : {}),
         ...(teamScores ? { teamScores } : {}),
       });
+      break;
+    }
+
+    case 'toggle_riichi': {
+      const game = roomManager.getRoom(roomCode)?.currentGame;
+      if (!game) { sendError(ws, '没有进行中的对局', 'RIICHI_ERROR'); return; }
+      const pi = event.playerIndex;
+      if (pi < 0 || pi > 3) { sendError(ws, '无效的玩家', 'RIICHI_ERROR'); return; }
+      if (!game.liveRiichi) game.liveRiichi = [false, false, false, false];
+      game.liveRiichi[pi] = !game.liveRiichi[pi];
+      roomManager.broadcast(roomCode, { type: 'riichi_toggled', playerIndex: pi, riichi: game.liveRiichi[pi], liveRiichi: game.liveRiichi });
       break;
     }
 

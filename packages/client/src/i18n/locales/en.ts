@@ -102,6 +102,7 @@ export const en: Record<TranslationKey, string> = {
   'lobby.you': 'You',
   'lobby.ready': 'Ready',
   'lobby.add': 'Add',
+  'lobby.addPlayers': 'Add players',
   'lobby.phoneOptional': 'Phone (optional)...',
   'lobby.waitingSlot': 'Waiting...',
   'lobby.readyCount': '{n}/4 Ready',
@@ -225,6 +226,20 @@ export const en: Record<TranslationKey, string> = {
   'rules.multipleYakuman': 'Multiple Yakuman',
   'rules.multipleYakumanDesc': 'Allow stacking yakuman (e.g. Tsuiisou + Shousuushii)',
 
+  // SCMA 2v2 special rules
+  'rules.scma2v2Title': '2v2 Special Rules',
+  'rules.manganMinimum': 'Mangan Minimum',
+  'rules.manganMinimumDesc': 'Sub-mangan wins treated as draw',
+  'rules.manganMinimumShort': 'ManMin',
+  'rules.onlySubtract': 'Subtract Only',
+  'rules.onlySubtractDesc': 'Winner gets 0 points, losers pay normally',
+  'rules.teammateNoTsumoPayment': 'Teammate Exempt',
+  'rules.teammateNoTsumoPaymentDesc': 'Teammate pays 0 on tsumo',
+  'rules.noRiichiDeposit': 'No Riichi Deposit',
+  'rules.noRiichiDepositDesc': 'No 1000-point riichi deposit required',
+  'rules.scma2v2DrawPenalty': '2v2 Draw Penalty',
+  'rules.scma2v2DrawPenaltyDesc': 'Doubled draw penalty, teammates exempt',
+
   // Presets
   'preset.selectPreset': 'Rule Preset',
   'preset.mleague': 'M-League',
@@ -232,6 +247,7 @@ export const en: Record<TranslationKey, string> = {
   'preset.saikouisen': 'Saikouisen',
   'preset.wrc': 'WRC',
   'preset.arule': 'A-Rule',
+  'preset.scma2v2': 'SCMA 2v2',
   'preset.custom': 'Custom',
 
   // Yakuman

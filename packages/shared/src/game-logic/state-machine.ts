@@ -1,6 +1,7 @@
 import type { Game, Hand, HandResult, AgariResult, MultiAgariResult, MultiAgariWinner, RyuukyokuResult, Round, Penalty } from '../types/game.js';
 import type { HandResultInput, PenaltyInput } from '../types/ws-events.js';
 import { calculateTransfers } from '../scoring/transfers.js';
+import type { TransferOptions } from '../scoring/transfers.js';
 import { calculatePoints, calculateYakumanMultiplier } from '../scoring/calculator.js';
 
 export type GameStateAction =
@@ -26,6 +27,23 @@ function dealerWon(result: HandResult, dealerIndex: number): boolean {
     return result.winners.some(w => w.winnerIndex === dealerIndex);
   }
   return false;
+}
+
+/**
+ * Check if an agari result is sub-mangan (below mangan threshold).
+ * With kiriageMangan, 4han/30fu and 3han/60fu count as mangan.
+ */
+function isSubMangan(han: number, fu: number, isDealer: boolean, kiriageMangan?: boolean): boolean {
+  // Kiriage mangan: 4han/30fu and 3han/60fu are treated as mangan
+  if (kiriageMangan && ((han === 4 && fu === 30) || (han === 3 && fu === 60))) {
+    return false;
+  }
+  // 5+ han is always >= mangan
+  if (han >= 5) return false;
+  // Check against mangan threshold
+  const calc = calculatePoints({ han, fu, isDealer, isTsumo: false, kiriageMangan });
+  const manganThreshold = isDealer ? 12000 : 8000;
+  return calc.ronPayment < manganThreshold;
 }
 
 /**
@@ -83,6 +101,22 @@ export function isAllLastHand(game: Game): boolean {
 }
 
 /**
+ * Build TransferOptions from the current game state.
+ */
+function buildTransferOptions(game: Game): TransferOptions {
+  return {
+    dealerIndex: game.currentDealer,
+    honbaCount: game.honbaCount,
+    riichiSticksOnTable: game.riichiSticks,
+    kiriageMangan: game.ruleset.kiriageMangan,
+    onlySubtract: game.ruleset.onlySubtract,
+    teammateNoTsumoPayment: game.ruleset.teammateNoTsumoPayment,
+    scma2v2DrawPenalty: game.ruleset.scma2v2DrawPenalty,
+    players: game.players,
+  };
+}
+
+/**
  * Process a hand result: calculate transfers, update game state, return the recorded hand.
  */
 export function processHandResult(game: Game, input: HandResultInput): Hand {
@@ -92,86 +126,117 @@ export function processHandResult(game: Game, input: HandResultInput): Hand {
   const riichiPlayers = input.riichiPlayers ?? [false, false, false, false];
   for (let i = 0; i < 4; i++) {
     if (riichiPlayers[i]) {
-      game.players[i].points -= 1000;
-      game.riichiSticks++;
+      if (!game.ruleset.noRiichiDeposit) {
+        game.players[i].points -= 1000;
+        game.riichiSticks++;
+      }
+      // Riichi state is still tracked via riichiPlayers for han counting
     }
   }
 
   // Build the full HandResult
   let result: HandResult;
-  if (input.resultType === 'agari' && input.multiRon) {
-    // Multi-ron (double/triple ron)
-    const { loserIndex, winners: winnerInputs } = input.multiRon;
-    const closestWinnerIdx = getClosestWinnerIndex(loserIndex, winnerInputs.map(w => w.winnerIndex));
 
-    const winners: MultiAgariWinner[] = winnerInputs.map(w => {
-      const isDealer = w.winnerIndex === game.currentDealer;
-      const yakumanCount = w.yakumanList?.length
-        ? calculateYakumanMultiplier(w.yakumanList, game.ruleset.doubleYakumanEnabled, game.ruleset.multipleYakumanEnabled)
+  // 満贯縛り check: if manganMinimum is enabled and the agari is sub-mangan,
+  // convert it to a ryuukyoku (draw) with no tenpai penalties.
+  // Per rules: "不足满贯的和了无效，该局按流局处理"
+  // Dealer sub-mangan agari → renchan + honba+1; non-dealer → rotate dealer
+  // We model this as: dealer treated as tenpai, others as noten (for renchan rules)
+  if (game.ruleset.manganMinimum && input.resultType === 'agari' && !input.multiRon) {
+    const winnerIdx = input.winnerIndex!;
+    const isDealer = winnerIdx === game.currentDealer;
+    const han = input.han!;
+    const fu = input.fu!;
+    if (isSubMangan(han, fu, isDealer, game.ruleset.kiriageMangan)) {
+      // Convert to ryuukyoku with NO point changes.
+      // tenpaiStatus controls game flow only: dealer tenpai → renchan, dealer noten → rotate
+      const tenpaiStatus = [false, false, false, false];
+      if (isDealer) {
+        // Dealer's sub-mangan: dealer renchan, honba+1
+        tenpaiStatus[game.currentDealer] = true;
+      }
+      // Non-dealer sub-mangan: dealer noten → rotate dealer, honba carries
+      result = {
+        type: 'ryuukyoku',
+        tenpaiStatus,
+        subManganDraw: true, // no penalties, no point changes
+      };
+      // Override input to store that this was a sub-mangan conversion
+      // (the original input is still stored for reference)
+    }
+  }
+
+  // @ts-ignore — result may have been set by mangan minimum check above
+  if (!result) {
+    if (input.resultType === 'agari' && input.multiRon) {
+      // Multi-ron (double/triple ron)
+      const { loserIndex, winners: winnerInputs } = input.multiRon;
+      const closestWinnerIdx = getClosestWinnerIndex(loserIndex, winnerInputs.map(w => w.winnerIndex));
+
+      const winners: MultiAgariWinner[] = winnerInputs.map(w => {
+        const isDealer = w.winnerIndex === game.currentDealer;
+        const yakumanCount = w.yakumanList?.length
+          ? calculateYakumanMultiplier(w.yakumanList, game.ruleset.doubleYakumanEnabled, game.ruleset.multipleYakumanEnabled)
+          : undefined;
+        const calc = calculatePoints({
+          han: w.han, fu: w.fu, isDealer, isTsumo: false,
+          kiriageMangan: game.ruleset.kiriageMangan,
+          yakumanCount,
+        });
+        return {
+          winnerIndex: w.winnerIndex,
+          han: w.han,
+          fu: w.fu,
+          pointsWon: calc.total,
+          riichiSticksCollected: w.winnerIndex === closestWinnerIdx ? game.riichiSticks : 0,
+          ...(w.yakumanList?.length ? { yakumanList: w.yakumanList, yakumanCount } : {}),
+        };
+      });
+
+      result = {
+        type: 'multi_agari',
+        loserIndex,
+        winners,
+        honbaBonus: game.honbaCount * 300,
+      };
+    } else if (input.resultType === 'agari') {
+      const isDealer = input.winnerIndex === game.currentDealer;
+      const yakumanCount = input.yakumanList?.length
+        ? calculateYakumanMultiplier(input.yakumanList, game.ruleset.doubleYakumanEnabled, game.ruleset.multipleYakumanEnabled)
         : undefined;
       const calc = calculatePoints({
-        han: w.han, fu: w.fu, isDealer, isTsumo: false,
+        han: input.han!,
+        fu: input.fu!,
+        isDealer,
+        isTsumo: input.isTsumo!,
         kiriageMangan: game.ruleset.kiriageMangan,
         yakumanCount,
       });
-      return {
-        winnerIndex: w.winnerIndex,
-        han: w.han,
-        fu: w.fu,
+
+      result = {
+        type: 'agari',
+        winnerIndex: input.winnerIndex!,
+        loserIndex: input.isTsumo ? null : input.loserIndex!,
+        isTsumo: input.isTsumo!,
+        han: input.han!,
+        fu: input.fu!,
         pointsWon: calc.total,
-        riichiSticksCollected: w.winnerIndex === closestWinnerIdx ? game.riichiSticks : 0,
-        ...(w.yakumanList?.length ? { yakumanList: w.yakumanList, yakumanCount } : {}),
+        honbaBonus: game.honbaCount * (input.isTsumo ? 300 : 300),
+        riichiSticksCollected: game.riichiSticks,
+        ...(input.yakumanList?.length ? { yakumanList: input.yakumanList, yakumanCount } : {}),
       };
-    });
-
-    result = {
-      type: 'multi_agari',
-      loserIndex,
-      winners,
-      honbaBonus: game.honbaCount * 300,
-    };
-  } else if (input.resultType === 'agari') {
-    const isDealer = input.winnerIndex === game.currentDealer;
-    const yakumanCount = input.yakumanList?.length
-      ? calculateYakumanMultiplier(input.yakumanList, game.ruleset.doubleYakumanEnabled, game.ruleset.multipleYakumanEnabled)
-      : undefined;
-    const calc = calculatePoints({
-      han: input.han!,
-      fu: input.fu!,
-      isDealer,
-      isTsumo: input.isTsumo!,
-      kiriageMangan: game.ruleset.kiriageMangan,
-      yakumanCount,
-    });
-
-    result = {
-      type: 'agari',
-      winnerIndex: input.winnerIndex!,
-      loserIndex: input.isTsumo ? null : input.loserIndex!,
-      isTsumo: input.isTsumo!,
-      han: input.han!,
-      fu: input.fu!,
-      pointsWon: calc.total,
-      honbaBonus: game.honbaCount * (input.isTsumo ? 300 : 300),
-      riichiSticksCollected: game.riichiSticks,
-      ...(input.yakumanList?.length ? { yakumanList: input.yakumanList, yakumanCount } : {}),
-    };
-  } else {
-    result = {
-      type: 'ryuukyoku',
-      tenpaiStatus: input.tenpaiStatus!,
-      ...(input.nagashiManganPlayers?.some(Boolean) ? { nagashiManganPlayers: input.nagashiManganPlayers } : {}),
-    };
+    } else {
+      result = {
+        type: 'ryuukyoku',
+        tenpaiStatus: input.tenpaiStatus!,
+        ...(input.nagashiManganPlayers?.some(Boolean) ? { nagashiManganPlayers: input.nagashiManganPlayers } : {}),
+      };
+    }
   }
 
-  // Calculate point transfers
-  const { deltas } = calculateTransfers(
-    result,
-    game.currentDealer,
-    game.honbaCount,
-    game.riichiSticks,
-    game.ruleset.kiriageMangan,
-  );
+  // Calculate point transfers using the new options interface
+  const transferOpts = buildTransferOptions(game);
+  const { deltas } = calculateTransfers(result, transferOpts);
 
   // Apply point changes
   for (let i = 0; i < 4; i++) {
@@ -228,7 +293,6 @@ export function processHandResult(game: Game, input: HandResultInput): Hand {
       } else {
         game.honbaCount++;
       }
-      // Riichi sticks cleared if agari
       if (isAgariResult(result)) {
         game.riichiSticks = 0;
       }

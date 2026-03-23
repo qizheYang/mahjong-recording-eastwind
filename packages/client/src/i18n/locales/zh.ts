@@ -100,6 +100,7 @@ export const zh = {
   'lobby.you': '你',
   'lobby.ready': '准备',
   'lobby.add': '添加',
+  'lobby.addPlayers': '添加选手',
   'lobby.phoneOptional': '手机号 (可选)...',
   'lobby.waitingSlot': '等待加入...',
   'lobby.readyCount': '{n}/4 准备就绪',
@@ -223,6 +224,20 @@ export const zh = {
   'rules.multipleYakuman': '役满复合',
   'rules.multipleYakumanDesc': '允许多个役满叠加（如字一色+小四喜）',
 
+  // SCMA 2v2 special rules
+  'rules.scma2v2Title': '2v2 特殊规则',
+  'rules.manganMinimum': '满贯縛り',
+  'rules.manganMinimumDesc': '不足满贯的和了按流局处理',
+  'rules.manganMinimumShort': '満縛',
+  'rules.onlySubtract': '只减不加',
+  'rules.onlySubtractDesc': '和了方不获得点数，仅被和方扣点',
+  'rules.teammateNoTsumoPayment': '队友免付',
+  'rules.teammateNoTsumoPaymentDesc': '自摸时队友不扣分',
+  'rules.noRiichiDeposit': '无立直拱托',
+  'rules.noRiichiDepositDesc': '宣言立直不需要上交1000点棒',
+  'rules.scma2v2DrawPenalty': '2v2流局罚符',
+  'rules.scma2v2DrawPenaltyDesc': '翻倍罚符，队友间不产生罚符支付',
+
   // Presets
   'preset.selectPreset': '规则模板',
   'preset.mleague': 'M联赛',
@@ -230,6 +245,7 @@ export const zh = {
   'preset.saikouisen': '最高位战',
   'preset.wrc': 'WRC',
   'preset.arule': 'Aルール',
+  'preset.scma2v2': 'SCMA 2v2',
   'preset.custom': '自定义',
 
   // Yakuman

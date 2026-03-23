@@ -30,6 +30,7 @@ export interface Game {
   ruleset: Ruleset;
   tags: string[];
   penalties?: Penalty[];
+  liveRiichi?: boolean[]; // [p0, p1, p2, p3] real-time riichi status for streaming
 }
 
 export interface Hand {
@@ -85,6 +86,7 @@ export interface RyuukyokuResult {
   type: 'ryuukyoku';
   tenpaiStatus: boolean[]; // [p0, p1, p2, p3]
   nagashiManganPlayers?: boolean[]; // [p0, p1, p2, p3] - who achieved nagashi mangan (流局満貫)
+  subManganDraw?: boolean; // 不足满贯: no point changes, pure flow control
 }
 
 export interface Penalty {

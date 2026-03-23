@@ -15,7 +15,8 @@ export type ClientEvent =
   | { type: 'record_penalty'; penalty: PenaltyInput }
   | { type: 'undo_penalty' }
   | { type: 'end_game' }
-  | { type: 'force_quit_game' };
+  | { type: 'force_quit_game' }
+  | { type: 'toggle_riichi'; playerIndex: number };
 
 export interface PenaltyInput {
   type: 'final_score' | 'immediate';
@@ -66,5 +67,6 @@ export type ServerEvent =
   | { type: 'penalty_recorded'; penalty: Penalty; game: Game }
   | { type: 'penalty_undone'; game: Game }
   | { type: 'game_ended'; game: Game; finalScores: FinalScore[]; savedFilename?: string; teamScores?: TeamScore[] }
+  | { type: 'riichi_toggled'; playerIndex: number; riichi: boolean; liveRiichi: boolean[] }
   | { type: 'room_killed'; reason: string }
   | { type: 'error'; message: string; code: string };

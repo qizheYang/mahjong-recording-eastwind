@@ -16,6 +16,11 @@ interface RulesIslandProps {
   multipleYakumanEnabled: boolean;
   scoreFormula: string;
   teamMode?: boolean;
+  manganMinimum?: boolean;
+  onlySubtract?: boolean;
+  teammateNoTsumoPayment?: boolean;
+  noRiichiDeposit?: boolean;
+  scma2v2DrawPenalty?: boolean;
   presetName?: PresetName;
   editable: boolean;
   onChange?: (updates: Partial<Ruleset> & { presetName?: PresetName }) => void;
@@ -29,7 +34,7 @@ const UMA_PRESETS: { label: string; value: [number, number, number, number] }[] 
   { label: '+10/+5/-5/-10', value: [10, 5, -5, -10] },
 ];
 
-const PRESET_ORDER: PresetName[] = ['mleague', 'official', 'saikouisen', 'wrc', 'arule', 'custom'];
+const PRESET_ORDER: PresetName[] = ['mleague', 'official', 'saikouisen', 'wrc', 'arule', 'scma2v2', 'custom'];
 
 function formatUma(uma: [number, number, number, number]): string {
   return uma.map(v => (v > 0 ? `+${v}` : `${v}`)).join('/');
@@ -38,7 +43,8 @@ function formatUma(uma: [number, number, number, number]): string {
 export function RulesIsland({
   startingPoints, uma, tobiEnabled, okaEnabled, kiriageMangan, doubleRonEnabled,
   nagashiManganEnabled, countedYakumanEnabled, doubleYakumanEnabled, multipleYakumanEnabled,
-  scoreFormula, teamMode, presetName, editable, onChange,
+  scoreFormula, teamMode, manganMinimum, onlySubtract, teammateNoTsumoPayment, noRiichiDeposit,
+  scma2v2DrawPenalty, presetName, editable, onChange,
 }: RulesIslandProps) {
   const { t } = useLocale();
   const [expanded, setExpanded] = useState(false);
@@ -124,6 +130,9 @@ export function RulesIsland({
         </span>
         {teamMode && (
           <span className="text-mahjong-green font-bold text-xs">2v2</span>
+        )}
+        {manganMinimum && (
+          <span className="text-mahjong-highlight font-bold text-xs">{t('rules.manganMinimumShort')}</span>
         )}
         {editable && (
           <span className="text-mahjong-muted text-xs ml-1">{expanded ? '▲' : '▼'}</span>
@@ -284,6 +293,48 @@ export function RulesIsland({
               onToggle={() => onChange?.({ teamMode: !teamMode })}
             />
           </div>
+
+          {/* 2v2 special rules — shown when team mode is on */}
+          {teamMode && (
+            <div className={`space-y-3 border-t border-mahjong-accent/30 pt-3 ${isPreset ? 'opacity-50 pointer-events-none' : ''}`}>
+              <h4 className="text-xs text-mahjong-highlight font-bold">{t('rules.scma2v2Title')}</h4>
+              <ToggleRow
+                label={t('rules.manganMinimum')}
+                desc={t('rules.manganMinimumDesc')}
+                enabled={!!manganMinimum}
+                color="highlight"
+                onToggle={() => handleToggle('manganMinimum', !manganMinimum)}
+              />
+              <ToggleRow
+                label={t('rules.onlySubtract')}
+                desc={t('rules.onlySubtractDesc')}
+                enabled={!!onlySubtract}
+                color="highlight"
+                onToggle={() => handleToggle('onlySubtract', !onlySubtract)}
+              />
+              <ToggleRow
+                label={t('rules.teammateNoTsumoPayment')}
+                desc={t('rules.teammateNoTsumoPaymentDesc')}
+                enabled={!!teammateNoTsumoPayment}
+                color="green"
+                onToggle={() => handleToggle('teammateNoTsumoPayment', !teammateNoTsumoPayment)}
+              />
+              <ToggleRow
+                label={t('rules.noRiichiDeposit')}
+                desc={t('rules.noRiichiDepositDesc')}
+                enabled={!!noRiichiDeposit}
+                color="gold"
+                onToggle={() => handleToggle('noRiichiDeposit', !noRiichiDeposit)}
+              />
+              <ToggleRow
+                label={t('rules.scma2v2DrawPenalty')}
+                desc={t('rules.scma2v2DrawPenaltyDesc')}
+                enabled={!!scma2v2DrawPenalty}
+                color="gold"
+                onToggle={() => handleToggle('scma2v2DrawPenalty', !scma2v2DrawPenalty)}
+              />
+            </div>
+          )}
 
           {/* Toggle section */}
           <div className={`space-y-3 ${isPreset ? 'opacity-50 pointer-events-none' : ''}`}>
