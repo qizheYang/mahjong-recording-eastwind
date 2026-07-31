@@ -8,6 +8,7 @@ release_id="${2:?release id required}"
 [[ "$release_id" =~ ^[0-9]{8}T[0-9]{6}Z-[a-f0-9]{12}$ ]] || { echo "Invalid release id" >&2; exit 3; }
 
 release_root=/srv/eastwind-recording/releases
+pm2_config=/etc/eastwind-runtime/pm2.config.cjs
 release="$release_root/$release_id"
 previous="$(readlink -f /srv/eastwind-recording/current)"
 switched=0
@@ -19,7 +20,7 @@ rollback() {
   set +e
   if (( switched == 1 )); then
     ln -sfn "$previous" /srv/eastwind-recording/current
-    pm2 restart eastwind-api --update-env >/dev/null 2>&1 || true
+    pm2 startOrRestart "$pm2_config" --only eastwind-api >/dev/null 2>&1 || true
   fi
   if [[ -n "$test_root" && -d "$test_root" ]]; then
     rm -rf -- "$test_root"
@@ -32,11 +33,12 @@ trap 'rollback 143' TERM
 
 [[ -L /srv/eastwind-recording/current ]] || { echo "Normalize recording first" >&2; exit 4; }
 [[ -f /etc/eastwind-recording/app.env && -f /var/lib/eastwind-recording/data/mahjong.db ]] || { echo "Missing recording state" >&2; exit 5; }
+[[ -f "$pm2_config" ]] || { echo "Recording runtime hardening is not installed" >&2; exit 5; }
 [[ ! -e "$release" ]] || { echo "Release already exists" >&2; exit 6; }
 
 (cd "$staging" && sha256sum -c SHA256SUMS)
 install -d -o root -g root -m 0755 "$release"
-tar -xzf "$staging/recording-source.tgz" -C "$release"
+tar --no-same-owner -xzf "$staging/recording-source.tgz" -C "$release"
 ln -s /etc/eastwind-recording/app.env "$release/.env"
 ln -s /var/lib/eastwind-recording/data "$release/data"
 
@@ -48,13 +50,16 @@ rm -rf -- "$test_root"
 test_root=""
 npm run typecheck
 npm run build
+chown -hR root:eastwind-recording "$release"
+find -P "$release" -type d -exec chmod 0750 {} +
+find -P "$release" -type f -exec chmod u+rw,g+rX,o-rwx {} +
 find "$release/packages/client/dist" -type d -exec chmod 0755 {} +
 find "$release/packages/client/dist" -type f -exec chmod 0644 {} +
 
 systemctl start eastwind-backup.service
 switched=1
 ln -sfn "$release" /srv/eastwind-recording/current
-pm2 restart eastwind-api --update-env
+pm2 startOrRestart "$pm2_config" --only eastwind-api
 for attempt in {1..20}; do
   if curl -fsS http://127.0.0.1:3000/health >/dev/null 2>&1; then
     pm2 save
