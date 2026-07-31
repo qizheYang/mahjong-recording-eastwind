@@ -12,7 +12,7 @@ export function LobbyPage() {
   const navigate = useNavigate();
   const { t } = useLocale();
   const {
-    room, game, playerId, connected, customRuleset, gameTags, teamAssignments, windAssignments,
+    room, game, playerId, hostCapability, connected, customRuleset, gameTags, teamAssignments, windAssignments,
     customStartingPointsEnabled, playerStartingPoints,
     roomCode: storeRoomCode, errorCode,
     connect, toggleReady, swapSeats, startGame, setSession, setRuleset, replaceRuleset, toggleTag,
@@ -85,8 +85,10 @@ export function LobbyPage() {
   useEffect(() => {
     const storedRoom = localStorage.getItem('roomCode');
     const storedPlayer = localStorage.getItem('playerId');
-    if (storedRoom === roomCode && storedPlayer && !playerId) {
-      setSession(storedRoom, storedPlayer);
+    const storedCapability = localStorage.getItem('playerCapability');
+    const storedHostCapability = localStorage.getItem('hostCapability') ?? undefined;
+    if (storedRoom === roomCode && storedPlayer && storedCapability && !playerId) {
+      setSession(storedRoom, storedPlayer, storedCapability, storedHostCapability);
     }
   }, [roomCode, playerId, setSession]);
 
@@ -171,12 +173,12 @@ export function LobbyPage() {
   async function handleAddPlayer(slotIdx: number) {
     const name = soloNames[slotIdx]?.trim();
     if (!name) { setSoloError(t('validation.enterName')); return; }
-    if (!roomCode) return;
+    if (!roomCode || !hostCapability) return;
 
     setAddingIdx(slotIdx);
     setSoloError('');
     try {
-      await addPlayer(roomCode, name);
+      await addPlayer(roomCode, hostCapability, name);
       // Server broadcasts player_joined → room state updates via WS
       setSoloNames(prev => {
         const next = [...prev];
@@ -191,10 +193,10 @@ export function LobbyPage() {
   }
 
   async function handleRemovePlayer(targetPlayerId: string) {
-    if (!roomCode) return;
+    if (!roomCode || !hostCapability) return;
     setSoloError('');
     try {
-      await removePlayer(roomCode, targetPlayerId);
+      await removePlayer(roomCode, hostCapability, targetPlayerId);
       // Server broadcasts player_left → room state updates via WS
     } catch (e: any) {
       setSoloError(e.message);
@@ -202,10 +204,10 @@ export function LobbyPage() {
   }
 
   async function handleKillRoom() {
-    if (!roomCode || !playerId) return;
+    if (!roomCode || !hostCapability) return;
     if (!window.confirm(t('lobby.killRoomConfirm'))) return;
     try {
-      await killRoom(roomCode, playerId);
+      await killRoom(roomCode, hostCapability);
       leaveRoom();
       navigate('/');
     } catch { /* room may already be gone */ leaveRoom(); navigate('/'); }

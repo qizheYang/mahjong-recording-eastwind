@@ -38,7 +38,8 @@ export function HomePage() {
   useEffect(() => {
     const savedRoom = localStorage.getItem('roomCode');
     const savedPlayer = localStorage.getItem('playerId');
-    if (savedRoom && savedPlayer) {
+    const savedCapability = localStorage.getItem('playerCapability');
+    if (savedRoom && savedPlayer && savedCapability) {
       navigate(`/game/${savedRoom}`, { replace: true });
     }
   }, [navigate]);
@@ -47,14 +48,14 @@ export function HomePage() {
     let cancelled = false;
     async function fetchLive() {
       try {
-        const res = await listLiveGames();
+        const res = await listLiveGames(userToken ?? adminToken ?? undefined);
         if (!cancelled) setLiveGames(res.games);
       } catch { /* ignore */ }
     }
     fetchLive();
     const interval = setInterval(fetchLive, 10_000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, []);
+  }, [adminToken, userToken]);
 
   async function handleLogin() {
     if (!loginUsername.trim()) return;
@@ -76,7 +77,7 @@ export function HomePage() {
     setError('');
     try {
       const res = await createRoom(userToken);
-      setSession(res.roomCode, res.playerId);
+      setSession(res.roomCode, res.playerId, res.playerCapability, res.hostCapability);
       navigate(`/lobby/${res.roomCode}`);
     } catch (e: any) {
       setError(e.message);
@@ -108,7 +109,7 @@ export function HomePage() {
     setError('');
     try {
       const res = await joinRoom(roomCode.trim(), userToken);
-      setSession(res.roomCode, res.playerId);
+      setSession(res.roomCode, res.playerId, res.playerCapability);
       navigate(`/lobby/${res.roomCode}`);
     } catch (e: any) {
       setError(e.message);

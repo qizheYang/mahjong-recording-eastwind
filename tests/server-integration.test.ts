@@ -20,6 +20,18 @@ import type { Server } from 'http';
 let server: Server;
 let port: number;
 const BASE_PATH = '/mahjong-recording';
+const playerCapabilities = new Map<string, string>();
+const hostCapabilities = new Map<string, string>();
+const roomCreators = new Map<string, string>();
+
+function rememberRoomSession(data: any): void {
+  if (!data?.roomCode || !data?.playerId || !data?.playerCapability) return;
+  playerCapabilities.set(`${data.roomCode}:${data.playerId}`, data.playerCapability);
+  if (data.hostCapability) {
+    hostCapabilities.set(data.roomCode, data.hostCapability);
+    roomCreators.set(data.roomCode, data.playerId);
+  }
+}
 
 /**
  * Buffered WebSocket wrapper that captures all messages from the moment
@@ -88,7 +100,14 @@ class BufferedWs {
 
 // Helper: create a buffered WebSocket connection
 async function connectWs(roomCode: string, playerId: string): Promise<BufferedWs> {
-  const url = `ws://localhost:${port}${BASE_PATH}/ws?roomCode=${roomCode}&playerId=${playerId}`;
+  const playerCapability = playerCapabilities.get(`${roomCode}:${playerId}`);
+  if (!playerCapability) throw new Error(`Missing player capability for ${roomCode}:${playerId}`);
+  const params = new URLSearchParams({ roomCode, playerId, playerCapability });
+  const hostCapability = hostCapabilities.get(roomCode);
+  if (roomCreators.get(roomCode) === playerId && hostCapability) {
+    params.set('hostCapability', hostCapability);
+  }
+  const url = `ws://localhost:${port}${BASE_PATH}/ws?${params}`;
   const bws = new BufferedWs(url);
   await bws.waitForOpen();
   return bws;
@@ -96,12 +115,19 @@ async function connectWs(roomCode: string, playerId: string): Promise<BufferedWs
 
 // Helper: HTTP request
 async function apiPost(path: string, body: object, headers?: Record<string, string>): Promise<{ status: number; data: any }> {
+  const requestHeaders = { 'Content-Type': 'application/json', ...headers };
+  const roomMutation = path.match(/^\/api\/rooms\/([^/?]+)\/(?:add-player|remove-player|reset)$/);
+  if (roomMutation && !requestHeaders['X-Room-Capability']) {
+    const hostCapability = hostCapabilities.get(roomMutation[1].toUpperCase());
+    if (hostCapability) requestHeaders['X-Room-Capability'] = hostCapability;
+  }
   const res = await fetch(`http://localhost:${port}${BASE_PATH}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: requestHeaders,
     body: JSON.stringify(body),
   });
   const data = await res.json();
+  rememberRoomSession(data);
   return { status: res.status, data };
 }
 
@@ -137,13 +163,34 @@ async function joinRoomAs(code: string, playerName: string): Promise<{ status: n
 }
 
 async function apiGet(path: string, headers?: Record<string, string>): Promise<{ status: number; data: any }> {
-  const res = await fetch(`http://localhost:${port}${BASE_PATH}${path}`, { headers });
+  const requestHeaders = { ...headers };
+  const roomLookup = path.match(/^\/api\/rooms\/([^/?]+)$/);
+  if (roomLookup && !requestHeaders['X-Player-Capability']) {
+    const roomCode = roomLookup[1].toUpperCase();
+    const creatorId = roomCreators.get(roomCode);
+    const capability = creatorId && playerCapabilities.get(`${roomCode}:${creatorId}`);
+    if (creatorId && capability) {
+      requestHeaders['X-Player-Id'] = creatorId;
+      requestHeaders['X-Player-Capability'] = capability;
+    }
+  }
+  const res = await fetch(`http://localhost:${port}${BASE_PATH}${path}`, { headers: requestHeaders });
   const data = await res.json();
   return { status: res.status, data };
 }
 
 async function apiDelete(path: string, headers?: Record<string, string>): Promise<{ status: number; data: any }> {
-  const res = await fetch(`http://localhost:${port}${BASE_PATH}${path}`, { method: 'DELETE', headers });
+  const requestHeaders = { ...headers };
+  const roomDelete = path.match(/^\/api\/rooms\/([^/?]+)\?playerId=([^&]+)$/);
+  if (roomDelete) {
+    const roomCode = roomDelete[1].toUpperCase();
+    const claimedPlayerId = decodeURIComponent(roomDelete[2]);
+    if (roomCreators.get(roomCode) === claimedPlayerId) {
+      const hostCapability = hostCapabilities.get(roomCode);
+      if (hostCapability) requestHeaders['X-Room-Capability'] = hostCapability;
+    }
+  }
+  const res = await fetch(`http://localhost:${port}${BASE_PATH}${path}`, { method: 'DELETE', headers: requestHeaders });
   const data = await res.json();
   return { status: res.status, data };
 }
@@ -980,7 +1027,8 @@ describe('Edge Cases', () => {
 
     // Nonexistent room
     const notFound = await apiPost('/api/rooms/ZZZZ/add-player', { playerName: 'Ghost' });
-    expect(notFound.status).toBe(400);
+    // Authorization is checked before room lookup to avoid room enumeration.
+    expect(notFound.status).toBe(403);
   });
 
   it('custom ruleset: start game with 30000 points and tobi enabled', async () => {
@@ -1500,7 +1548,10 @@ describe('WebSocket Connection Resilience', () => {
     const creator = await createRoomAs(playerName);
     const { roomCode, playerId } = creator.data;
 
-    const url = `ws://localhost:${port}${BASE_PATH}/ws?roomCode=${roomCode}&playerId=${playerId}`;
+    const playerCapability = playerCapabilities.get(`${roomCode}:${playerId}`)!;
+    const hostCapability = hostCapabilities.get(roomCode)!;
+    const params = new URLSearchParams({ roomCode, playerId, playerCapability, hostCapability });
+    const url = `ws://localhost:${port}${BASE_PATH}/ws?${params}`;
     const ws = new WebSocket(url);
 
     await new Promise<void>((resolve, reject) => {

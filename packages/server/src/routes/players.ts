@@ -4,6 +4,7 @@ import { listGameRecords, getGameRecord } from '../services/game-file-service.js
 import { getDb } from '../db/connection.js';
 import { registeredUsers } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { authorizeAdmin } from '../services/authorization-service.js';
 
 const playerRoutes = new Hono();
 
@@ -18,10 +19,13 @@ function mergeRegisteredUsers(players: PlayerRecord[]): (PlayerRecord & { isRegi
   const registeredNames = new Set(users.map(u => u.username.toLowerCase()));
   const existingNames = new Set(players.map(p => p.name.toLowerCase()));
 
-  const result: (PlayerRecord & { isRegistered: boolean })[] = players.map(p => ({
-    ...p,
-    isRegistered: registeredNames.has(p.name.toLowerCase()),
-  }));
+  const result: (PlayerRecord & { isRegistered: boolean })[] = players.map(p => {
+    const { phone: _phone, ...publicPlayer } = p;
+    return {
+      ...publicPlayer,
+      isRegistered: registeredNames.has(p.name.toLowerCase()),
+    };
+  });
 
   for (const user of users) {
     if (!existingNames.has(user.username.toLowerCase())) {
@@ -50,12 +54,20 @@ playerRoutes.get('/', (c) => {
 
 // Rebuild player database from game files
 playerRoutes.post('/rebuild', (c) => {
+  if (!authorizeAdmin(c.req.header('Authorization'))) {
+    return c.json({ error: '未授权 (Unauthorized)' }, 401);
+  }
+
   const count = rebuildPlayerDB(listGameRecords, getGameRecord);
   return c.json({ rebuilt: count });
 });
 
 // Advanced search: find player by phone or email (from registered_users)
 playerRoutes.get('/search-contact', (c) => {
+  if (!authorizeAdmin(c.req.header('Authorization'))) {
+    return c.json({ error: '未授权 (Unauthorized)' }, 401);
+  }
+
   const q = c.req.query('q')?.trim();
   if (!q) return c.json({ players: [] });
 
@@ -98,7 +110,8 @@ playerRoutes.get('/:name', (c) => {
     .find(u => u.username.toLowerCase() === name.toLowerCase());
 
   if (player) {
-    return c.json({ ...player, isRegistered: !!user });
+    const { phone: _phone, ...publicPlayer } = player;
+    return c.json({ ...publicPlayer, isRegistered: !!user });
   }
 
   // Registered user without games

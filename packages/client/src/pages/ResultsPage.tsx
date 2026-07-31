@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useGameStore } from '../stores/game-store';
 import { useAdminStore } from '../stores/admin-store';
-import { getGameAnnotations, updateGameAnnotations, searchRegisteredUsers, deleteGame } from '../lib/api';
+import { getGameAnnotations, updateGameAnnotations, searchRegisteredUsers, adminDeleteGame } from '../lib/api';
 import { formatPoints, formatGameScore } from '../lib/format';
 import { useLocale } from '../i18n';
 
@@ -26,8 +26,10 @@ export function ResultsPage() {
   useEffect(() => {
     const storedRoom = localStorage.getItem('roomCode');
     const storedPlayer = localStorage.getItem('playerId');
-    if (storedRoom === roomCode && storedPlayer && !playerId) {
-      setSession(storedRoom, storedPlayer);
+    const storedCapability = localStorage.getItem('playerCapability');
+    const storedHostCapability = localStorage.getItem('hostCapability') ?? undefined;
+    if (storedRoom === roomCode && storedPlayer && storedCapability && !playerId) {
+      setSession(storedRoom, storedPlayer, storedCapability, storedHostCapability);
     }
   }, [roomCode, playerId, setSession]);
 
@@ -69,10 +71,10 @@ export function ResultsPage() {
   }
 
   async function handleDeleteRecord() {
-    if (!savedFilename) return;
+    if (!adminToken || !savedFilename) return;
     setDeleting(true);
     try {
-      await deleteGame(savedFilename);
+      await adminDeleteGame(adminToken, savedFilename);
       leaveRoom();
       navigate('/');
     } catch {
@@ -266,7 +268,7 @@ export function ResultsPage() {
       )}
 
       {/* Force-quit: prominent delete option */}
-      {wasForceQuit && savedFilename && (
+      {wasForceQuit && savedFilename && adminToken && (
         <div className="bg-mahjong-card rounded-xl p-4 mb-6 border border-mahjong-highlight/30">
           <p className="text-sm text-mahjong-muted text-center mb-3">{t('results.forceQuitHint')}</p>
           <button
@@ -301,7 +303,7 @@ export function ResultsPage() {
         >
           {t('common.backToHome')}
         </button>
-        {!wasForceQuit && savedFilename && (
+        {!wasForceQuit && savedFilename && adminToken && (
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="w-full py-2 text-mahjong-highlight/60 text-xs

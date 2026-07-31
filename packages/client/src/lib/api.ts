@@ -18,7 +18,14 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return data as T;
 }
 
-export async function createRoom(token: string): Promise<{ roomCode: string; playerId: string }> {
+export interface RoomSessionResponse {
+  roomCode: string;
+  playerId: string;
+  playerCapability: string;
+  hostCapability?: string;
+}
+
+export async function createRoom(token: string): Promise<RoomSessionResponse> {
   return request('/rooms', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
@@ -26,7 +33,7 @@ export async function createRoom(token: string): Promise<{ roomCode: string; pla
   });
 }
 
-export async function joinRoom(code: string, token: string): Promise<{ roomCode: string; playerId: string }> {
+export async function joinRoom(code: string, token: string): Promise<RoomSessionResponse> {
   return request(`/rooms/${code.toUpperCase()}/join`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
@@ -34,23 +41,26 @@ export async function joinRoom(code: string, token: string): Promise<{ roomCode:
   });
 }
 
-export async function addPlayer(code: string, playerName: string, phone?: string): Promise<{ roomCode: string; playerId: string }> {
+export async function addPlayer(code: string, hostCapability: string, playerName: string, phone?: string): Promise<RoomSessionResponse> {
   return request(`/rooms/${code.toUpperCase()}/add-player`, {
     method: 'POST',
+    headers: { 'X-Room-Capability': hostCapability },
     body: JSON.stringify({ playerName, ...(phone ? { phone } : {}) }),
   });
 }
 
-export async function removePlayer(code: string, playerId: string): Promise<{ ok: boolean }> {
+export async function removePlayer(code: string, hostCapability: string, playerId: string): Promise<{ ok: boolean }> {
   return request(`/rooms/${code.toUpperCase()}/remove-player`, {
     method: 'POST',
+    headers: { 'X-Room-Capability': hostCapability },
     body: JSON.stringify({ playerId }),
   });
 }
 
-export async function killRoom(code: string, playerId: string): Promise<{ ok: boolean }> {
-  return request(`/rooms/${code.toUpperCase()}?playerId=${encodeURIComponent(playerId)}`, {
+export async function killRoom(code: string, hostCapability: string): Promise<{ ok: boolean }> {
+  return request(`/rooms/${code.toUpperCase()}`, {
     method: 'DELETE',
+    headers: { 'X-Room-Capability': hostCapability },
   });
 }
 
@@ -61,8 +71,11 @@ export async function adminKillRoom(token: string, code: string): Promise<{ ok: 
   });
 }
 
-export async function resetRoom(code: string): Promise<void> {
-  return request(`/rooms/${code}/reset`, { method: 'POST' });
+export async function resetRoom(code: string, hostCapability: string): Promise<void> {
+  return request(`/rooms/${code}/reset`, {
+    method: 'POST',
+    headers: { 'X-Room-Capability': hostCapability },
+  });
 }
 
 export interface LiveGameSummary {
@@ -78,8 +91,10 @@ export interface LiveGameSummary {
   } | null;
 }
 
-export async function listLiveGames(): Promise<{ games: LiveGameSummary[] }> {
-  return request('/live-games');
+export async function listLiveGames(token?: string): Promise<{ games: LiveGameSummary[] }> {
+  return request('/live-games', token ? {
+    headers: { Authorization: `Bearer ${token}` },
+  } : undefined);
 }
 
 export interface GameListItem {
@@ -101,8 +116,11 @@ export async function getGame(filename: string): Promise<any> {
   return request(`/games/${encodeURIComponent(filename)}`);
 }
 
-export async function deleteGame(filename: string): Promise<{ deleted: string }> {
-  return request(`/games/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+export async function deleteGame(token: string, filename: string): Promise<{ deleted: string }> {
+  return request(`/games/${encodeURIComponent(filename)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }
 
 // Player database
@@ -135,8 +153,11 @@ export async function getPlayerRecord(name: string): Promise<PlayerRecord> {
   return request(`/players/${encodeURIComponent(name)}`);
 }
 
-export async function rebuildPlayerDB(): Promise<{ rebuilt: number }> {
-  return request('/players/rebuild', { method: 'POST' });
+export async function rebuildPlayerDB(token: string): Promise<{ rebuilt: number }> {
+  return request('/players/rebuild', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }
 
 // Admin API
@@ -250,6 +271,8 @@ export async function searchRegisteredUsers(q: string): Promise<{ users: Registe
   return request(`/users/search?q=${encodeURIComponent(q)}`);
 }
 
-export async function searchPlayerByContact(q: string): Promise<{ players: PlayerRecord[] }> {
-  return request(`/players/search-contact?q=${encodeURIComponent(q)}`);
+export async function searchPlayerByContact(token: string, q: string): Promise<{ players: PlayerRecord[] }> {
+  return request(`/players/search-contact?q=${encodeURIComponent(q)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }

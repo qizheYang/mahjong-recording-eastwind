@@ -11,12 +11,27 @@ import {
 import { nanoid } from 'nanoid';
 import { saveInProgressGame, finalizeGameRecord, getGameRecord } from '../services/game-file-service.js';
 import { updatePlayerDB } from '../services/player-db.js';
+import { issueCapability, verifyCapability } from '../services/authorization-service.js';
 
 interface RoomState {
   room: Room;
   connections: Map<string, WSContext>; // playerId -> ws
+  playerCapabilityDigests: Map<string, Buffer>;
+  hostCapabilityDigest: Buffer;
   lastActivityAt: number;
   savedFilename: string | null;
+}
+
+export interface RoomSession {
+  roomCode: string;
+  playerId: string;
+  playerCapability: string;
+  hostCapability?: string;
+}
+
+export interface ConnectedPlayer {
+  room: Room;
+  isHost: boolean;
 }
 
 // Characters that won't be confused (no 0/O, 1/I/L)
@@ -75,13 +90,15 @@ export class RoomManager {
     }
   }
 
-  createRoom(playerName: string, phone?: string): { roomCode: string; playerId: string } {
+  createRoom(playerName: string, phone?: string): RoomSession {
     let code = generateRoomCode();
     while (this.rooms.has(code)) {
       code = generateRoomCode();
     }
 
     const playerId = nanoid(12);
+    const playerCapability = issueCapability();
+    const hostCapability = issueCapability();
     const player: Player = { id: playerId, name: playerName, ...(phone ? { phone } : {}), seatWind: null, ready: false };
 
     const room: Room = {
@@ -93,48 +110,99 @@ export class RoomManager {
       creatorId: playerId,
     };
 
-    this.rooms.set(code, { room, connections: new Map(), lastActivityAt: Date.now(), savedFilename: null });
+    this.rooms.set(code, {
+      room,
+      connections: new Map(),
+      playerCapabilityDigests: new Map([[playerId, playerCapability.digest]]),
+      hostCapabilityDigest: hostCapability.digest,
+      lastActivityAt: Date.now(),
+      savedFilename: null,
+    });
 
-    return { roomCode: code, playerId };
+    return {
+      roomCode: code,
+      playerId,
+      playerCapability: playerCapability.token,
+      hostCapability: hostCapability.token,
+    };
   }
 
-  joinRoom(roomCode: string, playerName: string, phone?: string): { playerId: string; room: Room } | { error: string } {
+  joinRoom(roomCode: string, playerName: string, phone?: string): (RoomSession & { room: Room }) | { error: string } {
     const state = this.rooms.get(roomCode);
     if (!state) return { error: '房间不存在 (Room not found)' };
     if (state.room.players.length >= 4) return { error: '房间已满 (Room is full)' };
     if (state.room.status !== 'waiting') return { error: '对局已开始 (Game already started)' };
 
     const playerId = nanoid(12);
+    const playerCapability = issueCapability();
     const player: Player = { id: playerId, name: playerName, ...(phone ? { phone } : {}), seatWind: null, ready: false };
     state.room.players.push(player);
+    state.playerCapabilityDigests.set(playerId, playerCapability.digest);
     this.touch(roomCode);
 
-    return { playerId, room: state.room };
+    return {
+      roomCode,
+      playerId,
+      playerCapability: playerCapability.token,
+      room: state.room,
+    };
   }
 
-  connectPlayer(roomCode: string, playerId: string, ws: WSContext): Room | null {
+  connectPlayer(
+    roomCode: string,
+    playerId: string,
+    playerCapability: string | undefined,
+    hostCapability: string | undefined,
+    ws: WSContext,
+  ): ConnectedPlayer | null {
     const state = this.rooms.get(roomCode);
     if (!state) return null;
 
     const player = state.room.players.find(p => p.id === playerId);
     if (!player) return null;
+    const playerDigest = state.playerCapabilityDigests.get(playerId);
+    if (!playerDigest || !verifyCapability(playerCapability, playerDigest)) return null;
 
+    const previousConnection = state.connections.get(playerId);
     state.connections.set(playerId, ws);
+    if (previousConnection && previousConnection !== ws) {
+      try { previousConnection.close(4000, 'Connection replaced'); } catch { /* ignore */ }
+    }
     this.touch(roomCode);
-    return state.room;
+    const isHost = playerId === state.room.creatorId
+      && verifyCapability(hostCapability, state.hostCapabilityDigest);
+    return { room: state.room, isHost };
   }
 
-  disconnectPlayer(roomCode: string, playerId: string): void {
+  authorizePlayer(roomCode: string, playerId: string | undefined, capability: string | undefined): boolean {
+    if (!playerId) return false;
+    const digest = this.rooms.get(roomCode)?.playerCapabilityDigests.get(playerId);
+    return !!digest && verifyCapability(capability, digest);
+  }
+
+  authorizeHost(roomCode: string, capability: string | undefined): boolean {
+    const state = this.rooms.get(roomCode);
+    return !!state && verifyCapability(capability, state.hostCapabilityDigest);
+  }
+
+  disconnectPlayer(roomCode: string, playerId: string, ws: WSContext): void {
     const state = this.rooms.get(roomCode);
     if (!state) return;
-    state.connections.delete(playerId);
+    if (state.connections.get(playerId) === ws) {
+      state.connections.delete(playerId);
+    }
   }
 
   removePlayer(roomCode: string, playerId: string): void {
     const state = this.rooms.get(roomCode);
     if (!state) return;
 
+    const connection = state.connections.get(playerId);
     state.connections.delete(playerId);
+    if (connection) {
+      try { connection.close(4003, 'Removed from room'); } catch { /* ignore */ }
+    }
+    state.playerCapabilityDigests.delete(playerId);
     state.room.players = state.room.players.filter(p => p.id !== playerId);
 
     // Clean up empty rooms
@@ -203,6 +271,20 @@ export class RoomManager {
     return this.rooms.get(roomCode)?.room ?? null;
   }
 
+  getPublicRoom(roomCode: string) {
+    const room = this.rooms.get(roomCode)?.room;
+    if (!room) return null;
+    return {
+      status: room.status,
+      createdAt: room.createdAt,
+      playerCount: room.players.length,
+      players: room.players.map((player) => ({
+        seatWind: player.seatWind,
+        ready: player.ready,
+      })),
+    };
+  }
+
   getSavedFilename(roomCode: string): string | null {
     return this.rooms.get(roomCode)?.savedFilename ?? null;
   }
@@ -243,6 +325,37 @@ export class RoomManager {
         } : null,
       });
     }
+    return result;
+  }
+
+  listPublicRooms() {
+    const result: {
+      status: string;
+      playerCount: number;
+      gameInfo: {
+        currentRound: { wind: string; number: number };
+        handCount: number;
+        honbaCount: number;
+        riichiSticks: number;
+      } | null;
+    }[] = [];
+
+    for (const state of this.rooms.values()) {
+      const room = state.room;
+      if (room.status === 'finished') continue;
+      const game = room.currentGame;
+      result.push({
+        status: room.status,
+        playerCount: room.players.length,
+        gameInfo: game ? {
+          currentRound: { ...game.currentRound },
+          handCount: game.hands.length,
+          honbaCount: game.honbaCount,
+          riichiSticks: game.riichiSticks,
+        } : null,
+      });
+    }
+
     return result;
   }
 

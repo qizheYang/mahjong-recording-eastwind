@@ -400,6 +400,10 @@ export const ja: Record<TranslationKey, string> = {
 
   // Error codes
   'error.INVALID_ROOM': '部屋に参加できません',
+  'error.INVALID_CAPABILITY': 'ルームセッションが無効または期限切れです',
+  'error.HOST_REQUIRED': 'この操作はルームホストのみ実行できます',
+  'error.PAYLOAD_TOO_LARGE': 'メッセージが大きすぎます',
+  'error.RATE_LIMITED': 'メッセージが多すぎます。しばらく待ってから再試行してください',
   'error.PARSE_ERROR': '無効なメッセージ形式',
   'error.UNKNOWN_EVENT': '不明なイベント',
   'error.READY_ERROR': '準備状態エラー',

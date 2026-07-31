@@ -21,9 +21,11 @@ export class WsClient {
     this.url = url;
   }
 
-  connect(roomCode: string, playerId: string): void {
+  connect(roomCode: string, playerId: string, playerCapability: string, hostCapability?: string): void {
     this.shouldReconnect = true;
-    const wsUrl = `${this.url}?roomCode=${encodeURIComponent(roomCode)}&playerId=${encodeURIComponent(playerId)}`;
+    const params = new URLSearchParams({ roomCode, playerId, playerCapability });
+    if (hostCapability) params.set('hostCapability', hostCapability);
+    const wsUrl = `${this.url}?${params.toString()}`;
     this.doConnect(wsUrl);
   }
 

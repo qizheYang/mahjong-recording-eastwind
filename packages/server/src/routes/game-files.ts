@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { listGameRecords, getGameRecord, deleteGameRecord } from '../services/game-file-service.js';
 import { rebuildPlayerDB } from '../services/player-db.js';
+import { authorizeAdmin } from '../services/authorization-service.js';
 
 const gameFileRoutes = new Hono();
 
@@ -23,11 +24,22 @@ gameFileRoutes.get('/:filename', (c) => {
     return c.json({ error: '记录不存在 (Record not found)' }, 404);
   }
 
-  return c.json(record);
+  if (authorizeAdmin(c.req.header('Authorization'))) {
+    return c.json(record);
+  }
+
+  return c.json({
+    ...record,
+    players: record.players.map(({ phone: _phone, ...player }) => player),
+  });
 });
 
-// Delete a game record (public — used from results page after force quit)
+// Delete a game record (administrator only)
 gameFileRoutes.delete('/:filename', (c) => {
+  if (!authorizeAdmin(c.req.header('Authorization'))) {
+    return c.json({ error: '未授权 (Unauthorized)' }, 401);
+  }
+
   const filename = c.req.param('filename');
   const deleted = deleteGameRecord(filename);
   if (!deleted) {

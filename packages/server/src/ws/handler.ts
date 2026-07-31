@@ -8,19 +8,44 @@ import { updatePlayerDB } from '../services/player-db.js';
 interface ConnectionContext {
   roomCode: string;
   playerId: string;
+  isHost: boolean;
+  rateWindowStartedAt: number;
+  messagesInWindow: number;
 }
+
+const MAX_WS_MESSAGE_BYTES = 64 * 1024;
+const WS_RATE_WINDOW_MS = 10_000;
+const MAX_WS_MESSAGES_PER_WINDOW = 100;
 
 const connectionCtx = new WeakMap<WSContext, ConnectionContext>();
 
-export function handleWSOpen(ws: WSContext, roomCode: string, playerId: string): void {
-  connectionCtx.set(ws, { roomCode, playerId });
-
-  const room = roomManager.connectPlayer(roomCode, playerId, ws);
-  if (!room) {
-    sendError(ws, '无法加入房间 (Cannot join room)', 'INVALID_ROOM');
+export function handleWSOpen(
+  ws: WSContext,
+  roomCode: string,
+  playerId: string,
+  playerCapability: string | undefined,
+  hostCapability: string | undefined,
+): void {
+  const connection = roomManager.connectPlayer(
+    roomCode,
+    playerId,
+    playerCapability,
+    hostCapability,
+    ws,
+  );
+  if (!connection) {
+    sendError(ws, '无效或已过期的房间凭证 (Invalid or expired room credential)', 'INVALID_CAPABILITY');
     ws.close(4001, 'Invalid room or player');
     return;
   }
+  connectionCtx.set(ws, {
+    roomCode,
+    playerId,
+    isHost: connection.isHost,
+    rateWindowStartedAt: Date.now(),
+    messagesInWindow: 0,
+  });
+  const { room } = connection;
 
   // Send current room state to the connecting player
   const event: ServerEvent = { type: 'room_state', room };
@@ -39,8 +64,19 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
 
   // Handle heartbeat ping (plain text, not JSON)
   const raw = typeof data === 'string' ? data : data.toString();
+  if (Buffer.byteLength(raw, 'utf8') > MAX_WS_MESSAGE_BYTES) {
+    sendError(ws, '消息内容过大 (WebSocket payload too large)', 'PAYLOAD_TOO_LARGE');
+    ws.close(1009, 'Message too large');
+    return;
+  }
   if (raw === 'ping') {
     try { ws.send('pong'); } catch { /* ignore */ }
+    return;
+  }
+
+  if (!consumeMessageBudget(ctx)) {
+    sendError(ws, '消息过于频繁 (Too many WebSocket messages)', 'RATE_LIMITED');
+    ws.close(4008, 'Rate limit exceeded');
     return;
   }
 
@@ -96,6 +132,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
     }
 
     case 'start_game': {
+      if (!requireHost(ws, ctx)) return;
       const result = roomManager.startGame(roomCode, event.seatOrder, event.ruleset, event.tags, event.teams, event.playerStartingPoints);
       if ('error' in result) {
         sendError(ws, result.error, 'START_ERROR');
@@ -138,6 +175,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
     }
 
     case 'edit_hand': {
+      if (!requireHost(ws, ctx)) return;
       const result = roomManager.editHand(roomCode, event.handNumber, event.result);
       if ('error' in result) {
         sendError(ws, result.error, 'RECORD_ERROR');
@@ -165,6 +203,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
     }
 
     case 'undo_last_hand': {
+      if (!requireHost(ws, ctx)) return;
       const result = roomManager.undoHand(roomCode);
       if ('error' in result) {
         sendError(ws, result.error, 'UNDO_ERROR');
@@ -199,6 +238,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
     }
 
     case 'end_game': {
+      if (!requireHost(ws, ctx)) return;
       const result = roomManager.endGame(roomCode);
       if ('error' in result) {
         sendError(ws, result.error, 'END_ERROR');
@@ -217,6 +257,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
     }
 
     case 'force_quit_game': {
+      if (!requireHost(ws, ctx)) return;
       const result = roomManager.endGame(roomCode);
       if ('error' in result) {
         sendError(ws, result.error, 'END_ERROR');
@@ -261,7 +302,7 @@ export function handleWSMessage(ws: WSContext, data: WSMessageReceive): void {
 export function handleWSClose(ws: WSContext): void {
   const ctx = connectionCtx.get(ws);
   if (!ctx) return;
-  roomManager.disconnectPlayer(ctx.roomCode, ctx.playerId);
+  roomManager.disconnectPlayer(ctx.roomCode, ctx.playerId, ws);
   connectionCtx.delete(ws);
 }
 
@@ -319,4 +360,20 @@ function sendError(ws: WSContext, message: string, code: string): void {
   } catch {
     // ignore
   }
+}
+
+function requireHost(ws: WSContext, ctx: ConnectionContext): boolean {
+  if (ctx.isHost) return true;
+  sendError(ws, '只有房主可以执行此操作 (Host capability required)', 'HOST_REQUIRED');
+  return false;
+}
+
+function consumeMessageBudget(ctx: ConnectionContext): boolean {
+  const now = Date.now();
+  if (now - ctx.rateWindowStartedAt >= WS_RATE_WINDOW_MS) {
+    ctx.rateWindowStartedAt = now;
+    ctx.messagesInWindow = 0;
+  }
+  ctx.messagesInWindow += 1;
+  return ctx.messagesInWindow <= MAX_WS_MESSAGES_PER_WINDOW;
 }

@@ -8,6 +8,8 @@ interface GameStore {
   // Connection state
   roomCode: string | null;
   playerId: string | null;
+  playerCapability: string | null;
+  hostCapability: string | null;
   connected: boolean;
 
   // Room & game state
@@ -39,7 +41,7 @@ interface GameStore {
   errorCode: string | null;
 
   // Actions
-  setSession: (roomCode: string, playerId: string) => void;
+  setSession: (roomCode: string, playerId: string, playerCapability: string, hostCapability?: string) => void;
   connect: () => void;
   disconnect: () => void;
   toggleReady: () => boolean;
@@ -72,6 +74,8 @@ let wsClient: WsClient | null = null;
 export const useGameStore = create<GameStore>((set, get) => ({
   roomCode: null,
   playerId: null,
+  playerCapability: null,
+  hostCapability: null,
   connected: false,
   room: null,
   game: null,
@@ -88,7 +92,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   error: null,
   errorCode: null,
 
-  setSession(roomCode: string, playerId: string) {
+  setSession(roomCode: string, playerId: string, playerCapability: string, hostCapability?: string) {
     const prev = get();
     // If switching to a different room, disconnect old WS and clear stale state
     if (prev.roomCode && prev.roomCode !== roomCode) {
@@ -97,22 +101,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
         wsClient = null;
       }
       set({
-        roomCode, playerId,
+        roomCode, playerId, playerCapability, hostCapability: hostCapability ?? null,
         room: null, game: null, finalScores: null, teamScores: null, savedFilename: null,
         connected: false, customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {},
         customStartingPointsEnabled: false, playerStartingPoints: {},
       });
     } else {
-      set({ roomCode, playerId });
+      set({ roomCode, playerId, playerCapability, hostCapability: hostCapability ?? null });
     }
     // Persist for reconnection
     localStorage.setItem('roomCode', roomCode);
     localStorage.setItem('playerId', playerId);
+    localStorage.setItem('playerCapability', playerCapability);
+    if (hostCapability) localStorage.setItem('hostCapability', hostCapability);
+    else localStorage.removeItem('hostCapability');
   },
 
   connect() {
-    const { roomCode, playerId } = get();
-    if (!roomCode || !playerId) return;
+    const { roomCode, playerId, playerCapability, hostCapability } = get();
+    if (!roomCode || !playerId || !playerCapability) return;
 
     // Idempotent: skip if already connected or connecting
     if (wsClient?.isConnected) return;
@@ -222,30 +229,34 @@ export const useGameStore = create<GameStore>((set, get) => ({
         case 'room_killed':
           localStorage.removeItem('roomCode');
           localStorage.removeItem('playerId');
+          localStorage.removeItem('playerCapability');
+          localStorage.removeItem('hostCapability');
           if (wsClient) {
             wsClient.disconnect();
             wsClient = null;
           }
-          set({ room: null, game: null, roomCode: null, playerId: null, connected: false, error: event.reason, errorCode: 'ROOM_KILLED' });
+          set({ room: null, game: null, roomCode: null, playerId: null, playerCapability: null, hostCapability: null, connected: false, error: event.reason, errorCode: 'ROOM_KILLED' });
           break;
 
         case 'error':
           set({ error: event.message, errorCode: event.code ?? null });
           // Invalid room/player — clear stale session so we don't retry on reload
-          if (event.code === 'INVALID_ROOM') {
+          if (event.code === 'INVALID_ROOM' || event.code === 'INVALID_CAPABILITY') {
             localStorage.removeItem('roomCode');
             localStorage.removeItem('playerId');
+            localStorage.removeItem('playerCapability');
+            localStorage.removeItem('hostCapability');
             if (wsClient) {
               wsClient.disconnect();
               wsClient = null;
             }
-            set({ roomCode: null, playerId: null, connected: false });
+            set({ roomCode: null, playerId: null, playerCapability: null, hostCapability: null, connected: false });
           }
           break;
       }
     });
 
-    wsClient.connect(roomCode, playerId);
+    wsClient.connect(roomCode, playerId, playerCapability, hostCapability ?? undefined);
   },
 
   disconnect() {
@@ -379,12 +390,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   leaveRoom() {
     localStorage.removeItem('roomCode');
     localStorage.removeItem('playerId');
+    localStorage.removeItem('playerCapability');
+    localStorage.removeItem('hostCapability');
     if (wsClient) {
       wsClient.disconnect();
       wsClient = null;
     }
     set({
-      roomCode: null, playerId: null, connected: false,
+      roomCode: null, playerId: null, playerCapability: null, hostCapability: null, connected: false,
       room: null, game: null, finalScores: null, teamScores: null, savedFilename: null,
       wasForceQuit: false,
       customRuleset: {}, gameTags: [], teamAssignments: {}, windAssignments: {},

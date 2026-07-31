@@ -400,6 +400,10 @@ export const en: Record<TranslationKey, string> = {
 
   // Error codes
   'error.INVALID_ROOM': 'Cannot join room',
+  'error.INVALID_CAPABILITY': 'Your room session is invalid or expired',
+  'error.HOST_REQUIRED': 'Only the room host can do this',
+  'error.PAYLOAD_TOO_LARGE': 'Message is too large',
+  'error.RATE_LIMITED': 'Too many messages. Please wait and try again',
   'error.PARSE_ERROR': 'Invalid message format',
   'error.UNKNOWN_EVENT': 'Unknown event type',
   'error.READY_ERROR': 'Ready status error',

@@ -398,6 +398,10 @@ export const zh = {
 
   // Error codes (from server)
   'error.INVALID_ROOM': '无法加入房间',
+  'error.INVALID_CAPABILITY': '房间会话无效或已过期',
+  'error.HOST_REQUIRED': '只有房主可以执行此操作',
+  'error.PAYLOAD_TOO_LARGE': '消息内容过大',
+  'error.RATE_LIMITED': '消息过于频繁，请稍后再试',
   'error.PARSE_ERROR': '无效消息格式',
   'error.UNKNOWN_EVENT': '未知事件类型',
   'error.READY_ERROR': '准备状态错误',

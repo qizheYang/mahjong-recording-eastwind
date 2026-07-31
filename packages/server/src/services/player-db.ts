@@ -115,15 +115,13 @@ export function listPlayers(): PlayerRecord[] {
 }
 
 /**
- * Search players by name or phone.
+ * Search players by public name. Contact lookup is restricted to the
+ * administrator-only endpoint and must never be available through listings.
  */
 export function searchPlayers(query: string): PlayerRecord[] {
   const db = loadDB();
   const q = query.toLowerCase();
-  return Object.values(db.players).filter(p =>
-    p.name.toLowerCase() === q ||
-    (p.phone && p.phone === query)
-  );
+  return Object.values(db.players).filter(p => p.name.toLowerCase() === q);
 }
 
 /**

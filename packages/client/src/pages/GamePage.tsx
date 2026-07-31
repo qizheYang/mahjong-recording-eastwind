@@ -33,8 +33,10 @@ export function GamePage() {
   useEffect(() => {
     const storedRoom = localStorage.getItem('roomCode');
     const storedPlayer = localStorage.getItem('playerId');
-    if (storedRoom === roomCode && storedPlayer && !playerId) {
-      setSession(storedRoom, storedPlayer);
+    const storedCapability = localStorage.getItem('playerCapability');
+    const storedHostCapability = localStorage.getItem('hostCapability') ?? undefined;
+    if (storedRoom === roomCode && storedPlayer && storedCapability && !playerId) {
+      setSession(storedRoom, storedPlayer, storedCapability, storedHostCapability);
     }
   }, [roomCode, playerId, setSession]);
 

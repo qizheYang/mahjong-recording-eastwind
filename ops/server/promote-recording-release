@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+umask 077
+staging="${1:?staging path required}"
+release_id="${2:?release id required}"
+[[ "$staging" == /var/tmp/eastwind-recording-deploy-* ]] || { echo "Invalid staging path" >&2; exit 2; }
+[[ "$release_id" =~ ^[0-9]{8}T[0-9]{6}Z-[a-f0-9]{12}$ ]] || { echo "Invalid release id" >&2; exit 3; }
+
+release_root=/srv/eastwind-recording/releases
+release="$release_root/$release_id"
+previous="$(readlink -f /srv/eastwind-recording/current)"
+switched=0
+
+rollback() {
+  local exit_code=$?
+  if (( switched == 1 )); then
+    ln -sfn "$previous" /srv/eastwind-recording/current
+    pm2 restart eastwind-api --update-env >/dev/null 2>&1 || true
+  fi
+  exit "$exit_code"
+}
+trap rollback ERR
+
+[[ -L /srv/eastwind-recording/current ]] || { echo "Normalize recording first" >&2; exit 4; }
+[[ -f /etc/eastwind-recording/app.env && -f /var/lib/eastwind-recording/data/mahjong.db ]] || { echo "Missing recording state" >&2; exit 5; }
+[[ ! -e "$release" ]] || { echo "Release already exists" >&2; exit 6; }
+
+(cd "$staging" && sha256sum -c SHA256SUMS)
+install -d -o root -g root -m 0755 "$release"
+tar -xzf "$staging/recording-source.tgz" -C "$release"
+ln -s /etc/eastwind-recording/app.env "$release/.env"
+ln -s /var/lib/eastwind-recording/data "$release/data"
+
+cd "$release"
+npm ci
+npm test
+npm run typecheck
+npm run build
+find "$release/packages/client/dist" -type d -exec chmod 0755 {} +
+find "$release/packages/client/dist" -type f -exec chmod 0644 {} +
+
+systemctl start eastwind-backup.service
+ln -sfn "$release" /srv/eastwind-recording/current
+switched=1
+pm2 restart eastwind-api --update-env
+for attempt in {1..20}; do
+  if curl -fsS http://127.0.0.1:3000/health >/dev/null; then
+    pm2 save
+    switched=0
+    rm -rf -- "$staging"
+    echo "Promoted recording $release_id"
+    exit 0
+  fi
+  sleep 1
+done
+echo "Recording health check failed" >&2
+exit 10

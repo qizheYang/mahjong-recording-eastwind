@@ -110,9 +110,9 @@ export function HistoryPage() {
 
   async function loadPlayers() {
     const res = await listPlayerRecords();
-    if (res.players.length === 0) {
+    if (res.players.length === 0 && adminToken) {
       // Auto-rebuild from existing game files
-      await rebuildPlayerDB();
+      await rebuildPlayerDB(adminToken);
       const res2 = await listPlayerRecords();
       setAllPlayers(res2.players);
     } else {
@@ -146,9 +146,10 @@ export function HistoryPage() {
   }
 
   async function handleRebuild() {
+    if (!adminToken) return;
     setRebuilding(true);
     try {
-      await rebuildPlayerDB();
+      await rebuildPlayerDB(adminToken);
       const res = await listPlayerRecords();
       setAllPlayers(res.players);
     } catch (e: any) {
@@ -200,16 +201,16 @@ export function HistoryPage() {
 
   // Advanced search by phone/email (players tab)
   useEffect(() => {
-    if (!advancedSearch) { setAdvancedResults(null); return; }
+    if (!advancedSearch || !adminToken) { setAdvancedResults(null); return; }
     const q = nameFilter.trim();
     if (q.length === 0) { setAdvancedResults(null); return; }
     const timer = setTimeout(() => {
-      searchPlayerByContact(q)
+      searchPlayerByContact(adminToken, q)
         .then(res => setAdvancedResults(res.players))
         .catch(() => setAdvancedResults(null));
     }, 300);
     return () => clearTimeout(timer);
-  }, [nameFilter, advancedSearch]);
+  }, [nameFilter, advancedSearch, adminToken]);
 
   async function handleToggle(filename: string) {
     if (expandedFile === filename) {

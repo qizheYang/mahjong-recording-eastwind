@@ -12,8 +12,7 @@ roomRoutes.post('/', async (c) => {
     return c.json({ error: '请先登录 (Please log in first)' }, 401);
   }
 
-  const { roomCode, playerId } = roomManager.createRoom(username);
-  return c.json({ roomCode, playerId });
+  return c.json(roomManager.createRoom(username));
 });
 
 // Join an existing room (requires user auth)
@@ -30,12 +29,19 @@ roomRoutes.post('/:code/join', async (c) => {
     return c.json({ error: result.error }, 400);
   }
 
-  return c.json({ roomCode: code, playerId: result.playerId });
+  return c.json({
+    roomCode: code,
+    playerId: result.playerId,
+    playerCapability: result.playerCapability,
+  });
 });
 
 // Add a player by name (solo recording mode — host adds other players, no auth needed)
 roomRoutes.post('/:code/add-player', async (c) => {
   const code = c.req.param('code').toUpperCase();
+  if (!roomManager.authorizeHost(code, c.req.header('X-Room-Capability'))) {
+    return c.json({ error: '只有房主可以添加玩家 (Host capability required)' }, 403);
+  }
   const body = await c.req.json<{ playerName: string; phone?: string }>();
 
   if (!body.playerName || body.playerName.trim().length === 0) {
@@ -54,7 +60,11 @@ roomRoutes.post('/:code/add-player', async (c) => {
     roomManager.broadcast(code, { type: 'player_joined', player });
   }
 
-  return c.json({ roomCode: code, playerId: result.playerId });
+  return c.json({
+    roomCode: code,
+    playerId: result.playerId,
+    playerCapability: result.playerCapability,
+  });
 });
 
 // Get room state
@@ -66,12 +76,21 @@ roomRoutes.get('/:code', (c) => {
     return c.json({ error: '房间不存在 (Room not found)' }, 404);
   }
 
-  return c.json({ room });
+  const admin = getAdminFromHeader(c.req.header('Authorization'));
+  const playerAuthorized = roomManager.authorizePlayer(
+    code,
+    c.req.header('X-Player-Id'),
+    c.req.header('X-Player-Capability'),
+  );
+  return c.json({ room: admin || playerAuthorized ? room : roomManager.getPublicRoom(code) });
 });
 
 // Remove a player (solo mode — host removes other players)
 roomRoutes.post('/:code/remove-player', async (c) => {
   const code = c.req.param('code').toUpperCase();
+  if (!roomManager.authorizeHost(code, c.req.header('X-Room-Capability'))) {
+    return c.json({ error: '只有房主可以移除玩家 (Host capability required)' }, 403);
+  }
   const body = await c.req.json<{ playerId: string }>();
 
   if (!body.playerId) {
@@ -110,10 +129,12 @@ roomRoutes.delete('/:code', (c) => {
     return c.json({ ok: true });
   }
 
-  // Non-admin: check if creator
-  const playerId = c.req.query('playerId');
-  if (!playerId || playerId !== room.creatorId) {
+  if (!roomManager.authorizeHost(code, c.req.header('X-Room-Capability'))) {
     return c.json({ error: '只有房主可以解散房间 (Only creator can disband)' }, 403);
+  }
+
+  if (room.status !== 'waiting') {
+    return c.json({ error: '对局中无法解散 (Cannot kill room with game in progress)' }, 400);
   }
 
   roomManager.killRoom(code, 'Creator disbanded room');
@@ -123,6 +144,9 @@ roomRoutes.delete('/:code', (c) => {
 // Reset room for new game
 roomRoutes.post('/:code/reset', (c) => {
   const code = c.req.param('code').toUpperCase();
+  if (!roomManager.authorizeHost(code, c.req.header('X-Room-Capability'))) {
+    return c.json({ error: '只有房主可以重置房间 (Host capability required)' }, 403);
+  }
   const room = roomManager.resetRoom(code);
 
   if (!room) {
